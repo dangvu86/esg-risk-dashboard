@@ -22,23 +22,34 @@ def get_bucket():
 
 
 def read_json(filename):
-    """Read JSON file from GCS. Returns [] if not found."""
+    """Read JSON file from GCS. Returns (data, generation).
+    generation is used for optimistic concurrency control.
+    """
     bucket = get_bucket()
     blob = bucket.blob(filename)
     if not blob.exists():
-        return []
+        return [], 0
+    blob.reload()  # get current generation
     data = blob.download_as_text(encoding="utf-8")
-    return json.loads(data)
+    return json.loads(data), blob.generation
 
 
-def write_json(filename, data):
-    """Write JSON to GCS with public read access."""
+def write_json(filename, data, generation=None):
+    """Write JSON to GCS. If generation is provided, only write if file hasn't changed."""
     bucket = get_bucket()
     blob = bucket.blob(filename)
-    blob.upload_from_string(
-        json.dumps(data, ensure_ascii=False, indent=2),
-        content_type="application/json; charset=utf-8",
-    )
+    content = json.dumps(data, ensure_ascii=False, indent=2)
+    if generation:
+        blob.upload_from_string(
+            content,
+            content_type="application/json; charset=utf-8",
+            if_generation_match=generation,
+        )
+    else:
+        blob.upload_from_string(
+            content,
+            content_type="application/json; charset=utf-8",
+        )
 
 
 def event_hash(ticker, date, summary):
@@ -47,45 +58,65 @@ def event_hash(ticker, date, summary):
     return hashlib.md5(key.encode("utf-8")).hexdigest()
 
 
-def write_events(company, ticker, events):
+def write_events(company, ticker, events, max_retries=5):
     """
     Merge new ESG events into existing JSON on GCS. Skip duplicates.
+    Uses optimistic concurrency: re-reads and retries if another instance
+    wrote to the file between our read and write.
     Returns count of new events written.
     """
-    existing = read_json(EVENTS_FILE)
-    existing_hashes = {
-        event_hash(e["ticker"], e["date"], e["summary"])
-        for e in existing
-    }
+    if not events:
+        return 0
 
-    new_count = 0
     now = datetime.now(timezone.utc).isoformat()
-
+    new_events = []
     for evt in events:
-        h = event_hash(ticker, evt.get("date", ""), evt.get("summary", ""))
-        if h in existing_hashes:
-            continue
-
-        existing.append({
+        new_events.append({
             "ticker": ticker,
             "company": company,
             "type": evt.get("type", ""),
             "date": evt.get("date", ""),
             "summary": evt.get("summary", ""),
+            "summary_en": evt.get("summary_en", ""),
             "severity": evt.get("severity", ""),
             "source": evt.get("source", ""),
             "url": evt.get("url", ""),
             "created_at": now,
         })
-        existing_hashes.add(h)
-        new_count += 1
 
-    if new_count > 0:
-        # Sort by date descending
+    for attempt in range(max_retries):
+        existing, generation = read_json(EVENTS_FILE)
+        existing_hashes = {
+            event_hash(e["ticker"], e["date"], e["summary"])
+            for e in existing
+        }
+
+        new_count = 0
+        for evt in new_events:
+            h = event_hash(evt["ticker"], evt["date"], evt["summary"])
+            if h not in existing_hashes:
+                existing.append(evt)
+                existing_hashes.add(h)
+                new_count += 1
+
+        if new_count == 0:
+            return 0
+
         existing.sort(key=lambda x: x.get("date", ""), reverse=True)
-        write_json(EVENTS_FILE, existing)
 
-    return new_count
+        try:
+            write_json(EVENTS_FILE, existing, generation=generation)
+            return new_count
+        except Exception as e:
+            if "conditionNotMet" in str(e) and attempt < max_retries - 1:
+                import time
+                wait = 2 * (attempt + 1)
+                print(f"  Write conflict (attempt {attempt+1}), retrying in {wait}s...")
+                time.sleep(wait)
+                continue
+            raise
+
+    return 0
 
 
 def get_last_scan_date(ticker):
@@ -94,13 +125,13 @@ def get_last_scan_date(ticker):
     Checks both: last event date AND ticker scan history.
     """
     # Check ticker scan history first
-    tickers_data = read_json(TICKERS_FILE)
+    tickers_data, _ = read_json(TICKERS_FILE)
     ticker_info = {t["ticker"]: t for t in tickers_data}
     if ticker in ticker_info:
         return ticker_info[ticker].get("last_scan_date")
 
     # Fallback: check events
-    existing = read_json(EVENTS_FILE)
+    existing, _ = read_json(EVENTS_FILE)
     dates = [e["date"] for e in existing if e.get("ticker") == ticker and e.get("date")]
     if dates:
         return max(dates)
@@ -108,19 +139,33 @@ def get_last_scan_date(ticker):
     return None
 
 
-def mark_ticker_scanned(ticker, company, scan_date):
-    """Record that a ticker has been scanned up to scan_date."""
-    tickers_data = read_json(TICKERS_FILE)
-    ticker_map = {t["ticker"]: t for t in tickers_data}
-
-    ticker_map[ticker] = {
+def mark_ticker_scanned(ticker, company, scan_date, max_retries=5):
+    """Record that a ticker has been scanned up to scan_date.
+    Uses optimistic locking to avoid overwriting concurrent writes.
+    """
+    import time
+    new_entry = {
         "ticker": ticker,
         "company": company,
         "last_scan_date": scan_date,
         "scanned_at": datetime.now(timezone.utc).isoformat(),
     }
 
-    write_json(TICKERS_FILE, list(ticker_map.values()))
+    for attempt in range(max_retries):
+        tickers_data, generation = read_json(TICKERS_FILE)
+        ticker_map = {t["ticker"]: t for t in tickers_data}
+        ticker_map[ticker] = new_entry
+
+        try:
+            write_json(TICKERS_FILE, list(ticker_map.values()), generation=generation)
+            return
+        except Exception as e:
+            if "conditionNotMet" in str(e) and attempt < max_retries - 1:
+                wait = 2 * (attempt + 1)
+                print(f"  Ticker write conflict (attempt {attempt+1}), retrying in {wait}s...")
+                time.sleep(wait)
+                continue
+            raise
 
 
 def get_next_batch(total_companies):
@@ -161,15 +206,25 @@ BATCH_SIZE = 5
 
 
 def write_scan_log(tickers_scanned, new_events_found, status="completed", error_msg=""):
-    """Append scan result to scans log."""
-    scans = read_json(SCANS_FILE)
-    scans.append({
+    """Append scan result to scans log. Uses optimistic locking."""
+    import time
+    new_entry = {
         "scan_date": datetime.now(timezone.utc).isoformat(),
         "tickers_scanned": tickers_scanned,
         "new_events_found": new_events_found,
         "status": status,
         "error": error_msg,
-    })
-    # Keep last 100 scans
-    scans = scans[-100:]
-    write_json(SCANS_FILE, scans)
+    }
+
+    for attempt in range(5):
+        scans, generation = read_json(SCANS_FILE)
+        scans.append(new_entry)
+        scans = scans[-100:]
+        try:
+            write_json(SCANS_FILE, scans, generation=generation)
+            return
+        except Exception as e:
+            if "conditionNotMet" in str(e) and attempt < 4:
+                time.sleep(2 * (attempt + 1))
+                continue
+            raise

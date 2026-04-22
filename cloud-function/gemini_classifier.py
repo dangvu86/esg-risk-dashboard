@@ -9,7 +9,7 @@ import time
 import urllib.request
 
 
-GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent"
 
 CLASSIFY_PROMPT = """Bạn là chuyên gia phân tích rủi ro ESG cho thị trường chứng khoán Việt Nam. Nhiệm vụ: tìm TẤT CẢ sự kiện ESG tiêu cực liên quan đến công ty.
 

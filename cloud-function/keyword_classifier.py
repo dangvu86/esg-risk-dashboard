@@ -19,6 +19,13 @@ NOISE_KEYWORDS = [
     "khởi công", "động thổ", "IPO", "niêm yết", "phục hồi",
     "công nghệ xanh", "năng lượng tái tạo", "phát triển bền vững",
     "đạt chuẩn", "ESG tích cực",
+    # Positive ESG / CSR
+    "hưởng ứng", "đảm bảo an toàn", "tiên phong triển khai",
+    "chiến dịch cao điểm", "hỗ trợ", "giải pháp giúp",
+    "dấu ấn đặc sắc", "thành tựu", "duy trì hoạt động ổn định",
+    "khung quản lý rủi ro", "triển khai thanh toán",
+    "phiên bản mới", "tính năng mới", "chuyển đổi số",
+    "thành công vì",
     # Personal / lifestyle
     "du học", "thiếu gia", "nghìn tỷ", "tài sản", "giàu nhất",
     "đám cưới", "gia thế",
@@ -30,6 +37,9 @@ NOISE_KEYWORDS = [
     "thâu tóm", "mua lại", "sáp nhập", "chi tỷ",
     # Analysis about others
     "đối thủ của",
+    # Positive statements / PR
+    "hãy coi", "phủ nhận thông tin", "khẳng định",
+    "cam kết", "nỗ lực", "đồng hành",
 ]
 
 # --- ESG NEGATIVE keywords ---
@@ -85,17 +95,49 @@ def _normalize(text):
     return text.lower().strip()
 
 
+def _strip_source_suffix(title):
+    """Strip trailing source name from RSS title: '...content - Báo Thanh tra' → '...content'"""
+    # Google News RSS format: "Title - Source Name"
+    idx = title.rfind(" - ")
+    if idx > 0:
+        return title[:idx].strip()
+    return title
+
+
 def _contains_any(text, keywords):
     text_lower = _normalize(text)
     return any(kw.lower() in text_lower for kw in keywords)
 
 
+# Known Vietnamese place names and phrases that cause false positives
+# Map: "confusing bigram" → list of preceding words that indicate NOT the company
+FALSE_POSITIVE_CONTEXTS = {
+    "hòa phát": ["khánh"],          # "Khánh Hòa phát hiện/sinh..."
+    "hòa phát hiện": ["khánh"],
+}
+
+
 def _is_about_company(title, company_name):
-    """Check if title is actually about the target company."""
+    """Check if title is actually about the target company.
+    Handles Vietnamese false positives like 'Khánh Hòa phát hiện' != 'Hòa Phát'.
+    """
     title_lower = _normalize(title)
     name_lower = _normalize(company_name)
 
+    # Full name match
     if name_lower in title_lower:
+        # Check false positive contexts
+        for phrase, bad_prefixes in FALSE_POSITIVE_CONTEXTS.items():
+            if phrase.startswith(name_lower) or name_lower == phrase:
+                for prefix in bad_prefixes:
+                    # Check if the match is preceded by a bad prefix
+                    pattern = re.escape(prefix) + r'\s+' + re.escape(name_lower)
+                    if re.search(pattern, title_lower):
+                        # Found bad context — but is there also a genuine match?
+                        # Remove all bad-context occurrences, then check again
+                        cleaned = re.sub(pattern, '', title_lower)
+                        if name_lower not in cleaned:
+                            return False
         return True
 
     # Check bigrams for multi-word names
@@ -104,7 +146,18 @@ def _is_about_company(title, company_name):
         for i in range(len(name_parts) - 1):
             bigram = f"{name_parts[i]} {name_parts[i+1]}"
             if bigram in title_lower:
-                return True
+                # Check false positive contexts for this bigram
+                is_false_positive = False
+                for phrase, bad_prefixes in FALSE_POSITIVE_CONTEXTS.items():
+                    if bigram in phrase or phrase.startswith(bigram):
+                        for prefix in bad_prefixes:
+                            pattern = re.escape(prefix) + r'\s+' + re.escape(bigram)
+                            if re.search(pattern, title_lower):
+                                cleaned = re.sub(pattern, '', title_lower)
+                                if bigram not in cleaned:
+                                    is_false_positive = True
+                if not is_false_positive:
+                    return True
 
     return False
 
@@ -236,27 +289,30 @@ def classify_news(company, ticker, items, api_key=None):
     events = []
     for item in items:
         title = item.get("title", "")
+        # Strip source suffix to avoid matching keywords in source name
+        # e.g. "BIDV duy trì ổn định - Báo Thanh tra" → "thanh tra" was false positive
+        content = _strip_source_suffix(title)
 
         # Step 1: Is it about this company?
-        if not _is_about_company(title, company):
+        if not _is_about_company(content, company):
             continue
 
         # Step 2: Is it noise?
-        if _is_noise(title):
+        if _is_noise(content):
             # Exception: if it also contains strong ESG keywords, keep it
-            if not _contains_any(title, HIGH_SEVERITY_KEYWORDS):
+            if not _contains_any(content, HIGH_SEVERITY_KEYWORDS):
                 continue
 
         # Step 3: Does it contain ESG keywords?
-        if not _contains_any(title, ALL_ESG_KEYWORDS):
+        if not _contains_any(content, ALL_ESG_KEYWORDS):
             continue
 
         # Step 4: Classify
         events.append({
-            "type": _classify_type(title),
+            "type": _classify_type(content),
             "date": item.get("date", ""),
             "summary": title,
-            "severity": _classify_severity(title),
+            "severity": _classify_severity(content),
             "source": item.get("source", ""),
             "url": item.get("url", ""),
         })

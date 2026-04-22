@@ -8,9 +8,15 @@ interface EsgEvent {
   type: "E" | "S" | "G";
   date: string;
   summary: string;
+  summary_en?: string;
   severity: "Cao" | "Trung bình";
   source: string;
   url: string;
+}
+
+interface Company {
+  ticker: string;
+  company: string;
 }
 
 const TYPE_COLORS = {
@@ -21,6 +27,9 @@ const TYPE_COLORS = {
 
 const TYPE_LABELS = { E: "Môi trường", S: "Xã hội", G: "Quản trị" };
 
+const DATA_URL = "/api/events";
+const FUNCTION_URL = process.env.NEXT_PUBLIC_FUNCTION_URL || "https://us-central1-ta-tracking-api.cloudfunctions.net/esg_scan";
+
 export default function Home() {
   const [events, setEvents] = useState<EsgEvent[]>([]);
   const [ticker, setTicker] = useState("");
@@ -28,11 +37,13 @@ export default function Home() {
   const [severity, setSeverity] = useState("");
   const [loading, setLoading] = useState(true);
   const [triggering, setTriggering] = useState(false);
+  const [scanTicker, setScanTicker] = useState("auto");
+  const [allCompanies, setAllCompanies] = useState<Company[]>([]);
+  const [lang, setLang] = useState<"vi" | "en">("vi");
 
   useEffect(() => {
-    const url = process.env.NEXT_PUBLIC_DATA_URL;
-    if (!url) { setLoading(false); return; }
-    fetch(url).then(r => r.json()).then(setEvents).catch(console.error).finally(() => setLoading(false));
+    fetch(DATA_URL).then(r => r.json()).then(setEvents).catch(console.error).finally(() => setLoading(false));
+    fetch("/api/tickers").then(r => r.json()).then(setAllCompanies).catch(console.error);
   }, []);
 
   const filtered = useMemo(() => events.filter(e =>
@@ -53,14 +64,15 @@ export default function Home() {
   }), [filtered]);
 
   const handleTrigger = async () => {
-    const url = process.env.NEXT_PUBLIC_FUNCTION_URL;
-    if (!url) return alert("NEXT_PUBLIC_FUNCTION_URL chưa cấu hình");
     setTriggering(true);
     try {
-      const res = await fetch(url);
+      const param = scanTicker === "auto" ? "mode=auto" : `tickers=${scanTicker}`;
+      const res = await fetch(`${FUNCTION_URL}?${param}`);
       const data = await res.json();
       alert(`Scan xong: ${data.tickers_scanned} công ty, ${data.new_events} events mới`);
-      window.location.reload();
+      // Refresh data
+      const updated = await fetch(DATA_URL).then(r => r.json());
+      setEvents(updated);
     } catch (err) { alert(`Lỗi: ${err}`); }
     finally { setTriggering(false); }
   };
@@ -72,10 +84,27 @@ export default function Home() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">ESG Risk Dashboard</h1>
-        <button onClick={handleTrigger} disabled={triggering}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm">
-          {triggering ? "Đang scan..." : "Scan ngay"}
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="inline-flex border rounded-lg overflow-hidden text-sm">
+            <button onClick={() => setLang("vi")}
+              className={`px-3 py-2 ${lang === "vi" ? "bg-blue-600 text-white" : "bg-white text-gray-700 hover:bg-gray-50"}`}>
+              VI
+            </button>
+            <button onClick={() => setLang("en")}
+              className={`px-3 py-2 ${lang === "en" ? "bg-blue-600 text-white" : "bg-white text-gray-700 hover:bg-gray-50"}`}>
+              EN
+            </button>
+          </div>
+          <select value={scanTicker} onChange={e => setScanTicker(e.target.value)}
+            className="border rounded-lg px-3 py-2 text-sm">
+            <option value="auto">All</option>
+            {allCompanies.map(c => <option key={c.ticker} value={c.ticker}>{c.ticker} - {c.company}</option>)}
+          </select>
+          <button onClick={handleTrigger} disabled={triggering}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm">
+            {triggering ? "Đang scan..." : "Scan ngay"}
+          </button>
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -141,7 +170,7 @@ export default function Home() {
                   </span>
                 </td>
                 <td className="px-3 py-2 whitespace-nowrap">{e.date}</td>
-                <td className="px-3 py-2 max-w-md">{e.summary}</td>
+                <td className="px-3 py-2 max-w-md">{lang === "en" ? (e.summary_en || e.summary) : e.summary}</td>
                 <td className="px-3 py-2">
                   <span className={`font-medium ${e.severity === "Cao" ? "text-red-600" : "text-orange-500"}`}>
                     {e.severity}
