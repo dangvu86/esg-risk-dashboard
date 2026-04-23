@@ -21,6 +21,8 @@ from link_resolver import resolve_links
 from keyword_classifier import classify_news
 from translator import translate_summaries
 from controversy_classifier import classify_events
+from sentiment_filter import filter_negative
+from semantic_dedup import dedupe_semantic
 from storage_writer import (
     write_events, write_scan_log, get_last_scan_date,
     mark_ticker_scanned, get_next_batch, advance_batch,
@@ -62,6 +64,14 @@ def _scan_companies(companies, api_key, revenues=None):
         items = resolve_links(items)
         events = classify_news(company_name, ticker, items, api_key)
         print(f"  Classified: {len(events)} ESG events")
+
+        if events:
+            events = filter_negative(events)
+            print(f"  After sentiment filter: {len(events)} events")
+
+        if events:
+            events = dedupe_semantic(events)
+            print(f"  After semantic dedup: {len(events)} events")
 
         if events:
             summaries_en = translate_summaries([e["summary"] for e in events], api_key)

@@ -6,6 +6,8 @@ Reads existing data, merges new events (dedup), writes back.
 import hashlib
 import json
 import os
+import re
+import unicodedata
 from datetime import datetime, timezone
 from google.cloud import storage
 
@@ -52,9 +54,31 @@ def write_json(filename, data, generation=None):
         )
 
 
+def _normalize_title(title):
+    """Strip source suffix, diacritics, punctuation; collapse whitespace.
+    Used for dedup: catches titles that differ only in trailing "- Source" or casing.
+    """
+    if not title:
+        return ""
+    # Strip trailing "- Source" suffix (last occurrence, common in Google News feeds)
+    idx = title.rfind(" - ")
+    if idx > 0:
+        title = title[:idx]
+    # NFKD strip diacritics + lowercase
+    nfkd = unicodedata.normalize("NFKD", title)
+    ascii_ = "".join(c for c in nfkd if not unicodedata.combining(c)).lower()
+    # Remove punctuation, collapse whitespace
+    ascii_ = re.sub(r"[^\w\s]", " ", ascii_)
+    ascii_ = re.sub(r"\s+", " ", ascii_).strip()
+    return ascii_
+
+
 def event_hash(ticker, date, summary):
-    """Create a hash for dedup."""
-    key = f"{ticker}|{date}|{summary}"
+    """Create a hash for dedup.
+    Uses normalized title (no source suffix / no diacritics) AND drops the date,
+    so the same story republished across days/outlets collapses to one event.
+    """
+    key = f"{ticker}|{_normalize_title(summary)}"
     return hashlib.md5(key.encode("utf-8")).hexdigest()
 
 
