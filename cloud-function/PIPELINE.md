@@ -134,14 +134,20 @@ Batch 30 titles/call.
 
 1. **Fetch article body** qua Jina Reader (`https://r.jina.ai/<real_url>`) sau khi decode Google News URL qua `googlenewsdecoder`
 2. **Look up company revenue** cho năm của event từ [Top100.csv](Top100.csv) — `get_revenue_for_year()` chọn năm gần nhất nếu không có exact match
-3. **Gọi LLM** với prompt chứa:
-   - Definition Major / Minor / No từ [E&S controversy.pdf](../../E&S%20controversy.pdf)
-   - 4 indicators từ [CG controversy.pdf](../../CG%20controversy.pdf):
-     - 1 = Bribery/corruption/business ethics
-     - 2 = Accurate financial reporting
-     - 3 = Tax behavior
-     - 4 = Shareholder rights / governance breach
-   - **20% scale rule**: nếu project-level và < 20% revenue → Major → Minor
+3. **Gọi LLM** để gán `controversy_level` ∈ {Major, Minor, No} + justification. Logic phân nhánh theo `event.type`:
+
+   **E hoặc S event** → dùng trực tiếp định nghĩa Major/Minor/No trong [E&S controversy.pdf](../../E&S%20controversy.pdf). Tiêu chí: có report trong 5y/10y? có evidence resolution? có material consequence cho community/worker/environment?
+
+   **G event** → 2 bước:
+   1. **Justification**: map sự việc vào 1 trong 4 indicators trong [CG controversy.pdf](../../CG%20controversy.pdf) — (1) bribery/corruption/business ethics, (2) accurate financial reporting, (3) tax behavior, (4) shareholder rights / governance breach — dùng indicator này để viết justification + ghi vào `cg_indicator`.
+   2. **Level**: quay về thang Major/Minor/No của E&S controversy.pdf để gán level (CG file không có thang riêng).
+
+   **Corporate-level consolidation (20% rule)** — áp dụng SAU khi đã có base level, cho cả E/S/G:
+   - Nếu article cho thấy event chỉ scope ở 1 subsidiary/plant/project (không phải toàn corporate) **VÀ** một trong:
+     - revenue của unit đó < 20% annual revenue của mẹ, **HOẶC**
+     - parent ownership ở affected entity < 20%
+   - → downgrade **Major → Minor**. Không downgrade Minor → No.
+   - Nếu scope/ownership không rõ → giữ nguyên base level.
 4. **Output**: `level` (Major/Minor/No) + 2-sentence English justification + `cg_indicator` (chỉ cho G)
 
 **Ghi vào event:**
