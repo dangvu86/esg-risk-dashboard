@@ -21,11 +21,13 @@ import urllib.error
 from controversy_classifier import resolve_provider, _build_request
 
 
-BATCH_SIZE = 20
+BATCH_SIZE = 5
 
 FILTER_PROMPT = """You are an ESG risk analyst screening Vietnamese news titles for a company risk dashboard.
 
 Goal: filter out ONLY clearly positive/unrelated titles. When in doubt, label "risk" (we prefer false positives over missing real issues).
+
+Analyze each title INDEPENDENTLY — do not let the label of one title influence another. Each title is a standalone decision.
 
 DEFAULT: label "risk" unless you are CONFIDENT the title is NOT about the company having a negative ESG event.
 
@@ -39,12 +41,13 @@ Label "risk" (keep) includes — do NOT drop these:
 - The company's response to its own violations ("công ty X nói gì về kết luận thanh tra")
 
 Label "not_risk" (drop) only in CLEAR cases:
-- Pure charity / disaster relief / CSR ("hỗ trợ gia đình nạn nhân", "ủng hộ", "tài trợ") — even if title mentions accident keyword
+- Pure charity / disaster relief / CSR ("hỗ trợ gia đình nạn nhân", "quỹ thiện tâm", "ủng hộ", "tài trợ") — even if title mentions accident keyword
+- Executive/Chairman STATEMENTS about sustainability, renewable energy, environment commitment (e.g., "Chủ tịch X: Tận dụng tài nguyên tái tạo thay vì gia tăng ô nhiễm" is a POSITIVE CSR message, not a pollution incident)
 - Investment IN prevention / safety / green tech with no mention of prior violation
 - Company receives an award or positive recognition
 - Robbery/theft where the company is merely the victim location (e.g., "cướp ngân hàng X bị bắt") — unless the company staff were perpetrators
 - Generic commentary not tied to a specific company incident (e.g., "Làm gì nếu bị lừa đảo, BIDV cảnh báo" — this is advice, not a BIDV incident)
-- Divestment, M&A, earnings announcement WITHOUT any regulatory issue mentioned
+- Divestment, M&A, share/bond issuance, earnings announcement WITHOUT any regulatory issue mentioned (including "thoái vốn", "chào bán trái phiếu", "giảm cổ phiếu", "phát hành", "đóng cửa ở mức cao")
 
 Events to classify:
 {events}
