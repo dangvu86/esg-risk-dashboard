@@ -30,6 +30,16 @@ Dashboard (Vercel)
 
 **Làm gì:** Với mỗi ticker, search Google News RSS theo 3 nhóm keyword (E, S, G). Mỗi nhóm split thành nhiều sub-query (≤4 OR keywords / sub-query) — bắt buộc vì Google News RSS silently trả 0 results khi `intitle:"phrase"` kết hợp >6 OR clauses (gặp trên prod với G query 7-OR cũ → luôn trả 0).
 
+**Alias (broaden company-name match):** `derive_aliases()` ([rss_fetcher.py](rss_fetcher.py)) tự strip prefix VN ("Tập đoàn", "Tổng Công ty", "Công ty CP", "CTCP"...) để có short form. Mỗi alias chạy riêng bộ sub-queries → coverage gấp đôi cho company có prefix.
+
+```
+"Tập đoàn Hà Đô"   → ["Tập đoàn Hà Đô", "Hà Đô"]
+"Tổng Công ty Viglacera" → ["Tổng Công ty Viglacera", "Viglacera"]
+"BIDV"             → ["BIDV"]                       (1-word, no alias)
+```
+
+Stage 2 `_is_about_company` cũng dùng cùng `derive_aliases` để match (substring check trên mỗi alias, không bigram split — bigram cũ quá lỏng vì "tập đoàn" alone match mọi "Tập đoàn X").
+
 **KEYWORD_GROUPS** ([rss_fetcher.py](rss_fetcher.py)) — 8 sub-queries tổng:
 ```python
 "E": [
@@ -52,7 +62,7 @@ Dashboard (Vercel)
 
 **Output:** RSS items thô với title + source + date + google_news_url + keyword_group (E/S/G).
 
-**Lượng:** Weekly scan ~100 companies × 8 sub-queries × 1 chunk = **~3000-5000 raw items** (sau dedup intra-company).
+**Lượng:** Weekly scan ~100 companies × 8 sub-queries × 1 chunk × ~1.3 alias-avg = **~5000-8000 raw items** (sau dedup intra-company).
 
 ---
 

@@ -7,6 +7,8 @@ import re
 from datetime import datetime
 from difflib import SequenceMatcher
 
+from rss_fetcher import derive_aliases
+
 # --- NOISE: topics that are NOT ESG risk events ---
 NOISE_KEYWORDS = [
     # Sports / entertainment
@@ -117,47 +119,41 @@ FALSE_POSITIVE_CONTEXTS = {
 }
 
 
-def _is_about_company(title, company_name):
+def _is_about_company(title, company):
     """Check if title is actually about the target company.
-    Handles Vietnamese false positives like 'Khánh Hòa phát hiện' != 'Hòa Phát'.
+
+    `company` accepts either a single name string or a list of alias strings.
+    Match if any alias appears as a substring of the title. Each alias goes
+    through FALSE_POSITIVE_CONTEXTS to filter out cases like
+    'Khánh Hòa phát hiện' != 'Hòa Phát'.
+
+    No bigram fallback — the previous bigram approach matched too eagerly
+    (e.g. bigram "tập đoàn" of "Tập đoàn X" would accept any article about
+    any other "Tập đoàn Y"). Aliases from derive_aliases() are sufficient.
     """
+    if isinstance(company, str):
+        aliases = derive_aliases(company)
+    else:
+        aliases = list(company)
+
     title_lower = _normalize(title)
-    name_lower = _normalize(company_name)
 
-    # Full name match
-    if name_lower in title_lower:
-        # Check false positive contexts
+    for alias in aliases:
+        alias_lower = _normalize(alias)
+        if alias_lower not in title_lower:
+            continue
+        # Check FALSE_POSITIVE_CONTEXTS for this alias
+        is_false_positive = False
         for phrase, bad_prefixes in FALSE_POSITIVE_CONTEXTS.items():
-            if phrase.startswith(name_lower) or name_lower == phrase:
+            if phrase.startswith(alias_lower) or alias_lower == phrase:
                 for prefix in bad_prefixes:
-                    # Check if the match is preceded by a bad prefix
-                    pattern = re.escape(prefix) + r'\s+' + re.escape(name_lower)
+                    pattern = re.escape(prefix) + r'\s+' + re.escape(alias_lower)
                     if re.search(pattern, title_lower):
-                        # Found bad context — but is there also a genuine match?
-                        # Remove all bad-context occurrences, then check again
                         cleaned = re.sub(pattern, '', title_lower)
-                        if name_lower not in cleaned:
-                            return False
-        return True
-
-    # Check bigrams for multi-word names
-    name_parts = name_lower.split()
-    if len(name_parts) >= 2:
-        for i in range(len(name_parts) - 1):
-            bigram = f"{name_parts[i]} {name_parts[i+1]}"
-            if bigram in title_lower:
-                # Check false positive contexts for this bigram
-                is_false_positive = False
-                for phrase, bad_prefixes in FALSE_POSITIVE_CONTEXTS.items():
-                    if bigram in phrase or phrase.startswith(bigram):
-                        for prefix in bad_prefixes:
-                            pattern = re.escape(prefix) + r'\s+' + re.escape(bigram)
-                            if re.search(pattern, title_lower):
-                                cleaned = re.sub(pattern, '', title_lower)
-                                if bigram not in cleaned:
-                                    is_false_positive = True
-                if not is_false_positive:
-                    return True
+                        if alias_lower not in cleaned:
+                            is_false_positive = True
+        if not is_false_positive:
+            return True
 
     return False
 

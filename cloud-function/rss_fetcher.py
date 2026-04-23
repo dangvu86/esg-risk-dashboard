@@ -11,6 +11,51 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 from pathlib import Path
 
+# Vietnamese corporate name prefixes that can be stripped to get a short form
+# (e.g. "Tập đoàn Hà Đô" → "Hà Đô"). Used by derive_aliases to broaden RSS coverage.
+# Order matters — longer prefixes first so we don't strip just "Tổng Công ty" when
+# the actual prefix is "Tổng Công ty CP".
+CORPORATE_PREFIXES = [
+    "Tổng Công ty Cổ phần",
+    "Tổng Công ty CP",
+    "Tổng Công ty",
+    "Tổng CTCP",
+    "Tập đoàn Cổ phần",
+    "Tập đoàn",
+    "Công ty Cổ phần",
+    "Công ty CP",
+    "Công ty TNHH",
+    "Công ty",
+    "CTCP",
+]
+
+
+def derive_aliases(name):
+    """Return [canonical_name] or [canonical_name, short_form].
+
+    Strips one known Vietnamese corporate prefix to produce a short form.
+    Most articles refer to a company by its short name (e.g. "Hà Đô bị phạt..."
+    instead of "Tập đoàn Hà Đô bị phạt..."), but Google News RSS
+    intitle:"Tập đoàn Hà Đô" misses these. Searching both variants fixes that.
+
+    Examples:
+      "Tập đoàn Hà Đô"   → ["Tập đoàn Hà Đô", "Hà Đô"]
+      "Tổng Công ty Viglacera" → ["Tổng Công ty Viglacera", "Viglacera"]
+      "BIDV"             → ["BIDV"]
+      "Hòa Phát"         → ["Hòa Phát"]
+    """
+    aliases = [name]
+    name_lower = name.lower().strip()
+    for prefix in CORPORATE_PREFIXES:
+        p = prefix.lower()
+        if name_lower.startswith(p + " "):
+            short = name[len(prefix):].strip(" ,.")
+            if short and short.lower() != name_lower and short not in aliases:
+                aliases.append(short)
+            break
+    return aliases
+
+
 # Each group is a list of sub-queries. Each sub-query MUST have ≤4 OR keywords —
 # Google News RSS silently returns 0 items when intitle:"phrase" is combined with
 # more OR clauses (cap is around 6, but 4 is the safe ceiling). Sub-queries are
@@ -203,29 +248,34 @@ def fetch_company_news(company_name, days_back=7, delay=1.0):
     else:
         chunks = generate_date_chunks(start_date, end_date, months=6)
 
+    aliases = derive_aliases(company_name)
+    alias_log = aliases[0] if len(aliases) == 1 else f"{aliases[0]} (+{len(aliases)-1} alias: {', '.join(aliases[1:])})"
     print(f"  Date range: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')} ({len(chunks)} chunks)")
+    print(f"  Names searched: {alias_log}")
 
     all_items = []
     sub_queries_per_group = sum(len(v) for v in KEYWORD_GROUPS.values())
-    total_queries = sub_queries_per_group * len(chunks)
+    total_queries = len(aliases) * sub_queries_per_group * len(chunks)
     done = 0
 
-    for group_key, sub_queries in KEYWORD_GROUPS.items():
-        for sub_idx, keywords in enumerate(sub_queries, start=1):
-            for after_date, before_date in chunks:
-                done += 1
-                url = build_rss_url(company_name, keywords, after_date, before_date)
-                xml = fetch_rss(url)
-                tag = f"{group_key}.{sub_idx}/{len(sub_queries)}"
-                if xml:
-                    items = parse_rss_xml(xml)
-                    for item in items:
-                        item["keyword_group"] = group_key
-                    all_items.extend(items)
-                    print(f"  [{done}/{total_queries}] {tag} {after_date}~{before_date}: {len(items)} items")
-                else:
-                    print(f"  [{done}/{total_queries}] {tag} {after_date}~{before_date}: failed/empty")
-                time.sleep(delay)
+    for alias_idx, name in enumerate(aliases, start=1):
+        alias_tag = f"name{alias_idx}/{len(aliases)}"
+        for group_key, sub_queries in KEYWORD_GROUPS.items():
+            for sub_idx, keywords in enumerate(sub_queries, start=1):
+                for after_date, before_date in chunks:
+                    done += 1
+                    url = build_rss_url(name, keywords, after_date, before_date)
+                    xml = fetch_rss(url)
+                    tag = f"{alias_tag} {group_key}.{sub_idx}/{len(sub_queries)}"
+                    if xml:
+                        items = parse_rss_xml(xml)
+                        for item in items:
+                            item["keyword_group"] = group_key
+                        all_items.extend(items)
+                        print(f"  [{done}/{total_queries}] {tag} {after_date}~{before_date}: {len(items)} items")
+                    else:
+                        print(f"  [{done}/{total_queries}] {tag} {after_date}~{before_date}: failed/empty")
+                    time.sleep(delay)
 
     # Dedup by exact title
     seen = set()
