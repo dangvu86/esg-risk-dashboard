@@ -14,12 +14,13 @@ Logic (same as ESG skill):
 
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 import functions_framework
-from rss_fetcher import load_companies, fetch_company_news
+from rss_fetcher import load_companies, fetch_company_news, load_revenues
 from link_resolver import resolve_links
 from keyword_classifier import classify_news
 from translator import translate_summaries
+from controversy_classifier import classify_events
 from storage_writer import (
     write_events, write_scan_log, get_last_scan_date,
     mark_ticker_scanned, get_next_batch, advance_batch,
@@ -29,7 +30,7 @@ from storage_writer import (
 BATCH_SIZE = 5
 
 
-def _scan_companies(companies, api_key):
+def _scan_companies(companies, api_key, revenues=None):
     """Scan a dict of {ticker: company_name}. Returns (total_new, results)."""
     total_new = 0
     results = []
@@ -67,6 +68,17 @@ def _scan_companies(companies, api_key):
             for e, en in zip(events, summaries_en):
                 e["summary_en"] = en
 
+            cao_events = [e for e in events if e.get("severity") == "Cao"]
+            if cao_events:
+                print(f"  Classifying {len(cao_events)} Cao events...")
+                classifications = classify_events(cao_events, api_key, revenues=revenues)
+                classified_at = datetime.now(timezone.utc).isoformat()
+                for evt, cls in zip(cao_events, classifications):
+                    if cls:
+                        evt["controversy_level"] = cls["level"]
+                        evt["controversy_justification"] = cls["justification"]
+                        evt["controversy_classified_at"] = classified_at
+
         new_count = write_events(company_name, ticker, events)
         total_new += new_count
         print(f"  New events written: {new_count}")
@@ -96,10 +108,12 @@ def esg_scan(request):
     mode = args.get("mode", "")
     tickers_param = args.get("tickers", "")
 
-    all_companies = load_companies(os.path.join(os.path.dirname(__file__), "Top100.csv"))
+    csv_path = os.path.join(os.path.dirname(__file__), "Top100.csv")
+    all_companies = load_companies(csv_path)
     if not all_companies:
         return json.dumps({"error": "No companies found in CSV"}), 500, headers
 
+    revenues = load_revenues(csv_path)
     api_key = os.environ.get("GEMINI_API_KEY", "")
 
     if tickers_param:
@@ -110,7 +124,7 @@ def esg_scan(request):
             return json.dumps({"error": f"Tickers not found: {tickers_param}"}), 404, headers
 
         print(f"=== ESG Scan: manual tickers={list(companies.keys())} ===")
-        total_new, results = _scan_companies(companies, api_key)
+        total_new, results = _scan_companies(companies, api_key, revenues=revenues)
 
         write_scan_log(tickers_scanned=len(companies), new_events_found=total_new)
         response = {
@@ -136,7 +150,7 @@ def esg_scan(request):
             batch_companies = {k: all_companies[k] for k in all_tickers[start:end] if k in all_companies}
 
             print(f"\n--- Batch {b}/{max_batch}: {list(batch_companies.keys())} ---")
-            total_new, results = _scan_companies(batch_companies, api_key)
+            total_new, results = _scan_companies(batch_companies, api_key, revenues=revenues)
             grand_total += total_new
             all_results.extend(results)
 
@@ -163,7 +177,7 @@ def esg_scan(request):
             return json.dumps({"error": f"No companies in batch {batch}"}), 404, headers
 
         print(f"=== ESG Scan: batch={batch}, companies={list(companies.keys())} ===")
-        total_new, results = _scan_companies(companies, api_key)
+        total_new, results = _scan_companies(companies, api_key, revenues=revenues)
 
         write_scan_log(tickers_scanned=len(companies), new_events_found=total_new)
         response = {

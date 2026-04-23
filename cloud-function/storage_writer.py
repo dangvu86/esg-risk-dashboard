@@ -81,6 +81,9 @@ def write_events(company, ticker, events, max_retries=5):
             "severity": evt.get("severity", ""),
             "source": evt.get("source", ""),
             "url": evt.get("url", ""),
+            "controversy_level": evt.get("controversy_level", ""),
+            "controversy_justification": evt.get("controversy_justification", ""),
+            "controversy_classified_at": evt.get("controversy_classified_at", ""),
             "created_at": now,
         })
 

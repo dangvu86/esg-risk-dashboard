@@ -12,9 +12,9 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 KEYWORD_GROUPS = {
-    "E": "ô nhiễm OR xả thải OR môi trường OR khí thải",
+    "E": "ô nhiễm OR xả thải OR môi trường OR khí thải OR nước thải OR mùi hôi",
     "S": "tai nạn OR tử vong OR đình công OR an toàn lao động",
-    "G": "vi phạm OR xử phạt OR UBCKNN OR khởi tố OR thanh tra",
+    "G": "vi phạm OR xử phạt OR UBCKNN OR khởi tố OR thanh tra OR khiếu kiện OR khiếu nại",
 }
 
 
@@ -34,6 +34,57 @@ def load_companies(csv_path="Top100.csv"):
                 companies[ticker] = name
     print(f"Loaded {len(companies)} companies from CSV")
     return companies
+
+
+def load_revenues(csv_path="Top100.csv"):
+    """Load ticker -> {year_int: revenue_billion_vnd} mapping from CSV.
+    Year columns are all non-ticker/name headers. Values are billions of VND
+    with comma thousands separators (e.g. " 110,490 " -> 110490.0).
+    Empty/unparseable cells are skipped.
+    """
+    revenues = {}
+    path = Path(csv_path)
+    if not path.exists():
+        print(f"CSV not found: {csv_path}")
+        return revenues
+    with open(path, "r", encoding="utf-8-sig") as f:
+        reader = csv.DictReader(f)
+        fieldnames = reader.fieldnames or []
+        year_cols = []
+        for col in fieldnames:
+            try:
+                year_cols.append((int(col.strip()), col))
+            except ValueError:
+                continue  # skip non-year columns (Mã CK, Tên Công ty)
+        for row in reader:
+            ticker = (row.get("Mã CK") or "").strip()
+            if not ticker:
+                continue
+            per_year = {}
+            for year_int, col_name in year_cols:
+                raw = (row.get(col_name) or "").strip().replace(",", "")
+                if not raw:
+                    continue
+                try:
+                    per_year[year_int] = float(raw)
+                except ValueError:
+                    continue
+            if per_year:
+                revenues[ticker] = per_year
+    return revenues
+
+
+def get_revenue_for_year(per_year, year):
+    """Pick revenue for a given event year.
+    Exact match first; otherwise closest available year (ties → older year).
+    Returns (year_used, revenue) tuple, or None if per_year is empty.
+    """
+    if not per_year:
+        return None
+    if year in per_year:
+        return (year, per_year[year])
+    chosen = min(per_year.keys(), key=lambda y: (abs(y - year), y))
+    return (chosen, per_year[chosen])
 
 
 def build_rss_url(company_name, keywords, after_date, before_date):
