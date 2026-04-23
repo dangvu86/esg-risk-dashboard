@@ -101,7 +101,7 @@ export default function Home() {
     <main className="max-w-7xl mx-auto px-4 py-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">ESG Risk Dashboard</h1>
+        <h1 className="text-2xl font-bold">ESG Controversy Dashboard</h1>
         <div className="flex items-center gap-2">
           <div className="inline-flex border rounded-lg overflow-hidden text-sm">
             <button onClick={() => setLang("vi")}

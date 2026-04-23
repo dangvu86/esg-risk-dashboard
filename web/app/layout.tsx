@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ESG Risk Dashboard",
+  title: "ESG Controversy Dashboard",
   description: "ESG risk monitoring for Vietnamese listed companies",
 };
 
