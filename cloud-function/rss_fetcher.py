@@ -11,10 +11,25 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 from pathlib import Path
 
+# Each group is a list of sub-queries. Each sub-query MUST have ≤4 OR keywords —
+# Google News RSS silently returns 0 items when intitle:"phrase" is combined with
+# more OR clauses (cap is around 6, but 4 is the safe ceiling). Sub-queries are
+# fetched separately and deduped by title in fetch_company_news.
 KEYWORD_GROUPS = {
-    "E": "ô nhiễm OR xả thải OR môi trường OR khí thải OR nước thải OR mùi hôi",
-    "S": "tai nạn OR tử vong OR đình công OR an toàn lao động",
-    "G": "vi phạm OR xử phạt OR UBCKNN OR khởi tố OR thanh tra OR khiếu kiện OR khiếu nại",
+    "E": [
+        "ô nhiễm OR xả thải OR môi trường OR khí thải",
+        "nước thải OR mùi hôi OR rác thải OR chất thải",
+    ],
+    "S": [
+        "tai nạn OR tử vong OR đình công OR an toàn lao động",
+        "cháy nổ OR sập OR ngộ độc OR thương vong",
+    ],
+    "G": [
+        "vi phạm OR xử phạt OR khởi tố OR thanh tra",
+        "sai phạm OR bị phạt OR truy thu OR đấu thầu",
+        "bêu tên OR tầm ngắm OR danh sách đen OR UBCKNN",
+        "khiếu kiện OR khiếu nại OR giám sát OR chậm tiến độ",
+    ],
 }
 
 
@@ -191,23 +206,26 @@ def fetch_company_news(company_name, days_back=7, delay=1.0):
     print(f"  Date range: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')} ({len(chunks)} chunks)")
 
     all_items = []
-    total_queries = len(KEYWORD_GROUPS) * len(chunks)
+    sub_queries_per_group = sum(len(v) for v in KEYWORD_GROUPS.values())
+    total_queries = sub_queries_per_group * len(chunks)
     done = 0
 
-    for group_key, keywords in KEYWORD_GROUPS.items():
-        for after_date, before_date in chunks:
-            done += 1
-            url = build_rss_url(company_name, keywords, after_date, before_date)
-            xml = fetch_rss(url)
-            if xml:
-                items = parse_rss_xml(xml)
-                for item in items:
-                    item["keyword_group"] = group_key
-                all_items.extend(items)
-                print(f"  [{done}/{total_queries}] {group_key} {after_date}~{before_date}: {len(items)} items")
-            else:
-                print(f"  [{done}/{total_queries}] {group_key} {after_date}~{before_date}: failed/empty")
-            time.sleep(delay)
+    for group_key, sub_queries in KEYWORD_GROUPS.items():
+        for sub_idx, keywords in enumerate(sub_queries, start=1):
+            for after_date, before_date in chunks:
+                done += 1
+                url = build_rss_url(company_name, keywords, after_date, before_date)
+                xml = fetch_rss(url)
+                tag = f"{group_key}.{sub_idx}/{len(sub_queries)}"
+                if xml:
+                    items = parse_rss_xml(xml)
+                    for item in items:
+                        item["keyword_group"] = group_key
+                    all_items.extend(items)
+                    print(f"  [{done}/{total_queries}] {tag} {after_date}~{before_date}: {len(items)} items")
+                else:
+                    print(f"  [{done}/{total_queries}] {tag} {after_date}~{before_date}: failed/empty")
+                time.sleep(delay)
 
     # Dedup by exact title
     seen = set()

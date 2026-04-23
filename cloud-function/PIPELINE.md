@@ -28,18 +28,31 @@ Dashboard (Vercel)
 
 ## [1] RSS Fetch
 
-**Làm gì:** Với mỗi ticker, search Google News RSS theo 3 nhóm keyword (E, S, G).
+**Làm gì:** Với mỗi ticker, search Google News RSS theo 3 nhóm keyword (E, S, G). Mỗi nhóm split thành nhiều sub-query (≤4 OR keywords / sub-query) — bắt buộc vì Google News RSS silently trả 0 results khi `intitle:"phrase"` kết hợp >6 OR clauses (gặp trên prod với G query 7-OR cũ → luôn trả 0).
 
-**KEYWORD_GROUPS** ([rss_fetcher.py](rss_fetcher.py)):
+**KEYWORD_GROUPS** ([rss_fetcher.py](rss_fetcher.py)) — 8 sub-queries tổng:
 ```python
-"E": "ô nhiễm OR xả thải OR môi trường OR khí thải OR nước thải OR mùi hôi"
-"S": "tai nạn OR tử vong OR đình công OR an toàn lao động"
-"G": "vi phạm OR xử phạt OR UBCKNN OR khởi tố OR thanh tra OR khiếu kiện OR khiếu nại"
+"E": [
+    "ô nhiễm OR xả thải OR môi trường OR khí thải",
+    "nước thải OR mùi hôi OR rác thải OR chất thải",
+],
+"S": [
+    "tai nạn OR tử vong OR đình công OR an toàn lao động",
+    "cháy nổ OR sập OR ngộ độc OR thương vong",
+],
+"G": [
+    "vi phạm OR xử phạt OR khởi tố OR thanh tra",
+    "sai phạm OR bị phạt OR truy thu OR đấu thầu",
+    "bêu tên OR tầm ngắm OR danh sách đen OR UBCKNN",
+    "khiếu kiện OR khiếu nại OR giám sát OR chậm tiến độ",
+],
 ```
 
-**Output:** RSS items thô với title + source + date + google_news_url.
+**Dedup:** Sau khi merge tất cả sub-query, dedup theo exact title (lower-case).
 
-**Lượng:** Weekly scan ~100 companies × 3 groups × ~5 chunks = **~1500 raw items**.
+**Output:** RSS items thô với title + source + date + google_news_url + keyword_group (E/S/G).
+
+**Lượng:** Weekly scan ~100 companies × 8 sub-queries × 1 chunk = **~3000-5000 raw items** (sau dedup intra-company).
 
 ---
 
