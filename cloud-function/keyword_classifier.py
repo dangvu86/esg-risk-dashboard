@@ -4,8 +4,6 @@ Free, unlimited, fast, no rate limits.
 """
 
 import re
-from datetime import datetime
-from difflib import SequenceMatcher
 
 from rss_fetcher import derive_aliases
 
@@ -202,78 +200,6 @@ def _classify_severity(title):
     return "Trung bình"
 
 
-def _extract_key_phrases(title):
-    """Extract key phrases for better dedup comparison."""
-    title_lower = _normalize(title)
-    # Remove common filler words
-    fillers = ["của", "tại", "và", "cho", "với", "được", "bị", "là",
-               "có", "từ", "trong", "theo", "về", "đã", "sẽ", "đang"]
-    words = title_lower.split()
-    key_words = [w for w in words if w not in fillers and len(w) > 1]
-    return " ".join(key_words)
-
-
-def _dedup_events(events, preferred_sources=None):
-    """Remove duplicates: same event within ±7 days + similar content.
-    Prefer articles from major sources.
-    """
-    if not events:
-        return events
-
-    if preferred_sources is None:
-        preferred_sources = ["vnexpress", "tuổi trẻ", "thanh niên",
-                             "lao động", "cafef", "dân trí", "báo thanh tra"]
-
-    def source_rank(source):
-        s = _normalize(source)
-        for i, pref in enumerate(preferred_sources):
-            if pref in s:
-                return i
-        return 100
-
-    # Sort by date desc, then by source preference
-    events.sort(key=lambda e: (e.get("date", ""), -source_rank(e.get("source", ""))), reverse=True)
-
-    unique = []
-    for evt in events:
-        is_dup = False
-        evt_key = _extract_key_phrases(evt["summary"])
-
-        for existing in unique:
-            # Check date proximity
-            date_close = False
-            if evt["date"] and existing["date"]:
-                try:
-                    d1 = datetime.strptime(evt["date"], "%Y-%m-%d")
-                    d2 = datetime.strptime(existing["date"], "%Y-%m-%d")
-                    date_close = abs((d1 - d2).days) <= 7
-                except ValueError:
-                    date_close = evt["date"] == existing["date"]
-            else:
-                date_close = evt["date"] == existing["date"]
-
-            if not date_close:
-                continue
-
-            # Check content similarity
-            existing_key = _extract_key_phrases(existing["summary"])
-            similarity = SequenceMatcher(None, evt_key, existing_key).ratio()
-
-            # Also check if they share many key ESG words
-            evt_esg = set(kw.lower() for kw in ALL_ESG_KEYWORDS if kw.lower() in evt_key)
-            exist_esg = set(kw.lower() for kw in ALL_ESG_KEYWORDS if kw.lower() in existing_key)
-            shared_esg = evt_esg & exist_esg
-
-            if similarity > 0.35 or len(shared_esg) >= 2:
-                is_dup = True
-                break
-
-        if not is_dup:
-            unique.append(evt)
-
-    return unique
-
-
 def classify_news(company, ticker, items, api_key=None):
     """
     Keyword-based ESG classification. Same interface as gemini_classifier.
@@ -312,9 +238,6 @@ def classify_news(company, ticker, items, api_key=None):
             "source": item.get("source", ""),
             "url": item.get("url", ""),
         })
-
-    # Step 5: Dedup
-    events = _dedup_events(events)
 
     print(f"  Keyword classifier: {len(items)} titles → {len(events)} events")
     return events

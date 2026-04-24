@@ -74,7 +74,9 @@ Stage 2 `_is_about_company` cũng dùng cùng `derive_aliases` để match (subs
   - "Cao" nếu match keyword nặng (khởi tố, phạt tiền lớn, tử vong, ô nhiễm rộng)
   - "Trung bình" nếu nhẹ hơn
 
-**Kết quả:** ~100-200 events qualified per scan.
+**Không dedup ở stage này nữa** — trước đây có rule-based similarity dedup (±7 days, SequenceMatcher > 0.35) nhưng đã bỏ. Tin cùng incident từ nhiều nguồn đều đi tiếp qua các stage sau; chỉ exact-normalized-title duplicate bị Layer A hash dedup loại ở stage [6].
+
+**Kết quả:** ~200-400 events qualified per scan (tăng so với trước vì bỏ dedup).
 
 **Giới hạn:** Chỉ nhìn keyword, không hiểu context. VD:
 - "Quỹ Thiện Tâm hỗ trợ gia đình nạn nhân **tử vong**" → match "tử vong" → S event (SAI — từ thiện)
@@ -181,14 +183,18 @@ Batch 30 titles/call.
 
 | Stage | Method | Input | Output | Drop rate |
 |-------|--------|-------|--------|-----------|
-| [1] RSS | Google News API | — | ~1500 raw | — |
-| [2] Keyword | Regex + company match | 1500 | ~200 | -87% |
-| [3] Sentiment | LLM batch=5 | 200 | ~180 | -10% |
-| [4] Translate | LLM batch=30 | 180 | 180 | 0% |
-| [5] Controversy | LLM per Cao event | ~30 Cao | 30 (labeled) | 0% |
-| [6] Write + Layer A hash | rule | 180 | ~175 | -few% |
+| [1] RSS | Google News API | — | ~5000 raw | — |
+| [2] Keyword | Regex + company match (no dedup) | 5000 | ~400 | -92% |
+| [3] Sentiment | LLM batch=5 | 400 | ~350 | -10% |
+| [4] Translate | LLM batch=30 | 350 | 350 | 0% |
+| [5] Controversy | LLM per Cao event | ~50 Cao | 50 (labeled) | 0% |
+| [6] Write + Layer A hash | rule | 350 | ~320 | -few% |
 
-Layer B semantic dedup (LLM per-ticker window) đã bỏ — multiple sources cùng incident đều giữ lại; chỉ exact-title duplicate bị Layer A hash dedup loại ở stage [6].
+Cả 2 dedup layer cũ đã bỏ:
+- Stage [2] rule-based dedup (±7 days, SequenceMatcher) — đã bỏ
+- Stage [4] LLM semantic dedup (per-ticker window cluster) — đã bỏ
+
+Multiple sources cùng incident đều giữ lại. Chỉ exact-normalized-title duplicate bị Layer A hash dedup loại ở stage [6].
 
 **Weekly scan ongoing:** ~5-15 new events/tuần sau khi qua tất cả filter.
 
