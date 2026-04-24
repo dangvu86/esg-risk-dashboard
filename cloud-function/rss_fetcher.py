@@ -64,16 +64,19 @@ KEYWORD_GROUPS = {
     "E": [
         "ô nhiễm OR xả thải OR môi trường OR khí thải",
         "nước thải OR mùi hôi OR rác thải OR chất thải",
+        "sự cố môi trường OR tràn dầu OR rò rỉ OR giấy phép môi trường",
     ],
     "S": [
         "tai nạn OR tử vong OR đình công OR an toàn lao động",
         "cháy nổ OR sập OR ngộ độc OR thương vong",
+        "giải phóng mặt bằng OR bồi thường OR dân phản đối OR dân kêu cứu",
     ],
     "G": [
         "vi phạm OR xử phạt OR khởi tố OR thanh tra",
         "sai phạm OR bị phạt OR truy thu OR đấu thầu",
         "bêu tên OR tầm ngắm OR danh sách đen OR UBCKNN",
         "khiếu kiện OR khiếu nại OR giám sát OR chậm tiến độ",
+        "gian lận OR hàng giả OR kém chất lượng OR thu hồi sản phẩm",
     ],
 }
 
