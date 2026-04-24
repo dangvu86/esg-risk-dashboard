@@ -1,6 +1,6 @@
 # ESG Scan Pipeline
 
-Chi tiết 7 stage xử lý từ Google News RSS → events cuối cùng trên dashboard.
+Chi tiết 6 stage xử lý từ Google News RSS → events cuối cùng trên dashboard.
 
 ## Overview
 
@@ -13,13 +13,11 @@ Google News RSS
     ↓
 [3] Sentiment Filter ← sentiment_filter.py    (LLM)
     ↓
-[4] Semantic Dedup   ← semantic_dedup.py      (LLM)
+[4] Translate        ← translator.py          (LLM)
     ↓
-[5] Translate        ← translator.py          (LLM)
+[5] Controversy      ← controversy_classifier.py (LLM, chỉ cho Cao)
     ↓
-[6] Controversy      ← controversy_classifier.py (LLM, chỉ cho Cao)
-    ↓
-[7] Write GCS        ← storage_writer.py      (normalized hash dedup)
+[6] Write GCS        ← storage_writer.py      (normalized hash dedup)
     ↓
 Dashboard (Vercel)
 ```
@@ -114,29 +112,7 @@ Stage 2 `_is_about_company` cũng dùng cùng `derive_aliases` để match (subs
 
 ---
 
-## [4] Semantic Dedup (LLM, Layer B)
-
-**Làm gì:** Với mỗi ticker, chia events vào window 30 ngày. Window có ≥2 events → gọi LLM: "Group vào clusters nếu cùng incident". Keep earliest của mỗi cluster, drop rest.
-
-**Ví dụ cluster DGC (9 events → 1):**
-```
-2026-03-17: Khởi tố tại Tập đoàn Hóa chất Đức Giang...
-2026-03-19: Cha con Chủ tịch bị bắt, triệu tập cổ đông...
-2026-03-24: DGC công bố tin bất thường sau bắt...
-2026-04-02: Khởi tố loạt lãnh đạo, cổ phiếu sàn...
-2026-04-06: DGC phát thông báo sau vụ khởi tố...
-2026-04-07: Công ty con trong vụ án sai phạm 2700 tỷ...
-2026-04-09: Lãnh đạo bị khởi tố, DGC vẫn muốn làm pin xe điện...
-```
-→ Cùng một "DGC leadership prosecution crisis" → keep 1, drop 8.
-
-**Strict criteria:** Chỉ cluster events CÙNG specific incident (same people, same action, same subject). Không cluster events khác bản chất kể cả wording gần giống.
-
-**Quota:** ~30-40 calls/backfill, weekly ~0-5 calls.
-
----
-
-## [5] Translate (LLM)
+## [4] Translate (LLM)
 
 **Làm gì:** Dịch tất cả events còn lại VN → EN, Google Translate style:
 - Tên riêng VN transliterate bỏ dấu: "Hóa chất Đức Giang" → "Duc Giang Chemicals"
@@ -151,7 +127,7 @@ Batch 30 titles/call.
 
 ---
 
-## [6] Controversy Classifier (LLM, chỉ cho Cao)
+## [5] Controversy Classifier (LLM, chỉ cho Cao)
 
 **Làm gì:** Với mỗi event có `severity == "Cao"`:
 
@@ -186,7 +162,7 @@ Batch 30 titles/call.
 
 ---
 
-## [7] Write GCS (rule-based dedup, Layer A)
+## [6] Write GCS (rule-based dedup, Layer A)
 
 **Làm gì:**
 - Read current `esg_events.json` từ GCS (với optimistic lock via `if_generation_match`)
@@ -208,12 +184,11 @@ Batch 30 titles/call.
 | [1] RSS | Google News API | — | ~1500 raw | — |
 | [2] Keyword | Regex + company match | 1500 | ~200 | -87% |
 | [3] Sentiment | LLM batch=5 | 200 | ~180 | -10% |
-| [4] Semantic dedup | LLM per-ticker window | 180 | ~145 | -20% |
-| [5] Translate | LLM batch=30 | 145 | 145 | 0% |
-| [6] Controversy | LLM per Cao event | 30 Cao | 30 (labeled) | 0% |
-| [7] Write + Layer A hash | rule | 145 | 145 | -few% |
+| [4] Translate | LLM batch=30 | 180 | 180 | 0% |
+| [5] Controversy | LLM per Cao event | ~30 Cao | 30 (labeled) | 0% |
+| [6] Write + Layer A hash | rule | 180 | ~175 | -few% |
 
-**Backfill thực tế (lần đầu):** 237 → 145 (-39%).
+Layer B semantic dedup (LLM per-ticker window) đã bỏ — multiple sources cùng incident đều giữ lại; chỉ exact-title duplicate bị Layer A hash dedup loại ở stage [6].
 
 **Weekly scan ongoing:** ~5-15 new events/tuần sau khi qua tất cả filter.
 
@@ -260,13 +235,12 @@ GROQ_API_KEY=gsk_...
 | [link_resolver.py](link_resolver.py) | Pass-through Google News URL (real resolve in controversy_classifier via gnewsdecoder) |
 | [keyword_classifier.py](keyword_classifier.py) | Stage 2 |
 | [sentiment_filter.py](sentiment_filter.py) | Stage 3 |
-| [semantic_dedup.py](semantic_dedup.py) | Stage 4 |
-| [translator.py](translator.py) | Stage 5 |
-| [controversy_classifier.py](controversy_classifier.py) | Stage 6 + LLM provider registry |
-| [storage_writer.py](storage_writer.py) | Stage 7 + optimistic lock write |
+| [translator.py](translator.py) | Stage 4 |
+| [controversy_classifier.py](controversy_classifier.py) | Stage 5 + LLM provider registry |
+| [storage_writer.py](storage_writer.py) | Stage 6 + optimistic lock write |
 | [backfill_translations.py](backfill_translations.py) | One-time backfill chỉ cho translation |
 | [backfill_controversy.py](backfill_controversy.py) | One-time backfill chỉ cho classify Cao |
-| [backfill_clean.py](backfill_clean.py) | One-time backfill sentiment + 2-layer dedup |
+| [backfill_clean.py](backfill_clean.py) | One-time backfill sentiment + Layer A dedup |
 
 ---
 
