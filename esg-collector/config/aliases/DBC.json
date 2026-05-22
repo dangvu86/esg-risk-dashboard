@@ -1,0 +1,56 @@
+{
+  "ticker": "DBC",
+  "company_name": "Công ty cổ phần Tập đoàn Dabaco Việt Nam",
+  "industry": "Chăn nuôi, thức ăn chăn nuôi, BĐS",
+  "headquarters": "Bắc Ninh",
+  "derived_from": ["vietstock_profile", "baomoi_corpus_general", "baomoi_corpus_esg"],
+  "names": [
+    "Dabaco",
+    "DBC",
+    "Dabaco Việt Nam",
+    "Tập đoàn Dabaco"
+  ],
+  "subsidiaries": [
+    "Nasaco",
+    "Dabaco Tuyên Quang",
+    "Dabaco Bình Phước",
+    "Dabaco Thanh Hóa",
+    "Lợn giống Dabaco Phú Thọ",
+    "Lợn giống Dabaco Lương Tài",
+    "Lợn giống Dabaco Hà Nam",
+    "Lợn giống Dabaco Hải Phòng",
+    "Lợn giống Hạt nhân Dabaco",
+    "Lợn giống Lạc Vệ",
+    "Gà giống Dabaco",
+    "Dầu thực vật Dabaco",
+    "Dacovet",
+    "Hiệp Quang",
+    "Nutreco",
+    "Phân bón hữu cơ Việt Nhật",
+    "Cảng Tân Chi",
+    "Cụm Công nghiệp Khúc Xuyên",
+    "Hồ điều hòa Văn Miếu",
+    "L'Indochina"
+  ],
+  "locations": [
+    "Bắc Ninh",
+    "Phú Thọ",
+    "Tuyên Quang",
+    "Hà Nam",
+    "Bình Phước",
+    "Thanh Hóa",
+    "Hải Phòng",
+    "Sơn Dương"
+  ],
+  "projects": [
+    "KĐT Vạn An",
+    "Vạn An"
+  ],
+  "gaps_not_in_vietstock": [
+    "Tề Lễ",
+    "Tam Nông",
+    "Kim Đôi",
+    "Hòa Bình",
+    "Khúc Xuyên (cụm CN, đã có trong subsidiaries)"
+  ]
+}

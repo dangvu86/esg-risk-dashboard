@@ -1,0 +1,237 @@
+"""SQLite storage for esg-collector.
+
+Two tables:
+  - articles      : deduped pool of fetched items, body+match status tracked here
+  - search_queue  : persistent task queue per backend, crash-safe resume
+
+Connection helper uses WAL so multiple worker processes (1 per backend +
+body fetcher + match) can share the same file safely.
+"""
+
+from __future__ import annotations
+
+import sqlite3
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Any, Iterable
+
+from config.settings import DB_PATH
+
+
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS articles (
+  article_id    TEXT PRIMARY KEY,
+  url_canonical TEXT NOT NULL,
+  url_original  TEXT,
+  domain        TEXT,
+  title         TEXT,
+  description   TEXT,
+  sapo          TEXT,
+  body          TEXT,
+  body_status   TEXT DEFAULT 'pending',
+  published_at  TEXT,
+  source        TEXT,
+  backend       TEXT,
+  group_key     TEXT,
+  sub_query_ix  INTEGER,
+  fetched_at    TEXT DEFAULT CURRENT_TIMESTAMP,
+  matched_at    TEXT,
+  match_status  TEXT DEFAULT 'pending'
+);
+CREATE INDEX IF NOT EXISTS idx_articles_match ON articles(match_status, body_status);
+CREATE INDEX IF NOT EXISTS idx_articles_date  ON articles(published_at);
+
+CREATE TABLE IF NOT EXISTS search_queue (
+  task_id      TEXT PRIMARY KEY,
+  backend      TEXT,
+  group_key    TEXT,
+  sub_query_ix INTEGER,
+  query        TEXT,
+  after        TEXT,
+  before       TEXT,
+  status       TEXT DEFAULT 'pending',
+  attempts     INTEGER DEFAULT 0,
+  next_attempt TEXT DEFAULT CURRENT_TIMESTAMP,
+  last_error   TEXT,
+  items_found  INTEGER DEFAULT 0,
+  done_at      TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_queue_next ON search_queue(backend, status, next_attempt);
+"""
+
+
+def connect(db_path: Path | str = DB_PATH) -> sqlite3.Connection:
+    conn = sqlite3.connect(str(db_path), timeout=30, isolation_level=None)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA synchronous=NORMAL")
+    conn.execute("PRAGMA foreign_keys=ON")
+    return conn
+
+
+def init_db(db_path: Path | str = DB_PATH) -> None:
+    Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+    conn = connect(db_path)
+    try:
+        conn.executescript(SCHEMA)
+    finally:
+        conn.close()
+
+
+# ---------------- articles ----------------
+
+_ARTICLE_COLS = (
+    "article_id", "url_canonical", "url_original", "domain", "title",
+    "description", "sapo", "body", "body_status", "published_at",
+    "source", "backend", "group_key", "sub_query_ix",
+)
+
+
+def insert_article(conn: sqlite3.Connection, rec: dict[str, Any]) -> bool:
+    """INSERT OR IGNORE. Return True if a new row was inserted.
+
+    On conflict, merge missing fields (sapo / body / description) so a richer
+    later fetch (e.g. BaoMoi with sapo) upgrades the earlier Google RSS entry.
+    """
+    rec = dict(rec)
+    rec.setdefault("body_status", "pending")
+    cols = [c for c in _ARTICLE_COLS if c in rec]
+    placeholders = ",".join("?" for _ in cols)
+    sql = (
+        f"INSERT OR IGNORE INTO articles ({','.join(cols)}) VALUES ({placeholders})"
+    )
+    cur = conn.execute(sql, [rec[c] for c in cols])
+    if cur.rowcount:
+        return True
+    # merge — only fill columns that are currently NULL/empty
+    for col in ("description", "sapo", "body"):
+        if rec.get(col):
+            conn.execute(
+                f"UPDATE articles SET {col}=? "
+                f"WHERE article_id=? AND (COALESCE({col},'')='')",
+                (rec[col], rec["article_id"]),
+            )
+    return False
+
+
+def mark_body(conn: sqlite3.Connection, article_id: str, status: str, body: str | None = None) -> None:
+    if body is not None:
+        conn.execute(
+            "UPDATE articles SET body=?, body_status=? WHERE article_id=?",
+            (body, status, article_id),
+        )
+    else:
+        conn.execute(
+            "UPDATE articles SET body_status=? WHERE article_id=?",
+            (status, article_id),
+        )
+
+
+def mark_match(conn: sqlite3.Connection, article_id: str, status: str) -> None:
+    conn.execute(
+        "UPDATE articles SET match_status=?, matched_at=CURRENT_TIMESTAMP WHERE article_id=?",
+        (status, article_id),
+    )
+
+
+def iter_articles(
+    conn: sqlite3.Connection,
+    *,
+    match_status: str | None = None,
+    body_status: str | None = None,
+    since: str | None = None,
+    limit: int | None = None,
+) -> Iterable[sqlite3.Row]:
+    sql = "SELECT * FROM articles WHERE 1=1"
+    args: list[Any] = []
+    if match_status:
+        sql += " AND match_status=?"
+        args.append(match_status)
+    if body_status:
+        sql += " AND body_status=?"
+        args.append(body_status)
+    if since:
+        sql += " AND published_at >= ?"
+        args.append(since)
+    sql += " ORDER BY published_at DESC"
+    if limit:
+        sql += f" LIMIT {int(limit)}"
+    return conn.execute(sql, args)
+
+
+# ---------------- queue ----------------
+
+def enqueue_task(
+    conn: sqlite3.Connection,
+    *,
+    backend: str,
+    group_key: str,
+    sub_query_ix: int,
+    query: str,
+    after: str,
+    before: str,
+) -> bool:
+    task_id = f"{backend}:{group_key}:{sub_query_ix}:{after}"
+    cur = conn.execute(
+        "INSERT OR IGNORE INTO search_queue "
+        "(task_id, backend, group_key, sub_query_ix, query, after, before) "
+        "VALUES (?,?,?,?,?,?,?)",
+        (task_id, backend, group_key, sub_query_ix, query, after, before),
+    )
+    return cur.rowcount > 0
+
+
+def next_task(conn: sqlite3.Connection, backend: str) -> sqlite3.Row | None:
+    now = datetime.utcnow().isoformat(timespec="seconds")
+    row = conn.execute(
+        "SELECT * FROM search_queue "
+        "WHERE backend=? AND status IN ('pending','backoff') AND next_attempt <= ? "
+        "ORDER BY next_attempt ASC LIMIT 1",
+        (backend, now),
+    ).fetchone()
+    return row
+
+
+def mark_task_done(conn: sqlite3.Connection, task_id: str, items_found: int) -> None:
+    conn.execute(
+        "UPDATE search_queue SET status='done', items_found=?, "
+        "done_at=CURRENT_TIMESTAMP WHERE task_id=?",
+        (items_found, task_id),
+    )
+
+
+def mark_task_backoff(
+    conn: sqlite3.Connection,
+    task_id: str,
+    retry_after_seconds: int,
+    error: str,
+    *,
+    max_attempts: int,
+) -> str:
+    row = conn.execute(
+        "SELECT attempts FROM search_queue WHERE task_id=?", (task_id,)
+    ).fetchone()
+    attempts = (row["attempts"] if row else 0) + 1
+    if attempts >= max_attempts:
+        conn.execute(
+            "UPDATE search_queue SET status='failed', attempts=?, last_error=? WHERE task_id=?",
+            (attempts, error[:500], task_id),
+        )
+        return "failed"
+    retry_at = (datetime.utcnow() + timedelta(seconds=retry_after_seconds)).isoformat(timespec="seconds")
+    conn.execute(
+        "UPDATE search_queue SET status='backoff', attempts=?, "
+        "next_attempt=?, last_error=? WHERE task_id=?",
+        (attempts, retry_at, error[:500], task_id),
+    )
+    return "backoff"
+
+
+def queue_stats(conn: sqlite3.Connection) -> dict[str, dict[str, int]]:
+    rows = conn.execute(
+        "SELECT backend, status, COUNT(*) c FROM search_queue GROUP BY backend, status"
+    ).fetchall()
+    out: dict[str, dict[str, int]] = {}
+    for r in rows:
+        out.setdefault(r["backend"], {})[r["status"]] = r["c"]
+    return out

@@ -1,0 +1,20 @@
+[Unit]
+Description=ESG collector — Google News RSS worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=esg
+Group=esg
+WorkingDirectory=/opt/esg-collector/esg-collector
+EnvironmentFile=/etc/esg-collector.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/esg-collector/.venv/bin/python -m workers.runner --backend google_rss
+Restart=always
+RestartSec=30
+StandardOutput=append:/var/log/esg-collector/google_rss.log
+StandardError=append:/var/log/esg-collector/google_rss.log
+
+[Install]
+WantedBy=multi-user.target

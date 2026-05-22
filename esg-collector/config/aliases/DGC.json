@@ -1,0 +1,44 @@
+{
+  "ticker": "DGC",
+  "company_name": "CTCP Tập đoàn Hóa chất Đức Giang",
+  "industry": "Hóa chất công nghiệp, phốt pho, phân bón",
+  "headquarters": "Hà Nội",
+  "derived_from": ["vietstock_profile"],
+  "names": [
+    "Hóa chất Đức Giang",
+    "Đức Giang",
+    "DGC",
+    "Tập đoàn Hóa chất Đức Giang"
+  ],
+  "subsidiaries": [
+    "Bất động sản Đức Giang",
+    "Hóa chất Đức Giang Nghi Sơn",
+    "Hóa chất Đức Giang Lào Cai",
+    "Hóa chất Đức Giang Đắk Nông",
+    "Hóa chất Đức Giang Đình Vũ",
+    "Phốt pho Apatit Việt Nam",
+    "PAT",
+    "Ắc quy Tia Sáng",
+    "TSB"
+  ],
+  "locations": [
+    "Hà Nội",
+    "Việt Hưng",
+    "Đức Giang",
+    "Nghi Sơn",
+    "Thanh Hóa",
+    "Lào Cai",
+    "Đắk Nông",
+    "Đình Vũ",
+    "Hải Phòng"
+  ],
+  "projects": [
+    "Nhà máy cồn",
+    "Nhà máy Xút Chất dẻo Nghi Sơn",
+    "Alumin Đắk Nông",
+    "Chung cư Hóa chất Đức Giang"
+  ],
+  "self_disclosed_risks": [
+    "Khói bụi, chất thải rắn, ô nhiễm nguồn nước"
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "ticker": "KDH",
+  "company_name": "CTCP Đầu tư và Kinh doanh Nhà Khang Điền",
+  "industry": "Bất động sản",
+  "headquarters": "TP HCM",
+  "derived_from": ["vietstock_profile", "baomoi_corpus"],
+  "names": [
+    "Khang Điền",
+    "KDH",
+    "Nhà Khang Điền"
+  ],
+  "subsidiaries": [
+    "Khang Phúc",
+    "BCI",
+    "Hào Khang",
+    "BCCI",
+    "Bất động sản Thủy Sinh",
+    "Bình Trưng",
+    "Gia Phước",
+    "Kim Phát",
+    "Thành Phúc",
+    "Saphire",
+    "Trí Kiệt",
+    "Đô thị Mê Ga",
+    "Trí Minh",
+    "Nhà Tháp Mười",
+    "Nguyên Phát",
+    "Phước Nguyên",
+    "Song Lập",
+    "Vi La",
+    "Không Gian Xanh"
+  ],
+  "locations": [
+    "Thủ Đức",
+    "Bình Tân",
+    "Bình Chánh",
+    "TP HCM"
+  ],
+  "projects_known_manual": [
+    "Safira Khang Điền",
+    "Lovera Vista",
+    "Verosa Park",
+    "Solina",
+    "Mega Sapphire",
+    "Mega Ruby",
+    "Khang Phúc"
+  ],
+  "gaps_not_in_vietstock": [
+    "Project names (Safira, Lovera, Verosa, Solina, etc.) — cần annual report hoặc website cty",
+    "Specific construction site locations"
+  ]
+}
