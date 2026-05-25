@@ -48,15 +48,23 @@ _BACKEND_WINDOWS = {
 }
 
 
-def build_queue(backends: list[str] | None = None) -> dict[str, int]:
-    """Enqueue every (backend, sub-query, chunk). Return inserted count per backend."""
+def build_queue(
+    backends: list[str] | None = None,
+    *,
+    window: tuple[str, str] | None = None,
+) -> dict[str, int]:
+    """Enqueue every (backend, sub-query, chunk). Return inserted count per backend.
+
+    If `window` is given, it overrides each backend's default range — used for
+    daily incremental fetches (1 day, 1 chunk per backend).
+    """
     backends = backends or list(_BACKEND_WINDOWS.keys())
     storage.init_db()
     conn = storage.connect()
     inserted: dict[str, int] = {b: 0 for b in backends}
     try:
         for backend in backends:
-            start, end = _BACKEND_WINDOWS[backend]
+            start, end = window if window else _BACKEND_WINDOWS[backend]
             for after, before in date_chunks(start, end, settings.CHUNK_MONTHS):
                 for grp, subs in KEYWORD_GROUPS.items():
                     for ix, query in enumerate(subs):
@@ -76,11 +84,22 @@ def build_queue(backends: list[str] | None = None) -> dict[str, int]:
 
 
 def main() -> None:
+    from datetime import date as _date, timedelta as _td
     ap = argparse.ArgumentParser()
     ap.add_argument("--backends", nargs="+", default=None,
                     help="Subset of: google_rss baomoi brave")
+    ap.add_argument("--mode", choices=("backfill", "daily"), default="backfill",
+                    help="backfill: use settings.py windows (default). daily: yesterday only.")
+    ap.add_argument("--since", help="Override window start (YYYY-MM-DD)")
+    ap.add_argument("--until", help="Override window end (YYYY-MM-DD)")
     args = ap.parse_args()
-    counts = build_queue(args.backends)
+    window: tuple[str, str] | None = None
+    if args.since and args.until:
+        window = (args.since, args.until)
+    elif args.mode == "daily":
+        y = (_date.today() - _td(days=1)).isoformat()
+        window = (y, y)
+    counts = build_queue(args.backends, window=window)
     total = sum(counts.values())
     print(f"Enqueued {total} new tasks:")
     for b, n in counts.items():

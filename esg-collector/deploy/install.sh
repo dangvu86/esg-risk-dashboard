@@ -61,6 +61,8 @@ install -m 644 "$APP_DIR/deploy/esg-collector-brave.service"  /etc/systemd/syste
 install -m 644 "$APP_DIR/deploy/esg-collector-body.service"   /etc/systemd/system/
 install -m 644 "$APP_DIR/deploy/esg-collector-match.service"  /etc/systemd/system/
 install -m 644 "$APP_DIR/deploy/esg-collector-match.timer"    /etc/systemd/system/
+install -m 644 "$APP_DIR/deploy/esg-collector-daily.service"  /etc/systemd/system/
+install -m 644 "$APP_DIR/deploy/esg-collector-daily.timer"    /etc/systemd/system/
 systemctl daemon-reload
 
 # 8. Initial DB + queue (idempotent)
@@ -73,6 +75,7 @@ for svc in esg-collector-google esg-collector-baomoi esg-collector-brave esg-col
   systemctl enable --now "$svc.service"
 done
 systemctl enable --now esg-collector-match.timer
+systemctl enable --now esg-collector-daily.timer
 
 echo
 echo "Status:"
