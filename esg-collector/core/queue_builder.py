@@ -84,12 +84,24 @@ def build_queue(
 
 
 def main() -> None:
-    from datetime import date as _date, timedelta as _td
+    from datetime import datetime as _dt, timedelta as _td
+    try:
+        from zoneinfo import ZoneInfo
+        _VN = ZoneInfo("Asia/Ho_Chi_Minh")
+    except Exception:
+        _VN = None  # fallback: VM clock is assumed UTC, accept the offset
+
     ap = argparse.ArgumentParser()
     ap.add_argument("--backends", nargs="+", default=None,
                     help="Subset of: google_rss baomoi brave")
     ap.add_argument("--mode", choices=("backfill", "daily"), default="backfill",
-                    help="backfill: use settings.py windows (default). daily: yesterday only.")
+                    help="backfill: use settings.py windows (default). "
+                         "daily: rolling window ending yesterday (VN time).")
+    ap.add_argument("--days-back", type=int, default=3,
+                    help="daily mode: how many trailing days to enqueue (default 3). "
+                         "Wider window catches late-indexed Google News articles + "
+                         "the 7h UTC↔VN offset. Dedup is idempotent so re-enqueueing "
+                         "the same day is free.")
     ap.add_argument("--since", help="Override window start (YYYY-MM-DD)")
     ap.add_argument("--until", help="Override window end (YYYY-MM-DD)")
     args = ap.parse_args()
@@ -97,8 +109,10 @@ def main() -> None:
     if args.since and args.until:
         window = (args.since, args.until)
     elif args.mode == "daily":
-        y = (_date.today() - _td(days=1)).isoformat()
-        window = (y, y)
+        today_vn = (_dt.now(_VN) if _VN else _dt.utcnow()).date()
+        end = today_vn - _td(days=1)
+        start = end - _td(days=max(0, args.days_back - 1))
+        window = (start.isoformat(), end.isoformat())
     counts = build_queue(args.backends, window=window)
     total = sum(counts.values())
     print(f"Enqueued {total} new tasks:")
