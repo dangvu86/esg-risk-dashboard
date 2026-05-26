@@ -67,6 +67,35 @@ def _fetch(url: str, timeout: int = 30) -> str | None:
         return None
 
 
+_PROVINCES_LOWER = {p.lower() for p in PROVINCES}
+
+
+def _split_headline(rest: str) -> tuple[str | None, str | None]:
+    """Parse '{full_name} - {short_brand} - Hồ sơ doanh nghiệp | ...'.
+
+    Splits from the right, because full_name itself can contain ' - '
+    (e.g. 'Ngân hàng TMCP Sài Gòn - Hà Nội'). Returns (full, short).
+    `short` is rejected if it looks like a province name to avoid the
+    "Hà Nội" alias bug that taints every news mentioning the city.
+    """
+    # Strip site suffix and the trailing ' - Hồ sơ doanh nghiệp' tail.
+    s = rest.split("|", 1)[0].strip()
+    for tail in (" - Hồ sơ doanh nghiệp", " – Hồ sơ doanh nghiệp"):
+        if tail in s:
+            s = s.rsplit(tail, 1)[0].strip()
+            break
+    if not s:
+        return None, None
+    # Now s = '{full} - {short}' OR just '{full}'.
+    if " - " in s:
+        full, short = (p.strip() for p in s.rsplit(" - ", 1))
+        # Reject short if it's just a city/province (the original bug).
+        if short.lower() in _PROVINCES_LOWER:
+            return s, None  # keep whole thing as full, no short
+        return (full or None), (short or None)
+    return s, None
+
+
 def _parse_name(soup: BeautifulSoup, ticker: str) -> tuple[str | None, str | None]:
     """Return (full_corporate_name, short_brand)."""
     # JSON-LD headline: "DBC: CTCP Tập đoàn Dabaco Việt Nam - DABACO - Hồ sơ doanh nghiệp | ..."
@@ -77,20 +106,11 @@ def _parse_name(soup: BeautifulSoup, ticker: str) -> tuple[str | None, str | Non
             continue
         headline = data.get("headline")
         if isinstance(headline, str) and ":" in headline:
-            rest = headline.split(":", 1)[1].strip()
-            # split off " - SUFFIX - Hồ sơ..."
-            parts = [p.strip() for p in rest.split(" - ")]
-            if not parts:
-                continue
-            full = parts[0] or None
-            short = parts[1] if len(parts) >= 2 and parts[1] and "Hồ sơ" not in parts[1] else None
-            return full, short
+            return _split_headline(headline.split(":", 1)[1])
     # Fallback: <title>
     title = (soup.title.text if soup.title else "").strip()
     if ticker.upper() + ":" in title:
-        rest = title.split(":", 1)[1].split("|")[0]
-        full = rest.split(" - ")[0].strip()
-        return full or None, None
+        return _split_headline(title.split(":", 1)[1])
     return None, None
 
 
@@ -129,6 +149,8 @@ def build_alias(ticker: str) -> dict | None:
             return
         x = x.strip()
         if not x or x.lower() in seen:
+            return
+        if x.lower() in _PROVINCES_LOWER:
             return
         seen.add(x.lower())
         names.append(x)

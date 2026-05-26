@@ -57,7 +57,12 @@ def _snippet(art: dict) -> str:
     return ""
 
 
-def run(since: str | None = None, limit: int | None = None) -> dict[str, int]:
+def run(
+    since: str | None = None,
+    limit: int | None = None,
+    *,
+    rematch_all: bool = False,
+) -> dict[str, int]:
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(name)s/%(levelname)s] %(message)s",
@@ -66,6 +71,14 @@ def run(since: str | None = None, limit: int | None = None) -> dict[str, int]:
     log.info("loaded aliases for %d tickers", len(alias_matcher.loaded_tickers()))
 
     conn = storage.connect()
+    if rematch_all:
+        n = conn.execute(
+            "UPDATE articles SET match_status='pending', matched_at=NULL"
+        ).rowcount
+        log.info("rematch_all: reset %d articles to pending", n)
+        # Per-ticker JSONs are also stale — wipe so they rebuild cleanly.
+        for p in settings.PER_TICKER_DIR.glob("*.json"):
+            p.unlink()
     pending = list(storage.iter_articles(
         conn, match_status="pending", since=since, limit=limit,
     ))
@@ -129,8 +142,11 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--since", help="ISO date — only match articles published on/after")
     ap.add_argument("--limit", type=int, default=None)
+    ap.add_argument("--rematch-all", action="store_true",
+                    help="reset match_status='pending' for every article and wipe per_ticker/ first "
+                         "(use after fixing aliases)")
     args = ap.parse_args()
-    run(since=args.since, limit=args.limit)
+    run(since=args.since, limit=args.limit, rematch_all=args.rematch_all)
 
 
 if __name__ == "__main__":
