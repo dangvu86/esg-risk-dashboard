@@ -57,6 +57,13 @@ CREATE TABLE IF NOT EXISTS search_queue (
   done_at      TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_queue_next ON search_queue(backend, status, next_attempt);
+
+CREATE TABLE IF NOT EXISTS url_decode_cache (
+  encoded_url   TEXT PRIMARY KEY,
+  decoded_url   TEXT,
+  status        TEXT,                -- 'ok' | 'failed'
+  attempted_at  TEXT DEFAULT CURRENT_TIMESTAMP
+);
 """
 
 
@@ -225,6 +232,33 @@ def mark_task_backoff(
         (attempts, retry_at, error[:500], task_id),
     )
     return "backoff"
+
+
+# ---------------- url decode cache ----------------
+
+def decode_cache_get(conn: sqlite3.Connection, encoded_url: str) -> tuple[str | None, str] | None:
+    """Return (decoded_url, status) if cached, else None."""
+    row = conn.execute(
+        "SELECT decoded_url, status FROM url_decode_cache WHERE encoded_url=?",
+        (encoded_url,),
+    ).fetchone()
+    if row is None:
+        return None
+    return (row["decoded_url"], row["status"])
+
+
+def decode_cache_put(
+    conn: sqlite3.Connection,
+    encoded_url: str,
+    decoded_url: str | None,
+    status: str,
+) -> None:
+    conn.execute(
+        "INSERT OR REPLACE INTO url_decode_cache "
+        "(encoded_url, decoded_url, status, attempted_at) VALUES (?,?,?,?)",
+        (encoded_url, decoded_url, status,
+         datetime.utcnow().isoformat(timespec="seconds")),
+    )
 
 
 def queue_stats(conn: sqlite3.Connection) -> dict[str, dict[str, int]]:

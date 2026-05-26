@@ -11,6 +11,8 @@ import urllib.parse
 import xml.etree.ElementTree as ET
 from datetime import datetime
 
+from bs4 import BeautifulSoup
+
 from backends import base
 
 
@@ -26,6 +28,14 @@ def _build_url(query: str, after: str, before: str) -> str:
         "ceid": "VN:vi",
     })
     return f"https://news.google.com/rss/search?{params}"
+
+
+def _clean_desc(raw: str) -> str:
+    """Google News RSS description is an HTML fragment (anchor + font tags).
+    Strip to plain text so we don't pollute snippets / matcher input."""
+    if not raw:
+        return ""
+    return BeautifulSoup(raw, "html.parser").get_text(" ", strip=True)
 
 
 def _parse_pubdate(raw: str) -> str:
@@ -51,7 +61,7 @@ def fetch(query: str, after: str, before: str) -> list[dict]:
     for it in root.findall(".//item"):
         title = (it.findtext("title") or "").strip()
         link = (it.findtext("link") or "").strip()
-        desc = (it.findtext("description") or "").strip()
+        desc = _clean_desc(it.findtext("description") or "")
         src_el = it.find("source")
         source = (src_el.text.strip() if src_el is not None and src_el.text else "")
         published = _parse_pubdate(it.findtext("pubDate") or "")

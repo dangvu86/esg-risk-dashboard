@@ -25,7 +25,7 @@ from datetime import datetime
 
 from backends import base
 from config import settings
-from core import storage
+from core import storage, url_cache
 from core.canonicalize import canonicalize, dedup_key, domain_of
 
 
@@ -54,10 +54,16 @@ def _load_backend(name: str):
 def _process_task(conn, backend_mod, task) -> int:
     items = backend_mod.fetch(task["query"], task["after"], task["before"])
     inserted = 0
+    is_google = backend_mod.name == "google_rss"
     for it in items:
         url = it.get("url") or ""
         if not url:
             continue
+        # Google News links are opaque base64 redirects — resolve to the real
+        # publisher URL before deriving article_id, otherwise the same story
+        # fetched by BaoMoi / Brave will look like a different article.
+        if is_google:
+            url = url_cache.resolve(conn, url)
         canon = canonicalize(url)
         key = dedup_key(url)
         if not key:
