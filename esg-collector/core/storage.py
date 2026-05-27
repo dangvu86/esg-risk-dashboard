@@ -41,7 +41,8 @@ CREATE TABLE IF NOT EXISTS articles (
 );
 CREATE INDEX IF NOT EXISTS idx_articles_match      ON articles(match_status, body_status);
 CREATE INDEX IF NOT EXISTS idx_articles_date       ON articles(published_at);
-CREATE INDEX IF NOT EXISTS idx_articles_title_hash ON articles(title_hash, published_at);
+-- title_hash index is created after init_db's ALTER TABLE migration to avoid
+-- failing on legacy databases where the column does not yet exist.
 
 CREATE TABLE IF NOT EXISTS search_queue (
   task_id      TEXT PRIMARY KEY,
@@ -87,10 +88,11 @@ def init_db(db_path: Path | str = DB_PATH) -> None:
         cols = {r["name"] for r in conn.execute("PRAGMA table_info(articles)")}
         if "title_hash" not in cols:
             conn.execute("ALTER TABLE articles ADD COLUMN title_hash TEXT")
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_articles_title_hash "
-                "ON articles(title_hash, published_at)"
-            )
+        # Index created here (not in SCHEMA above) so legacy DBs survive init.
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_articles_title_hash "
+            "ON articles(title_hash, published_at)"
+        )
     finally:
         conn.close()
 
