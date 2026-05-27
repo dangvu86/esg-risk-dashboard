@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS articles (
   url_original  TEXT,
   domain        TEXT,
   title         TEXT,
+  title_hash    TEXT,
   description   TEXT,
   sapo          TEXT,
   body          TEXT,
@@ -38,8 +39,9 @@ CREATE TABLE IF NOT EXISTS articles (
   matched_at    TEXT,
   match_status  TEXT DEFAULT 'pending'
 );
-CREATE INDEX IF NOT EXISTS idx_articles_match ON articles(match_status, body_status);
-CREATE INDEX IF NOT EXISTS idx_articles_date  ON articles(published_at);
+CREATE INDEX IF NOT EXISTS idx_articles_match      ON articles(match_status, body_status);
+CREATE INDEX IF NOT EXISTS idx_articles_date       ON articles(published_at);
+CREATE INDEX IF NOT EXISTS idx_articles_title_hash ON articles(title_hash, published_at);
 
 CREATE TABLE IF NOT EXISTS search_queue (
   task_id      TEXT PRIMARY KEY,
@@ -81,6 +83,14 @@ def init_db(db_path: Path | str = DB_PATH) -> None:
     conn = connect(db_path)
     try:
         conn.executescript(SCHEMA)
+        # Idempotent column-add for old databases that pre-date title_hash.
+        cols = {r["name"] for r in conn.execute("PRAGMA table_info(articles)")}
+        if "title_hash" not in cols:
+            conn.execute("ALTER TABLE articles ADD COLUMN title_hash TEXT")
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_articles_title_hash "
+                "ON articles(title_hash, published_at)"
+            )
     finally:
         conn.close()
 
@@ -88,17 +98,40 @@ def init_db(db_path: Path | str = DB_PATH) -> None:
 # ---------------- articles ----------------
 
 _ARTICLE_COLS = (
-    "article_id", "url_canonical", "url_original", "domain", "title",
+    "article_id", "url_canonical", "url_original", "domain", "title", "title_hash",
     "description", "sapo", "body", "body_status", "published_at",
     "source", "backend", "group_key", "sub_query_ix",
 )
 
+_MERGE_COLS = ("description", "sapo", "body", "source")
+
+
+def _merge_into(conn: sqlite3.Connection, target_id: str, rec: dict[str, Any]) -> None:
+    """Fill any NULL/empty fields on the target row from the new record."""
+    for col in _MERGE_COLS:
+        v = rec.get(col)
+        if v:
+            conn.execute(
+                f"UPDATE articles SET {col}=? "
+                f"WHERE article_id=? AND (COALESCE({col},'')='')",
+                (v, target_id),
+            )
+
 
 def insert_article(conn: sqlite3.Connection, rec: dict[str, Any]) -> bool:
-    """INSERT OR IGNORE. Return True if a new row was inserted.
+    """INSERT OR IGNORE with two dedup layers. Return True if a new row was
+    inserted, False if it merged into an existing one.
 
-    On conflict, merge missing fields (sapo / body / description) so a richer
-    later fetch (e.g. BaoMoi with sapo) upgrades the earlier Google RSS entry.
+    Dedup order:
+      1. `article_id` PRIMARY KEY (URL-derived) — catches repeats from the
+         same backend.
+      2. `(title_hash, published_at)` — catches the same story arriving via
+         a different backend with a different article_id (e.g. Google News
+         encoded link vs. BaoMoi internal id pointing at the same Lao Dong
+         article). Only consulted when title_hash is non-empty.
+
+    On any conflict we merge missing fields (sapo / body / description /
+    source) so a later, richer fetch upgrades the earlier sparse one.
     """
     rec = dict(rec)
     rec.setdefault("body_status", "pending")
@@ -109,15 +142,26 @@ def insert_article(conn: sqlite3.Connection, rec: dict[str, Any]) -> bool:
     )
     cur = conn.execute(sql, [rec[c] for c in cols])
     if cur.rowcount:
+        # New article_id — still need to check title_hash for cross-backend dup.
+        th = rec.get("title_hash")
+        pub = rec.get("published_at")
+        if th and pub:
+            sibling = conn.execute(
+                "SELECT article_id FROM articles "
+                "WHERE title_hash=? AND published_at=? AND article_id<>? "
+                "ORDER BY fetched_at ASC LIMIT 1",
+                (th, pub, rec["article_id"]),
+            ).fetchone()
+            if sibling:
+                # Merge new row into the existing sibling and drop the new row.
+                _merge_into(conn, sibling["article_id"], rec)
+                conn.execute(
+                    "DELETE FROM articles WHERE article_id=?", (rec["article_id"],)
+                )
+                return False
         return True
-    # merge — only fill columns that are currently NULL/empty
-    for col in ("description", "sapo", "body"):
-        if rec.get(col):
-            conn.execute(
-                f"UPDATE articles SET {col}=? "
-                f"WHERE article_id=? AND (COALESCE({col},'')='')",
-                (rec[col], rec["article_id"]),
-            )
+    # article_id collision — same backend repeating itself. Just merge.
+    _merge_into(conn, rec["article_id"], rec)
     return False
 
 

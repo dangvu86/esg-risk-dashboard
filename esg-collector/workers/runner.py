@@ -27,6 +27,7 @@ from backends import base
 from config import settings
 from core import storage, url_cache
 from core.canonicalize import canonicalize, dedup_key, domain_of
+from core.title import title_hash as _title_hash
 
 
 log = logging.getLogger("runner")
@@ -68,12 +69,14 @@ def _process_task(conn, backend_mod, task) -> int:
         key = dedup_key(url)
         if not key:
             continue
+        title = it.get("title") or ""
         rec = {
             "article_id":    key,
             "url_canonical": canon or url,
             "url_original":  url,
             "domain":        domain_of(url),
-            "title":         it.get("title") or "",
+            "title":         title,
+            "title_hash":    _title_hash(title),
             "description":   it.get("description"),
             "sapo":          it.get("sapo"),
             "body":          None,
