@@ -173,16 +173,61 @@ def is_google_news_url(url: str) -> bool:
     return host.endswith("news.google.com")
 
 
+_REQUESTS_PATCHED = False
+
+
+def _ensure_requests_timeout(default_timeout: float = 15.0) -> None:
+    """Force a default timeout on every requests.get / requests.Session.get.
+
+    googlenewsdecoder issues bare `requests.get(url)` calls under the hood,
+    which inherit no timeout and can block forever on a stalled connection.
+    SIGALRM alone is unreliable (the library may use C-level socket reads
+    that don't poll for signals), so we patch at the library boundary.
+    Idempotent: only wraps once per process.
+    """
+    global _REQUESTS_PATCHED
+    if _REQUESTS_PATCHED:
+        return
+    try:
+        import requests
+        from requests.sessions import Session
+    except ImportError:
+        return
+
+    _orig_get = requests.get
+    _orig_session_get = Session.get
+    _orig_request = Session.request
+
+    def _patched_get(*args, **kwargs):
+        kwargs.setdefault("timeout", default_timeout)
+        return _orig_get(*args, **kwargs)
+
+    def _patched_session_get(self, *args, **kwargs):
+        kwargs.setdefault("timeout", default_timeout)
+        return _orig_session_get(self, *args, **kwargs)
+
+    def _patched_request(self, *args, **kwargs):
+        kwargs.setdefault("timeout", default_timeout)
+        return _orig_request(self, *args, **kwargs)
+
+    requests.get = _patched_get
+    Session.get = _patched_session_get
+    Session.request = _patched_request
+    _REQUESTS_PATCHED = True
+
+
 def decode_google_url(url: str, interval: float = 1.0, timeout_s: float = 15.0) -> str:
     """Resolve a news.google.com encoded link to the publisher URL.
 
     Returns '' on failure (including timeout). Each call hits Google; cache
     results at the caller.
 
-    `timeout_s` guards against gnewsdecoder hanging — the upstream library
-    does not set a request timeout, so a stuck connection would otherwise
-    block the worker indefinitely. Uses SIGALRM (Unix-only) — on Windows
-    falls back to no timeout protection.
+    Two layers of timeout protection because the upstream googlenewsdecoder
+    library does not honour its own timeout knob:
+      1. Patch `requests.get` / `Session.request` to inject a default timeout
+         on every HTTP call the library makes.
+      2. Wrap the decode call in a SIGALRM-based watchdog as a backstop in
+         case the library bypasses requests (e.g. via curl_cffi).
     """
     if not is_google_news_url(url):
         return url
@@ -190,6 +235,8 @@ def decode_google_url(url: str, interval: float = 1.0, timeout_s: float = 15.0) 
         from googlenewsdecoder import gnewsdecoder
     except ImportError:
         return ""
+
+    _ensure_requests_timeout(timeout_s)
 
     import signal
 
@@ -201,7 +248,7 @@ def decode_google_url(url: str, interval: float = 1.0, timeout_s: float = 15.0) 
     if hasattr(signal, "SIGALRM"):
         try:  # ValueError on non-main thread; fall back to no-timeout there
             old = signal.signal(signal.SIGALRM, _raise)
-            signal.alarm(max(1, int(timeout_s)))
+            signal.alarm(max(1, int(timeout_s) + 2))  # +2s slack over requests timeout
             armed = True
         except (ValueError, OSError):
             armed = False
