@@ -173,10 +173,16 @@ def is_google_news_url(url: str) -> bool:
     return host.endswith("news.google.com")
 
 
-def decode_google_url(url: str, interval: float = 1.0) -> str:
+def decode_google_url(url: str, interval: float = 1.0, timeout_s: float = 15.0) -> str:
     """Resolve a news.google.com encoded link to the publisher URL.
 
-    Returns '' on failure. Each call hits Google; cache results at the caller.
+    Returns '' on failure (including timeout). Each call hits Google; cache
+    results at the caller.
+
+    `timeout_s` guards against gnewsdecoder hanging — the upstream library
+    does not set a request timeout, so a stuck connection would otherwise
+    block the worker indefinitely. Uses SIGALRM (Unix-only) — on Windows
+    falls back to no timeout protection.
     """
     if not is_google_news_url(url):
         return url
@@ -184,10 +190,31 @@ def decode_google_url(url: str, interval: float = 1.0) -> str:
         from googlenewsdecoder import gnewsdecoder
     except ImportError:
         return ""
+
+    import signal
+
+    def _raise(signum, frame):
+        raise TimeoutError("gnewsdecoder stuck")
+
+    armed = False
+    old = None
+    if hasattr(signal, "SIGALRM"):
+        try:  # ValueError on non-main thread; fall back to no-timeout there
+            old = signal.signal(signal.SIGALRM, _raise)
+            signal.alarm(max(1, int(timeout_s)))
+            armed = True
+        except (ValueError, OSError):
+            armed = False
+
     try:
         r = gnewsdecoder(url, interval=interval)
-        if r.get("status") and r.get("decoded_url"):
-            return r["decoded_url"]
-    except Exception:
-        pass
+    except (TimeoutError, Exception):
+        r = None
+    finally:
+        if armed:
+            signal.alarm(0)
+            signal.signal(signal.SIGALRM, old)
+
+    if r and r.get("status") and r.get("decoded_url"):
+        return r["decoded_url"]
     return ""
