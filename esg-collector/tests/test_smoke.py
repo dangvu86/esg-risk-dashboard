@@ -81,16 +81,38 @@ def test_storage_roundtrip() -> None:
         assert row["body"] == "long body text"
         assert row["sapo"] == "sapo here"
 
-        # enqueue + drain
+        # cached_hits round-trip
+        storage.cache_hits(conn, rec["article_id"], '[{"ticker":"DBC","alias":"Dabaco","location":"title","weight":1.0}]')
+        row = conn.execute(
+            "SELECT cached_hits FROM articles WHERE article_id=?", (rec["article_id"],)
+        ).fetchone()
+        assert row["cached_hits"] and "DBC" in row["cached_hits"]
+
+        # enqueue + atomic claim + done
         storage.enqueue_task(
             conn, backend="google_rss", group_key="E", sub_query_ix=0,
             query="ô nhiễm", after="2024-06-01", before="2024-06-30",
         )
         t = storage.next_task(conn, "google_rss")
         assert t is not None and t["query"] == "ô nhiễm"
+        # second worker calling next_task immediately must NOT get the same
+        # task — the atomic claim should have moved it to 'in_progress'
+        # with next_attempt pushed into the future.
+        t_dup = storage.next_task(conn, "google_rss")
+        assert t_dup is None, f"race: second claim returned {t_dup['task_id']}"
         storage.mark_task_done(conn, t["task_id"], 5)
         t2 = storage.next_task(conn, "google_rss")
         assert t2 is None
+
+        # timestamp format sanity — defaults should use ISO 'T' with 'Z'
+        ts = conn.execute("SELECT fetched_at FROM articles LIMIT 1").fetchone()["fetched_at"]
+        assert "T" in ts and ts.endswith("Z"), f"unexpected fetched_at format: {ts!r}"
+
+        # meta round-trip (used by incremental export)
+        storage.set_meta(conn, "last_ndjson_export_at", "2026-01-01T00:00:00Z")
+        assert storage.get_meta(conn, "last_ndjson_export_at") == "2026-01-01T00:00:00Z"
+        storage.set_meta(conn, "last_ndjson_export_at", "2026-01-02T00:00:00Z")
+        assert storage.get_meta(conn, "last_ndjson_export_at") == "2026-01-02T00:00:00Z"
         conn.close()
     print("  storage OK")
 

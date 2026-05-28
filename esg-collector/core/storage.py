@@ -11,13 +11,25 @@ body fetcher + match) can share the same file safely.
 from __future__ import annotations
 
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
 from config.settings import DB_PATH
 
 
+def _utc_now_iso() -> str:
+    """Single source of truth for timestamps written from Python.
+
+    Uses 'T' separator + 'Z' suffix so values are unambiguous UTC and
+    sort/parse identically whether SQLite or Python writes them.
+    """
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+# strftime('%Y-%m-%dT%H:%M:%SZ','now') keeps SQLite-written defaults in the
+# same ISO-T-Z format that _utc_now_iso() produces from Python, so range
+# queries on fetched_at / next_attempt sort and parse uniformly.
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS articles (
   article_id    TEXT PRIMARY KEY,
@@ -35,12 +47,14 @@ CREATE TABLE IF NOT EXISTS articles (
   backend       TEXT,
   group_key     TEXT,
   sub_query_ix  INTEGER,
-  fetched_at    TEXT DEFAULT CURRENT_TIMESTAMP,
+  fetched_at    TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   matched_at    TEXT,
-  match_status  TEXT DEFAULT 'pending'
+  match_status  TEXT DEFAULT 'pending',
+  cached_hits   TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_articles_match      ON articles(match_status, body_status);
 CREATE INDEX IF NOT EXISTS idx_articles_date       ON articles(published_at);
+CREATE INDEX IF NOT EXISTS idx_articles_fetched_at ON articles(fetched_at);
 -- title_hash index is created after init_db's ALTER TABLE migration to avoid
 -- failing on legacy databases where the column does not yet exist.
 
@@ -54,7 +68,7 @@ CREATE TABLE IF NOT EXISTS search_queue (
   before       TEXT,
   status       TEXT DEFAULT 'pending',
   attempts     INTEGER DEFAULT 0,
-  next_attempt TEXT DEFAULT CURRENT_TIMESTAMP,
+  next_attempt TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   last_error   TEXT,
   items_found  INTEGER DEFAULT 0,
   done_at      TEXT
@@ -65,7 +79,13 @@ CREATE TABLE IF NOT EXISTS url_decode_cache (
   encoded_url   TEXT PRIMARY KEY,
   decoded_url   TEXT,
   status        TEXT,                -- 'ok' | 'failed'
-  attempted_at  TEXT DEFAULT CURRENT_TIMESTAMP
+  attempted_at  TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+);
+
+CREATE TABLE IF NOT EXISTS export_state (
+  key       TEXT PRIMARY KEY,
+  value     TEXT,
+  updated_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
 );
 """
 
@@ -84,14 +104,20 @@ def init_db(db_path: Path | str = DB_PATH) -> None:
     conn = connect(db_path)
     try:
         conn.executescript(SCHEMA)
-        # Idempotent column-add for old databases that pre-date title_hash.
+        # Idempotent column-adds for older databases.
         cols = {r["name"] for r in conn.execute("PRAGMA table_info(articles)")}
         if "title_hash" not in cols:
             conn.execute("ALTER TABLE articles ADD COLUMN title_hash TEXT")
-        # Index created here (not in SCHEMA above) so legacy DBs survive init.
+        if "cached_hits" not in cols:
+            conn.execute("ALTER TABLE articles ADD COLUMN cached_hits TEXT")
+        # Indexes created here (not in SCHEMA above) so legacy DBs survive init.
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_articles_title_hash "
             "ON articles(title_hash, published_at)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_articles_fetched_at "
+            "ON articles(fetched_at)"
         )
     finally:
         conn.close()
@@ -102,7 +128,7 @@ def init_db(db_path: Path | str = DB_PATH) -> None:
 _ARTICLE_COLS = (
     "article_id", "url_canonical", "url_original", "domain", "title", "title_hash",
     "description", "sapo", "body", "body_status", "published_at",
-    "source", "backend", "group_key", "sub_query_ix",
+    "source", "backend", "group_key", "sub_query_ix", "cached_hits",
 )
 
 _MERGE_COLS = ("description", "sapo", "body", "source")
@@ -182,8 +208,18 @@ def mark_body(conn: sqlite3.Connection, article_id: str, status: str, body: str 
 
 def mark_match(conn: sqlite3.Connection, article_id: str, status: str) -> None:
     conn.execute(
-        "UPDATE articles SET match_status=?, matched_at=CURRENT_TIMESTAMP WHERE article_id=?",
-        (status, article_id),
+        "UPDATE articles SET match_status=?, matched_at=? WHERE article_id=?",
+        (status, _utc_now_iso(), article_id),
+    )
+
+
+def cache_hits(conn: sqlite3.Connection, article_id: str, hits_json: str) -> None:
+    """Persist alias matches discovered by the body_fetcher's pre-check so
+    pipeline.match can skip re-running the regex pool on the same article.
+    """
+    conn.execute(
+        "UPDATE articles SET cached_hits=? WHERE article_id=?",
+        (hits_json, article_id),
     )
 
 
@@ -234,13 +270,41 @@ def enqueue_task(
     return cur.rowcount > 0
 
 
+# Tasks claimed but never marked done/backoff (worker crashed mid-fetch)
+# become reclaimable after this window. Chosen larger than any single
+# backend.fetch call we expect; tune if a backend regularly runs longer.
+_CLAIM_TTL_SECONDS = 1800
+
+
 def next_task(conn: sqlite3.Connection, backend: str) -> sqlite3.Row | None:
-    now = datetime.utcnow().isoformat(timespec="seconds")
+    """Atomically claim the next ready task for `backend`.
+
+    Uses UPDATE ... RETURNING (SQLite 3.35+, shipped in Python 3.10's bundled
+    SQLite). Without atomic claim, two workers of the same backend racing on
+    `SELECT then UPDATE` would both process the same task; even though we
+    deploy one worker per backend today, the persistent queue is the kind of
+    thing that drifts to N workers eventually.
+
+    `in_progress` rows older than _CLAIM_TTL_SECONDS are also eligible — a
+    worker that crashed mid-fetch otherwise leaves the task stuck forever.
+    On claim, next_attempt is bumped by the TTL so a healthy worker keeps
+    exclusive ownership until it finishes or the TTL expires.
+    """
+    now_iso = _utc_now_iso()
+    reclaim_at = (datetime.now(timezone.utc) + timedelta(seconds=_CLAIM_TTL_SECONDS)).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
     row = conn.execute(
-        "SELECT * FROM search_queue "
-        "WHERE backend=? AND status IN ('pending','backoff') AND next_attempt <= ? "
-        "ORDER BY next_attempt ASC LIMIT 1",
-        (backend, now),
+        "UPDATE search_queue "
+        "SET status='in_progress', next_attempt=? "
+        "WHERE task_id = ("
+        "  SELECT task_id FROM search_queue "
+        "  WHERE backend=? AND status IN ('pending','backoff','in_progress') "
+        "        AND next_attempt <= ? "
+        "  ORDER BY next_attempt ASC LIMIT 1"
+        ") "
+        "RETURNING *",
+        (reclaim_at, backend, now_iso),
     ).fetchone()
     return row
 
@@ -248,8 +312,8 @@ def next_task(conn: sqlite3.Connection, backend: str) -> sqlite3.Row | None:
 def mark_task_done(conn: sqlite3.Connection, task_id: str, items_found: int) -> None:
     conn.execute(
         "UPDATE search_queue SET status='done', items_found=?, "
-        "done_at=CURRENT_TIMESTAMP WHERE task_id=?",
-        (items_found, task_id),
+        "done_at=?, last_error=NULL WHERE task_id=?",
+        (items_found, _utc_now_iso(), task_id),
     )
 
 
@@ -271,13 +335,30 @@ def mark_task_backoff(
             (attempts, error[:500], task_id),
         )
         return "failed"
-    retry_at = (datetime.utcnow() + timedelta(seconds=retry_after_seconds)).isoformat(timespec="seconds")
+    retry_at = (datetime.now(timezone.utc) + timedelta(seconds=retry_after_seconds)).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
     conn.execute(
         "UPDATE search_queue SET status='backoff', attempts=?, "
         "next_attempt=?, last_error=? WHERE task_id=?",
         (attempts, retry_at, error[:500], task_id),
     )
     return "backoff"
+
+
+def get_meta(conn: sqlite3.Connection, key: str) -> str | None:
+    row = conn.execute(
+        "SELECT value FROM export_state WHERE key=?", (key,)
+    ).fetchone()
+    return row["value"] if row else None
+
+
+def set_meta(conn: sqlite3.Connection, key: str, value: str) -> None:
+    conn.execute(
+        "INSERT INTO export_state (key, value, updated_at) VALUES (?,?,?) "
+        "ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at",
+        (key, value, _utc_now_iso()),
+    )
 
 
 # ---------------- url decode cache ----------------
@@ -302,8 +383,7 @@ def decode_cache_put(
     conn.execute(
         "INSERT OR REPLACE INTO url_decode_cache "
         "(encoded_url, decoded_url, status, attempted_at) VALUES (?,?,?,?)",
-        (encoded_url, decoded_url, status,
-         datetime.utcnow().isoformat(timespec="seconds")),
+        (encoded_url, decoded_url, status, _utc_now_iso()),
     )
 
 

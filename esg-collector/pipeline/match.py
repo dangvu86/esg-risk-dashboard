@@ -5,6 +5,8 @@ writes per-ticker JSON files at `data/per_ticker/<TICKER>.json`.
 
 Two-stage match per article:
   1. Title + description + sapo. Match found → done (saves Jina calls).
+     If the body fetcher already pre-checked this article and cached its
+     hits, we trust the cache and skip re-running the regex pool.
   2. If nothing yet and body_status='fetched' → also match body.
 If still nothing and body is fetched/skipped/failed (terminal) → set
 match_status='unmatched'. If body is still 'pending', leave article in
@@ -18,11 +20,12 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from config import settings
 from core import alias_matcher, storage
+from core.alias_matcher import AliasHit
 
 
 log = logging.getLogger("match")
@@ -45,8 +48,29 @@ def _load_existing(path: Path) -> dict:
 
 def _save(path: Path, doc: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    doc["generated_at"] = datetime.utcnow().isoformat(timespec="seconds") + "Z"
+    doc["generated_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     path.write_text(json.dumps(doc, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _load_cached_hits(raw: str | None) -> list[AliasHit] | None:
+    """Rehydrate the JSON written by body_fetcher.cache_hits. None if absent
+    or malformed — caller will fall back to running alias_matcher live."""
+    if not raw:
+        return None
+    try:
+        items = json.loads(raw)
+    except (TypeError, ValueError):
+        return None
+    out: list[AliasHit] = []
+    for it in items:
+        try:
+            out.append(AliasHit(
+                ticker=it["ticker"], alias=it["alias"],
+                location=it.get("location", ""), weight=float(it.get("weight", 1.0)),
+            ))
+        except (KeyError, TypeError):
+            return None
+    return out
 
 
 def _snippet(art: dict) -> str:
@@ -89,10 +113,12 @@ def run(
 
     for art in pending:
         art_d = dict(art)
-        # Stage 1: title/desc/sapo
-        hits = alias_matcher.match_article(
-            art_d, fields=("title", "description", "sapo"),
-        )
+        # Stage 1: title/desc/sapo — reuse body_fetcher's cached hits if any.
+        hits = _load_cached_hits(art_d.get("cached_hits"))
+        if hits is None:
+            hits = alias_matcher.match_article(
+                art_d, fields=("title", "description", "sapo"),
+            )
         if not hits and art["body_status"] == "fetched":
             hits = alias_matcher.match_article(
                 art_d, fields=("title", "description", "sapo", "body"),

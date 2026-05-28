@@ -4,9 +4,10 @@ Targets articles with `body_status='pending'` whose alias couldn't be matched
 on title/description/sapo alone — fetching the body lets the alias matcher
 catch mentions buried inside the article.
 
-Concurrency: small thread pool (default 8) calling Jina, with a per-call
-throttle to stay under the Jina 200 RPM cap when authenticated. On Jina
-failure we fall through to the bs4 fallback fetcher.
+Concurrency: small thread pool (default 8) calling Jina; rate limiting lives
+in `body_fetcher.jina.fetch` (token-bucket) so a single shared cap covers
+every concurrent caller. On Jina failure we fall through to the bs4
+fallback fetcher.
 
 Run:  python -m workers.body_fetcher [--workers 8] [--limit 2000]
 """
@@ -14,10 +15,12 @@ Run:  python -m workers.body_fetcher [--workers 8] [--limit 2000]
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import signal
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import asdict
 
 from body_fetcher import jina, fallback
 from core import alias_matcher, storage
@@ -34,9 +37,9 @@ def _on_signal(signum, _frame):
     _stop = True
 
 
-def _needs_body(article: dict) -> bool:
-    """Skip body fetch if title/description/sapo already match some alias."""
-    hits = alias_matcher.match_article(
+def _prefetch_hits(article: dict):
+    """Match alias on title/desc/sapo only. Returns list[AliasHit]."""
+    return alias_matcher.match_article(
         {
             "title": article.get("title"),
             "description": article.get("description"),
@@ -44,7 +47,10 @@ def _needs_body(article: dict) -> bool:
         },
         fields=("title", "description", "sapo"),
     )
-    return len(hits) == 0
+
+
+def _serialize_hits(hits) -> str:
+    return json.dumps([asdict(h) for h in hits], ensure_ascii=False)
 
 
 def _fetch_one(url: str) -> tuple[str | None, str]:
@@ -89,21 +95,26 @@ def run(workers: int = 8, batch_limit: int = 500, idle_sleep: int = 60) -> None:
                 time.sleep(1)
             continue
 
-        # Skip those that already match on title/desc/sapo; mark body_status='skipped'.
+        # Skip those that already match on title/desc/sapo; cache the hits
+        # so pipeline.match can flush them to per_ticker JSON without
+        # re-running the regex pool on the same article.
         to_fetch = []
         for art in candidates:
-            if _needs_body(art):
-                to_fetch.append(art)
-            else:
+            hits = _prefetch_hits(art)
+            if hits:
+                storage.cache_hits(conn, art["article_id"], _serialize_hits(hits))
                 storage.mark_body(conn, art["article_id"], "skipped")
+            else:
+                to_fetch.append(art)
         log.info("batch %d candidates → %d need body", len(candidates), len(to_fetch))
 
         if not to_fetch:
             continue
 
-        # Run Jina fetch in parallel
+        # Run Jina fetch in parallel.
         urls = {art["article_id"]: (art.get("url_original") or art.get("url_canonical")) for art in to_fetch}
-        with ThreadPoolExecutor(max_workers=workers) as pool:
+        pool = ThreadPoolExecutor(max_workers=workers)
+        try:
             futs = {pool.submit(_fetch_one, u): aid for aid, u in urls.items()}
             for fut in as_completed(futs):
                 if _stop:
@@ -119,6 +130,11 @@ def run(workers: int = 8, batch_limit: int = 500, idle_sleep: int = 60) -> None:
                     storage.mark_body(conn, aid, "fetched", body)
                 else:
                     storage.mark_body(conn, aid, status)
+        finally:
+            # cancel_futures=True (Py 3.9+) drops queued-but-unstarted tasks
+            # on shutdown signal; in-flight HTTP calls still finish, but we
+            # don't wait for the rest of the batch.
+            pool.shutdown(wait=not _stop, cancel_futures=_stop)
         log.info("batch done")
 
     conn.close()
