@@ -1,0 +1,126 @@
+name: Deploy esg-collector
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "esg-collector/**"
+      - ".github/workflows/deploy-esg-collector.yml"
+  workflow_dispatch:
+    inputs:
+      run_rematch_all:
+        description: "Also run pipeline.match --rematch-all after deploy (slow, ~5-15 min)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-esg-collector
+  cancel-in-progress: false  # don't kill an in-flight deploy mid-pull
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: gen-lang-client-0020762472
+
+      - name: Deploy + migrate on VM
+        env:
+          REMATCH: ${{ inputs.run_rematch_all && '1' || '0' }}
+        run: |
+          set -euo pipefail
+          # Heredoc keeps the inner script as a single argv string so the
+          # remote bash -s sees a stable script regardless of how the
+          # outer YAML quoting renders.
+          REMOTE_SCRIPT=$(cat <<'BASH'
+          set -euo pipefail
+
+          INSTALL_DIR=/opt/esg-collector
+          APP_DIR=$INSTALL_DIR/esg-collector
+          VENV=$INSTALL_DIR/.venv/bin/python
+          DB=$APP_DIR/data/articles.db
+          SVC_USER=esg
+
+          echo "=== 1. Stop workers ==="
+          sudo systemctl stop \
+            esg-collector-google.service \
+            esg-collector-baomoi.service \
+            esg-collector-brave.service \
+            esg-collector-body.service
+
+          echo "=== 2. Backup DB (rolling 7 daily snapshots) ==="
+          sudo install -d -o $SVC_USER -g $SVC_USER $APP_DIR/data/backups
+          sudo -u $SVC_USER cp -p $DB $APP_DIR/data/backups/articles.db.$(date +%u)
+          ls -lh $APP_DIR/data/backups/
+
+          echo "=== 3. git pull ==="
+          cd $INSTALL_DIR
+          sudo -u $SVC_USER git fetch origin main
+          BEFORE=$(sudo -u $SVC_USER git rev-parse HEAD)
+          sudo -u $SVC_USER git reset --hard origin/main
+          AFTER=$(sudo -u $SVC_USER git rev-parse HEAD)
+          echo "HEAD: $BEFORE -> $AFTER"
+
+          echo "=== 4. init_db (auto ADD COLUMN cached_hits + indexes) ==="
+          cd $APP_DIR
+          sudo -u $SVC_USER $VENV -c "from core import storage; storage.init_db(); print('init_db OK')"
+
+          echo "=== 5. Normalize legacy timestamps (idempotent) ==="
+          sudo -u $SVC_USER sqlite3 $DB <<'SQL'
+          BEGIN;
+          UPDATE articles SET fetched_at = REPLACE(fetched_at,' ','T') || 'Z'
+            WHERE fetched_at NOT LIKE '%T%' AND fetched_at IS NOT NULL;
+          UPDATE articles SET matched_at = REPLACE(matched_at,' ','T') || 'Z'
+            WHERE matched_at NOT LIKE '%T%' AND matched_at IS NOT NULL;
+          UPDATE search_queue SET next_attempt = REPLACE(next_attempt,' ','T') || 'Z'
+            WHERE next_attempt NOT LIKE '%T%' AND next_attempt IS NOT NULL;
+          UPDATE search_queue SET done_at = REPLACE(done_at,' ','T') || 'Z'
+            WHERE done_at NOT LIKE '%T%' AND done_at IS NOT NULL;
+          UPDATE url_decode_cache SET attempted_at = REPLACE(attempted_at,' ','T') || 'Z'
+            WHERE attempted_at NOT LIKE '%T%' AND attempted_at IS NOT NULL;
+          COMMIT;
+          SELECT 'articles ts_legacy=' || COUNT(*) FROM articles WHERE fetched_at NOT LIKE '%T%' AND fetched_at IS NOT NULL;
+          SELECT 'queue ts_legacy='    || COUNT(*) FROM search_queue WHERE next_attempt NOT LIKE '%T%' AND next_attempt IS NOT NULL;
+          SQL
+
+          echo "=== 6. Smoke import (catch obvious code errors before restarting workers) ==="
+          sudo -u $SVC_USER $VENV -c "from pipeline import match, export; from workers import body_fetcher, runner; from body_fetcher import jina; print('imports OK')"
+
+          if [ "$REMATCH" = "1" ]; then
+            echo "=== 6b. Rematch all (user-requested) ==="
+            sudo -u $SVC_USER $VENV -m pipeline.match --rematch-all
+          fi
+
+          echo "=== 7. Restart workers ==="
+          sudo systemctl start \
+            esg-collector-google.service \
+            esg-collector-baomoi.service \
+            esg-collector-brave.service \
+            esg-collector-body.service
+          sleep 3
+          for s in google baomoi brave body; do
+            state=$(systemctl is-active esg-collector-$s.service)
+            echo "  $s: $state"
+            [ "$state" = "active" ] || { echo "WORKER FAILED TO START: $s"; exit 1; }
+          done
+
+          echo "=== 8. Queue stats ==="
+          sudo -u $SVC_USER sqlite3 $DB "SELECT backend, status, COUNT(*) FROM search_queue GROUP BY backend, status;"
+
+          echo "=== DONE $(date -Iseconds) ==="
+          BASH
+          )
+
+          gcloud compute ssh esg-collector \
+            --zone=us-central1-a \
+            --tunnel-through-iap \
+            --quiet \
+            --command="REMATCH=${REMATCH} bash -s" <<< "$REMOTE_SCRIPT"
