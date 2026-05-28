@@ -73,23 +73,30 @@ jobs:
           cd $APP_DIR
           sudo -u $SVC_USER $VENV -c "from core import storage; storage.init_db(); print('init_db OK')"
 
-          echo "=== 5. Normalize legacy timestamps (idempotent) ==="
-          sudo -u $SVC_USER sqlite3 $DB <<'SQL'
-          BEGIN;
-          UPDATE articles SET fetched_at = REPLACE(fetched_at,' ','T') || 'Z'
-            WHERE fetched_at NOT LIKE '%T%' AND fetched_at IS NOT NULL;
-          UPDATE articles SET matched_at = REPLACE(matched_at,' ','T') || 'Z'
-            WHERE matched_at NOT LIKE '%T%' AND matched_at IS NOT NULL;
-          UPDATE search_queue SET next_attempt = REPLACE(next_attempt,' ','T') || 'Z'
-            WHERE next_attempt NOT LIKE '%T%' AND next_attempt IS NOT NULL;
-          UPDATE search_queue SET done_at = REPLACE(done_at,' ','T') || 'Z'
-            WHERE done_at NOT LIKE '%T%' AND done_at IS NOT NULL;
-          UPDATE url_decode_cache SET attempted_at = REPLACE(attempted_at,' ','T') || 'Z'
-            WHERE attempted_at NOT LIKE '%T%' AND attempted_at IS NOT NULL;
-          COMMIT;
-          SELECT 'articles ts_legacy=' || COUNT(*) FROM articles WHERE fetched_at NOT LIKE '%T%' AND fetched_at IS NOT NULL;
-          SELECT 'queue ts_legacy='    || COUNT(*) FROM search_queue WHERE next_attempt NOT LIKE '%T%' AND next_attempt IS NOT NULL;
-          SQL
+          echo "=== 5. Normalize legacy timestamps (idempotent, via Python sqlite3) ==="
+          # VM has no sqlite3 CLI; use the venv's stdlib sqlite3 module instead.
+          sudo -u $SVC_USER $VENV - <<PYEOF
+          import sqlite3
+          conn = sqlite3.connect("$DB", timeout=30)
+          stmts = [
+              ("articles","fetched_at"), ("articles","matched_at"),
+              ("search_queue","next_attempt"), ("search_queue","done_at"),
+              ("url_decode_cache","attempted_at"),
+          ]
+          total = 0
+          for t,c in stmts:
+              n = conn.execute(
+                  f"UPDATE {t} SET {c}=REPLACE({c},' ','T')||'Z' "
+                  f"WHERE {c} NOT LIKE '%T%' AND {c} IS NOT NULL"
+              ).rowcount
+              print(f"  {t}.{c}: {n} rows normalized")
+              total += n
+          conn.commit()
+          left_a = conn.execute("SELECT COUNT(*) FROM articles WHERE fetched_at NOT LIKE '%T%' AND fetched_at IS NOT NULL").fetchone()[0]
+          left_q = conn.execute("SELECT COUNT(*) FROM search_queue WHERE next_attempt NOT LIKE '%T%' AND next_attempt IS NOT NULL").fetchone()[0]
+          print(f"total normalized={total}  remaining legacy: articles={left_a} queue={left_q}")
+          conn.close()
+          PYEOF
 
           echo "=== 6. Smoke import (catch obvious code errors before restarting workers) ==="
           sudo -u $SVC_USER $VENV -c "from pipeline import match, export; from workers import body_fetcher, runner; from body_fetcher import jina; print('imports OK')"
@@ -113,7 +120,13 @@ jobs:
           done
 
           echo "=== 8. Queue stats ==="
-          sudo -u $SVC_USER sqlite3 $DB "SELECT backend, status, COUNT(*) FROM search_queue GROUP BY backend, status;"
+          sudo -u $SVC_USER $VENV - <<PYEOF
+          import sqlite3
+          conn = sqlite3.connect("$DB", timeout=30)
+          for row in conn.execute("SELECT backend, status, COUNT(*) FROM search_queue GROUP BY backend, status ORDER BY backend, status"):
+              print(f"  {row[0]:12s} {row[1]:12s} {row[2]}")
+          conn.close()
+          PYEOF
 
           echo "=== DONE $(date -Iseconds) ==="
           BASH
