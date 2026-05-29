@@ -1,5 +1,11 @@
 # ESG Collector — Session Handoff
 
+> ⚠️ **LỖI THỜI (2026-05-29):** tài liệu này mô tả thiết kế gốc (24 sub-query
+> keyword OR-group). Hệ thống đã chuyển sang **collect-broad / filter-later**:
+> 1 flow duy nhất = alias từng công ty (L2) + keyword từng-từ (L1), dùng cho cả
+> backfill lẫn daily. Pool keyword OR cũ (`KEYWORD_GROUPS`/`build_queue`) đã bị
+> gỡ. Xem `docs/superpowers/specs/2026-05-29-esg-collector-coverage-redesign-design.md`.
+
 Dùng file này để mở session mới và tiếp tục build app `esg-collector/`.
 
 ## Bối cảnh

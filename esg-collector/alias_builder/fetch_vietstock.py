@@ -105,6 +105,23 @@ _ASCII_STOP = {
     "global", "international", "industries", "industry", "construction",
     "petro", "oil", "gas", "steel", "cement", "real", "estate", "property",
     "vietnam", "viet", "asia", "pacific", "mega", "smart", "green", "city",
+    # more generic sector/business nouns (would otherwise cross-match widely)
+    "maritime", "marine", "logistics", "transport", "transportation",
+    "pharma", "pharmaceutical", "pharmaceuticals", "medical", "health",
+    "mobile", "telecom", "telecommunications", "media", "digital", "online",
+    "center", "centre", "express", "delivery", "retail", "market", "mart",
+    "paper", "plastic", "plastics", "rubber", "textile", "garment", "fiber",
+    "seafood", "aqua", "fishery", "fisheries", "milk", "dairy", "sugar",
+    "coffee", "beverage", "brewery", "mining", "mineral", "minerals",
+    "port", "airport", "airline", "airlines", "aviation", "hotel", "resort",
+    "tourism", "travel", "securities", "insurance", "motor", "auto",
+    "electric", "electronics", "machinery", "chemical", "chemicals",
+    "fertilizer", "packaging", "agriculture", "development", "ceramic",
+    "ceramics", "granite", "petroleum", "refinery", "engineering", "building",
+    # ASCII transliterations of provinces/cities (the diacritic forms are in
+    # _PROVINCES_LOWER; these no-diacritic spellings appear in brand-ish names).
+    "hanoi", "saigon", "danang", "haiphong", "cantho", "hue", "dalat",
+    "nhatrang", "vungtau", "halong", "bienhoa", "thainguyen", "namdinh",
 }
 
 _VOWEL_GROUP_RE = re.compile(r"[aeiouy]+")
@@ -281,10 +298,13 @@ def build_alias(ticker: str) -> dict | None:
     subs_html = _fetch(subs_url)
     if subs_html:
         full_subs = parse_subsidiaries(subs_html)
-        subsidiaries = full_subs + [
-            s for s in short_aliases(full_subs) if s not in full_subs
-        ]
+        shorts = [s for s in short_aliases(full_subs) if s not in full_subs]
+        subsidiaries = full_subs + shorts
         derived_from.append("vietstock_subsidiaries")
+        # Audit line: derived short tokens are the heuristic part most prone to
+        # cross-match false positives — log them so a --all run can be eyeballed.
+        if shorts:
+            log.info("%s short subsidiary aliases: %s", ticker.upper(), shorts)
 
     return {
         "ticker": ticker.upper(),

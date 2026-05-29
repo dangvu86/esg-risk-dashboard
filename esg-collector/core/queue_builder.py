@@ -88,7 +88,7 @@ def build_keyword_tasks(
     inserted: dict[str, int] = {b: 0 for b in backends}
     try:
         for backend in backends:
-            start, end = window if window else (settings.BACKFILL_START, settings.BACKFILL_END)
+            start, end = window if window is not None else (settings.BACKFILL_START, settings.BACKFILL_END)
             for after, before in date_chunks(start, end, settings.CHUNK_MONTHS):
                 for ix, term in enumerate(terms):
                     if storage.enqueue_task(
@@ -168,7 +168,7 @@ def build_alias_tasks(
         "brave":      (settings.BRAVE_WINDOW_START, settings.BRAVE_WINDOW_END),
         "baomoi":     (settings.BAOMOI_WINDOW_START, settings.BAOMOI_WINDOW_END),
     }
-    backend_windows = {b: (window or d) for b, d in _defaults.items()}
+    backend_windows = {b: (window if window is not None else d) for b, d in _defaults.items()}
 
     try:
         for tk in tickers:

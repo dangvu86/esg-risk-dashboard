@@ -67,9 +67,12 @@ install -m 644 "$APP_DIR/deploy/esg-collector-status.service" /etc/systemd/syste
 install -m 644 "$APP_DIR/deploy/esg-collector-status.timer"   /etc/systemd/system/
 systemctl daemon-reload
 
-# 8. Initial DB + queue (idempotent)
+# 8. Initial DB + queue (idempotent). Backfill is the whole flow (per-company
+#    alias + single-term keyword) across all backends — there is no per-backend
+#    subset to pass. Build alias files first (fetch_vietstock --all) for full
+#    coverage; missing-alias tickers are skipped with a warning, not an error.
 sudo -u "$SERVICE_USER" "$INSTALL_DIR/.venv/bin/python" -m core.queue_builder \
-  --backends google_rss baomoi brave \
+  --mode backfill \
   || echo "queue_builder failed — re-run manually after fixing config"
 
 # 9. Enable + start

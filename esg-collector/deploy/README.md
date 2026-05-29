@@ -35,8 +35,11 @@ gcloud compute ssh esg-collector --zone us-central1-a \
 4. tạo venv + pip install
 5. copy 6 systemd unit + 1 timer vào `/etc/systemd/system/`
 6. **tạo `/etc/esg-collector.env`** từ template (cần điền tay 2 key sau lần đầu)
-7. chạy `queue_builder` để fill queue 5y
-8. enable + start 4 worker service + match.timer
+7. chạy `queue_builder --mode backfill` (flow đầy đủ: alias từng công ty +
+   keyword từng-từ, mọi backend) để fill queue lịch sử. **Trước đó** nên chạy
+   `fetch_vietstock --all` để sinh alias cho ~100 mã (mã thiếu alias bị bỏ qua
+   kèm cảnh báo, không lỗi).
+8. enable + start 4 worker service + match.timer + daily.timer
 
 ## 3. Điền API keys
 
@@ -66,7 +69,7 @@ gcloud storage ls gs://esg-scan-data/per_ticker/
 
 ## 5. Tắt VM khi xong backfill
 
-Sau khi backfill 5y xong (2-3 ngày), tắt VM để khỏi tốn quota:
+Sau khi backfill lịch sử xong (2-3 ngày), tắt VM để khỏi tốn quota:
 
 ```bash
 gcloud compute instances stop esg-collector --zone us-central1-a

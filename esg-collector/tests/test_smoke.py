@@ -455,6 +455,10 @@ def test_parse_subsidiaries() -> None:
     assert not fv._is_brand_token("Thanh")   # one vowel group
     assert not fv._is_brand_token("Power")   # generic English business noun
     assert not fv._is_brand_token("Nam")     # too short + one vowel group
+    # precision guards: ASCII city transliterations and generic sector nouns
+    # must NOT become standalone aliases (they'd cross-match everything).
+    for fp in ("Hanoi", "Saigon", "Maritime", "Logistics", "Pharma", "Seafood"):
+        assert not fv._is_brand_token(fp), fp
     print("  parse_subsidiaries OK")
 
 
