@@ -1,8 +1,8 @@
-"""ESG keyword sub-queries.
+"""Single source of truth for ESG search and classification vocabulary.
 
-Each sub-query has <= 4 OR clauses (Google News RSS silently returns 0 items
-when intitle:"..." is combined with more OR clauses, and even keyword-only
-queries get unreliable past ~6 OR). Keep it at 4 to be safe across all backends.
+KEYWORD_GROUPS — legacy OR-group queries for Google News RSS (<=4 OR clauses each).
+ESG_KEYWORDS   — tagged master list (term, tag) used for L1 Brave search and body classification.
+NOISE_KEYWORDS / HIGH_SEVERITY_KEYWORDS — classifier blacklists that suppress or boost article scores.
 """
 
 KEYWORD_GROUPS = {
@@ -175,7 +175,13 @@ HIGH_SEVERITY_KEYWORDS: list[str] = [
 # ---------------------------------------------------------------------------
 
 def search_terms() -> list[str]:
-    """Return deduplicated list of ESG search terms (case-insensitive dedup)."""
+    """Deduplicated ESG search terms (case-insensitive dedup, first occurrence wins).
+
+    Preserves insertion order from ESG_KEYWORDS. A term's positional index here
+    is used as sub_query_ix in the search queue and must stay stable across
+    process restarts — reordering or inserting into ESG_KEYWORDS shifts those
+    indices and changes already-enqueued task_ids. Append new terms at the end.
+    """
     seen, out = set(), []
     for t, _ in ESG_KEYWORDS:
         if t.lower() not in seen:
