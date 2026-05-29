@@ -144,6 +144,7 @@ def test_enqueue_kinds() -> None:
         conn = storage.connect(db)
         assert storage.enqueue_task(conn, backend="baomoi", group_key="kw",
             sub_query_ix=3, query="ô nhiễm", after="2024-06-01", before="2024-06-30")
+        assert "baomoi:kw:3:2024-06-01" in {r["task_id"] for r in conn.execute("SELECT task_id FROM search_queue")}
         assert storage.enqueue_task(conn, backend="baomoi", kind="alias",
             ticker="DBC", group_key="alias", sub_query_ix=0, query="Dabaco",
             after="2020-01-01", before="2026-05-29")
@@ -153,6 +154,15 @@ def test_enqueue_kinds() -> None:
         assert storage.enqueue_task(conn, backend="baomoi", kind="alias",
             ticker="DBC", group_key="alias", sub_query_ix=0, query="Dabaco",
             after="2020-01-01", before="2026-05-29") is False
+        kw_row = conn.execute("SELECT * FROM search_queue WHERE task_id='baomoi:kw:3:2024-06-01'").fetchone()
+        assert kw_row["ticker"] is None and kw_row["kind"] == "keyword"
+        # guard: alias kind without ticker must raise
+        try:
+            storage.enqueue_task(conn, backend="baomoi", kind="alias", ticker=None,
+                group_key="alias", sub_query_ix=9, query="x", after="2020-01-01", before="2020-01-31")
+            raise AssertionError("expected ValueError for alias without ticker")
+        except ValueError:
+            pass
         conn.close()
     print("  enqueue_kinds OK")
 

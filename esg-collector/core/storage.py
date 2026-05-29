@@ -288,6 +288,10 @@ def enqueue_task(
     kind: str = "keyword",
     ticker: str | None = None,
 ) -> bool:
+    if kind not in ("keyword", "alias"):
+        raise ValueError(f"Unknown task kind: {kind!r}")
+    if kind == "alias" and ticker is None:
+        raise ValueError("ticker is required when kind='alias'")
     if kind == "alias":
         task_id = f"{backend}:alias:{ticker}:{sub_query_ix}:{after}"
     else:
