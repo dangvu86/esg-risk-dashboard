@@ -91,6 +91,22 @@ _LEGAL_PREFIX = re.compile(
 # Over-common tokens that would cross-match unrelated companies if kept alone.
 _GENERIC = {"minh phát", "song lập", "gia phước", "thành phúc"}
 
+# Legal-form / generic ASCII tokens that are NOT brand names. A coined brand
+# token (Nasaco, Dacovet, Nutreco, Dabaco) is a no-diacritic word that ISN'T
+# one of these, so _is_brand_token can extract it from a long legal name while
+# these are suppressed to avoid cross-matching unrelated companies.
+_ASCII_STOP = {
+    # legal forms / abbreviations
+    "mtv", "tnhh", "ctcp", "jsc", "co", "ltd", "llc", "corp", "inc", "plc",
+    # ultra-generic English business nouns that appear across many companies
+    "group", "holding", "holdings", "invest", "investment", "trading", "trade",
+    "power", "energy", "food", "foods", "agri", "agro", "tech", "technology",
+    "solution", "solutions", "service", "services", "capital", "finance",
+    "global", "international", "industries", "industry", "construction",
+    "petro", "oil", "gas", "steel", "cement", "real", "estate", "property",
+    "vietnam", "viet", "asia", "pacific", "mega", "smart", "green", "city",
+}
+
 
 def parse_subsidiaries(html: str) -> list[str]:
     """Extract full subsidiary company names from the dedicated page HTML."""
@@ -105,9 +121,46 @@ def parse_subsidiaries(html: str) -> list[str]:
     return out
 
 
+def _is_brand_token(tok: str) -> bool:
+    """True for a coined brand token like 'Nasaco'/'Dacovet'/'Nutreco'.
+
+    Heuristic: Vietnamese business words carry diacritics ('thức ăn chăn nuôi')
+    and provinces are caught by _PROVINCES_LOWER, so a distinctive brand inside
+    a long legal name is the no-diacritic (pure-ASCII), capitalised word that is
+    neither a legal form nor a generic English business noun (_ASCII_STOP).
+
+    The crucial guard is >= 2 vowel groups: a coined brand fuses several
+    syllables into one token (Na-sa-co, Da-ba-co, Da-co-vet → 3 vowel groups),
+    whereas a lone Vietnamese syllable whose diacritic happens to sit on its
+    neighbour ('Thanh' in 'Thanh Hóa', 'Ninh' in 'Quảng Ninh', 'Minh' in 'Minh
+    Phát') has exactly one — those must NOT become standalone aliases.
+    """
+    if not (4 <= len(tok) <= 20):
+        return False
+    if not (tok.isascii() and tok.isalpha() and tok[0].isupper()):
+        return False
+    if tok.lower() in _ASCII_STOP or tok.lower() in _PROVINCES_LOWER:
+        return False
+    if len(re.findall(r"[aeiouy]+", tok.lower())) < 2:
+        return False
+    return True
+
+
 def short_aliases(full_names: list[str]) -> list[str]:
-    """Best-effort short forms: strip legal prefix, keep if short & not generic."""
+    """Best-effort short forms for subsidiary names.
+
+    Two sources, in order: (1) strip the legal prefix and keep the remainder if
+    it's short and not generic ('Công ty TNHH Dabaco Thanh Hóa' → 'Dabaco Thanh
+    Hóa'); (2) pull any interior coined brand token ('...chăn nuôi Nasaco Hà
+    Nam' → 'Nasaco') — the case (1) can't reach because the remainder is too
+    long. Duplicates are skipped, first occurrence wins.
+    """
     out: list[str] = []
+
+    def add(s: str) -> None:
+        if s and s not in out:
+            out.append(s)
+
     for n in full_names:
         short = _LEGAL_PREFIX.sub("", n).strip()
         if (
@@ -116,7 +169,11 @@ def short_aliases(full_names: list[str]) -> list[str]:
             and 1 <= len(short.split()) <= 4
             and short != n
         ):
-            out.append(short)
+            add(short)
+        for raw in n.split():
+            tok = raw.strip(",.()-")
+            if _is_brand_token(tok):
+                add(tok)
     return out
 
 

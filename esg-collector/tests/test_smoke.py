@@ -395,8 +395,20 @@ def test_parse_subsidiaries() -> None:
     # simple short forms derived (legal prefix stripped, short enough)
     assert "Dabaco Thanh Hóa" in shorts, shorts
     assert "Dabaco Quảng Ninh" in shorts, shorts
+    # interior coined brand token extracted from a long legal name
+    assert "Nasaco" in shorts, shorts
     # generic-token guard: "Minh Phát" must NOT become a standalone alias
     assert "Minh Phát" not in shorts, shorts
+    # lone Vietnamese syllables (diacritic on the neighbour) must NOT leak as
+    # brand tokens — these are the false positives the vowel-group guard kills.
+    for fp in ("Thanh", "Ninh", "Minh"):
+        assert fp not in shorts, (fp, shorts)
+    # _is_brand_token unit checks: coined multi-syllable yes, lone syllable /
+    # province / generic English no.
+    assert fv._is_brand_token("Nasaco") and fv._is_brand_token("Dacovet")
+    assert not fv._is_brand_token("Thanh")   # one vowel group
+    assert not fv._is_brand_token("Power")   # generic English business noun
+    assert not fv._is_brand_token("Nam")     # too short + one vowel group
     print("  parse_subsidiaries OK")
 
 
