@@ -245,13 +245,17 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--backends", nargs="+", default=None,
                     help="Subset of: google_rss baomoi brave")
-    ap.add_argument("--mode", choices=("backfill", "daily"), default="backfill",
+    ap.add_argument("--mode", choices=("backfill", "daily", "keyword", "alias"),
+                    default="backfill",
                     help="backfill: use settings.py windows (default). "
-                         "daily: rolling window ending yesterday (VN time).")
+                         "daily: rolling window ending yesterday (VN time). "
+                         "keyword: enqueue L1 single-term keyword tasks (google_rss/brave). "
+                         "alias: enqueue L2 per-company alias tasks (baomoi/google_rss/brave; "
+                         "--backends ignored).")
     ap.add_argument("--days-back", type=int, default=3,
                     help="daily mode: how many trailing days to enqueue (default 3). "
                          "Wider window catches late-indexed Google News articles + "
-                         "the 7h UTC↔VN offset. Dedup is idempotent so re-enqueueing "
+                         "the 7h UTC<->VN offset. Dedup is idempotent so re-enqueueing "
                          "the same day is free.")
     ap.add_argument("--since", help="Override window start (YYYY-MM-DD)")
     ap.add_argument("--until", help="Override window end (YYYY-MM-DD)")
@@ -264,7 +268,12 @@ def main() -> None:
         end = today_vn - _td(days=1)
         start = end - _td(days=max(0, args.days_back - 1))
         window = (start.isoformat(), end.isoformat())
-    counts = build_queue(args.backends, window=window)
+    if args.mode == "keyword":
+        counts = build_keyword_tasks(args.backends, window=window)
+    elif args.mode == "alias":
+        counts = build_alias_tasks(window=window)
+    else:  # backfill or daily
+        counts = build_queue(args.backends, window=window)
     total = sum(counts.values())
     print(f"Enqueued {total} new tasks:")
     for b, n in counts.items():
