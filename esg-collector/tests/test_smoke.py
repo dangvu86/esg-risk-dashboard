@@ -370,6 +370,24 @@ def test_runner_splits_near_cap() -> None:
     print("  runner_splits_near_cap OK")
 
 
+def test_parse_subsidiaries() -> None:
+    from alias_builder import fetch_vietstock as fv
+    from pathlib import Path
+    html = Path("tests/fixtures/vietstock_DBC_subs.html").read_text(encoding="utf-8")
+    subs = fv.parse_subsidiaries(html)
+    # full names captured reliably
+    assert any("Nasaco" in s for s in subs), subs
+    assert any("Dabaco Thanh Hóa" in s for s in subs), subs
+    assert any("Dabaco Quảng Ninh" in s for s in subs), subs
+    shorts = fv.short_aliases(subs)
+    # simple short forms derived (legal prefix stripped, short enough)
+    assert "Dabaco Thanh Hóa" in shorts, shorts
+    assert "Dabaco Quảng Ninh" in shorts, shorts
+    # generic-token guard: "Minh Phát" must NOT become a standalone alias
+    assert "Minh Phát" not in shorts, shorts
+    print("  parse_subsidiaries OK")
+
+
 def main() -> None:
     if sys.platform == "win32":
         # ensure stdout can print Vietnamese
@@ -393,6 +411,7 @@ def main() -> None:
     test_worker_stamps_ticker_hint()
     test_weekly_subchunks()
     test_runner_splits_near_cap()
+    test_parse_subsidiaries()
     print("ALL OK")
 
 

@@ -70,6 +70,54 @@ def _fetch(url: str, timeout: int = 30) -> str | None:
 _PROVINCES_LOWER = {p.lower() for p in PROVINCES}
 
 
+# --- Subsidiary extraction (Vietstock dedicated, unblurred page) --------------
+# Each visible row reads "<company name> <charter-capital> ( Tr. VND ) <own%>".
+# Capture the NAME up to the capital number that precedes the "( Tr. VND )" marker.
+# The body excludes the legal-form keywords themselves so the match starts at the
+# LAST entity anchor (otherwise a header like "Tên công ty Vốn điều lệ …" bleeds
+# into the first real row, since there's no paren between header and first number).
+_SUB_RE = re.compile(
+    r'((?:CTCP|Công ty|Tổng [Cc]ông ty|Tập đoàn)'
+    r'(?:(?!CTCP|Công ty|Tổng [Cc]ông ty|Tập đoàn)[^()]){3,80}?)'
+    r'\s+[\d,.]+\s*\(\s*Tr\. VND',
+    re.I,
+)
+_LEGAL_PREFIX = re.compile(
+    r'^(CTCP|Công ty (?:TNHH|cổ phần|CP)(?:\s+MTV)?|Tổng Công ty|Tập đoàn)\s+',
+    re.I,
+)
+# Over-common tokens that would cross-match unrelated companies if kept alone.
+_GENERIC = {"minh phát", "song lập", "gia phước", "thành phúc"}
+
+
+def parse_subsidiaries(html: str) -> list[str]:
+    """Extract full subsidiary company names from the dedicated page HTML."""
+    text = BeautifulSoup(html, "html.parser").get_text(" ", strip=True)
+    seen: set[str] = set()
+    out: list[str] = []
+    for m in _SUB_RE.finditer(text):
+        name = re.sub(r"\s+", " ", m.group(1)).strip(" -")
+        if name and name.lower() not in seen:
+            seen.add(name.lower())
+            out.append(name)
+    return out
+
+
+def short_aliases(full_names: list[str]) -> list[str]:
+    """Best-effort short forms: strip legal prefix, keep if short & not generic."""
+    out: list[str] = []
+    for n in full_names:
+        short = _LEGAL_PREFIX.sub("", n).strip()
+        if (
+            short
+            and short.lower() not in _GENERIC
+            and 1 <= len(short.split()) <= 4
+            and short != n
+        ):
+            out.append(short)
+    return out
+
+
 def _split_headline(rest: str) -> tuple[str | None, str | None]:
     """Parse '{full_name} - {short_brand} - Hồ sơ doanh nghiệp | ...'.
 
@@ -165,13 +213,24 @@ def build_alias(ticker: str) -> dict | None:
                 add(full_name[len(prefix):].strip())
                 break
 
+    derived_from = ["vietstock_profile_minimal"]
+    subsidiaries: list[str] = []
+    subs_url = f"https://finance.vietstock.vn/{ticker.upper()}/cong-ty-con-lien-doanh-lien-ket.htm"
+    subs_html = _fetch(subs_url)
+    if subs_html:
+        full_subs = parse_subsidiaries(subs_html)
+        subsidiaries = full_subs + [
+            s for s in short_aliases(full_subs) if s not in full_subs
+        ]
+        derived_from.append("vietstock_subsidiaries")
+
     return {
         "ticker": ticker.upper(),
         "company_name": full_name or "",
         "headquarters": addr or "",
-        "derived_from": ["vietstock_profile_minimal"],
+        "derived_from": derived_from,
         "names": names,
-        "subsidiaries": [],
+        "subsidiaries": subsidiaries,
         "projects": [],
         "locations": locations,
     }
