@@ -154,6 +154,7 @@ def run(
                     "group_key":      art["group_key"],
                     "matched_alias":  hit.alias,
                     "location":       hit.location,
+                    "match_source":   hit.location,
                     "snippet":        _snippet(art_d),
                     "type":           verdict.esg_type,
                     "severity":       verdict.severity,

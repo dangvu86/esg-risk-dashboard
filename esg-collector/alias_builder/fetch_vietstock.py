@@ -1,13 +1,15 @@
 """Bootstrap a minimal `config/aliases/<TICKER>.json` from Vietstock.
 
 Vietstock's `ho-so-doanh-nghiep.htm` exposes the full corporate name and HQ
-address in the static HTML. Subsidiaries are AJAX-loaded and aren't reliably
-scrapeable here; the 3 hand-curated alias files (DBC/KDH/DGC) include them.
+address in the static HTML. Subsidiaries come from the dedicated
+`cong-ty-con-lien-doanh-lien-ket.htm` page (parsed by `parse_subsidiaries`).
 
 This builder produces a baseline that's accurate enough for keyword matching:
   - `names`        : full corporate name + short brand + ticker
   - `locations`    : province / city parsed from HQ address (weak match)
-  - `subsidiaries` / `projects` : empty (caller can enrich manually)
+  - `subsidiaries` : full names from the dedicated cong-ty-con page, plus
+                     best-effort short tokens derived from them
+  - `projects`     : empty (caller can enrich manually)
 
 CLI:
   python -m alias_builder.fetch_vietstock --ticker DBC

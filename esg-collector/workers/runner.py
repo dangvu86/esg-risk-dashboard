@@ -66,8 +66,9 @@ def _load_backend(name: str):
     return importlib.import_module(BACKEND_MODULES[name])
 
 
-def _process_task(conn, backend_mod, task) -> int:
+def _process_task(conn, backend_mod, task) -> tuple[int, int]:
     items = backend_mod.fetch(task["query"], task["after"], task["before"])
+    fetched = len(items)
     inserted = 0
     is_google = backend_mod.name == "google_rss"
     # Stamp advisory provenance for alias tasks so downstream pipeline can use
@@ -107,7 +108,11 @@ def _process_task(conn, backend_mod, task) -> int:
         }
         if storage.insert_article(conn, rec):
             inserted += 1
-    return inserted
+    # Return BOTH counts: inserted drives coverage/items_found, while fetched
+    # (pre-dedup) drives the near-cap split decision — on augment/re-runs the
+    # articles already exist so inserted is near 0, but fetched still reveals a
+    # capped month that must be split into weeks.
+    return inserted, fetched
 
 
 # Google News RSS caps each query at ~100 results. An alias×month task that
@@ -175,10 +180,12 @@ def run(backend_name: str) -> None:
                  task["task_id"], task["group_key"], task["after"], task["before"], task["query"])
 
         try:
-            n_items = _process_task(conn, backend_mod, task)
-            storage.mark_task_done(conn, task["task_id"], n_items)
-            _maybe_split(conn, backend_mod, task, n_items)
-            log.info("  → %d items inserted/found", n_items)
+            n_inserted, n_fetched = _process_task(conn, backend_mod, task)
+            storage.mark_task_done(conn, task["task_id"], n_inserted)
+            # Split on the FETCHED (pre-dedup) count so re-runs whose articles
+            # are already in the pool still split a capped month into weeks.
+            _maybe_split(conn, backend_mod, task, n_fetched)
+            log.info("  → inserted=%d fetched=%d", n_inserted, n_fetched)
         except base.RateLimitError as e:
             attempts = task["attempts"] + 1
             wait = backoff_sched[min(attempts - 1, len(backoff_sched) - 1)]

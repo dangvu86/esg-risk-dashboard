@@ -34,7 +34,7 @@ def _hits(text: str, terms) -> bool:
 def _classify_type(text: str) -> str:
     score = {"E": 0, "S": 0, "G": 0}
     for term, typ in _ESG_TERMS_LC:
-        if term in text:           # text is already lowercased; see _LC terms below
+        if term in text:           # text & terms are pre-lowercased (_LC module constants above)
             score[typ] += 1
     # Strict majority first
     if score["E"] > score["G"] and score["E"] > score["S"]:
