@@ -239,7 +239,8 @@ def mark_match(conn: sqlite3.Connection, article_id: str, status: str) -> None:
     )
 
 
-def mark_esg(conn, article_id, status, esg_type=None, severity=None) -> None:
+def mark_esg(conn: sqlite3.Connection, article_id: str, status: str,
+             esg_type: str | None = None, severity: str | None = None) -> None:
     conn.execute(
         "UPDATE articles SET esg_status=?, esg_type=?, severity=? WHERE article_id=?",
         (status, esg_type, severity, article_id),

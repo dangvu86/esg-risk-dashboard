@@ -96,6 +96,7 @@ def run(
     alias_matcher.reload()
     log.info("loaded aliases for %d tickers", len(alias_matcher.loaded_tickers()))
 
+    # connect(None) would open a DB literally named "None"; guard the default.
     conn = storage.connect(db_path) if db_path is not None else storage.connect()
     if rematch_all:
         n = conn.execute(
