@@ -161,7 +161,9 @@ def build_alias_tasks(
     Args:
         tickers: List of ticker symbols. Defaults to all tickers in COMPANIES_CSV.
         window:  (start, end) date strings to override the Google/Brave tail
-                 window. Leave None to use the standard 2020–2021 tail.
+                 window. Leave None to use the standard 2020–2021 tail for
+                 Google and settings.BRAVE_WINDOW_* for Brave. BaoMoi always
+                 uses its full settings window regardless of this parameter.
         db_path: Path to the SQLite database. Pass a temp path for hermetic tests.
 
     Returns:
@@ -180,12 +182,12 @@ def build_alias_tasks(
     conn = storage.connect(db_path) if db_path else storage.connect()
     inserted: dict[str, int] = {"baomoi": 0, "google_rss": 0, "brave": 0}
 
-    # Google/Brave tail window: default is 2020–2021 (pre-BaoMoi gap).
-    # The caller may pass `window` to override (e.g. for daily incremental runs
-    # on the tail). BaoMoi window is always taken from settings.
-    g_start, g_end = window if window else ("2020-01-01", "2021-12-31")
-    b_start = settings.BRAVE_WINDOW_START
-    b_end = settings.BRAVE_WINDOW_END
+    # Google/Brave tail window: default is 2020–2021 (pre-BaoMoi gap) for Google
+    # and settings.BRAVE_WINDOW_* for Brave. The caller may pass `window` to
+    # override BOTH (e.g. for daily incremental runs on the tail).
+    # BaoMoi window is always taken from settings regardless of `window`.
+    g_tail = window if window else ("2020-01-01", "2021-12-31")
+    bv_tail = window if window else (settings.BRAVE_WINDOW_START, settings.BRAVE_WINDOW_END)
 
     try:
         for tk in tickers:
@@ -209,8 +211,8 @@ def build_alias_tasks(
 
             # Google RSS + Brave: NAMES ONLY, monthly chunks over the tail.
             for backend, (start, end) in (
-                ("google_rss", (g_start, g_end)),
-                ("brave",      (b_start, b_end)),
+                ("google_rss", g_tail),
+                ("brave",      bv_tail),
             ):
                 for after, before in date_chunks(start, end, settings.CHUNK_MONTHS):
                     for ix, alias in enumerate(names):
