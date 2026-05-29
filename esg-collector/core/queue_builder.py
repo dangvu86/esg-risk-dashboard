@@ -126,6 +126,112 @@ def build_keyword_tasks(
     return inserted
 
 
+def _load_alias_lists(ticker: str) -> tuple[list[str], list[str]]:
+    """Load names and subsidiaries from config/aliases/<TICKER>.json.
+
+    Returns (names, subsidiaries). Either list may be empty if the key is
+    absent in the JSON file.
+    """
+    import json
+    p = settings.ALIASES_DIR / f"{ticker}.json"
+    data = json.loads(p.read_text(encoding="utf-8"))
+    return data.get("names") or [], data.get("subsidiaries") or []
+
+
+def build_alias_tasks(
+    tickers: list[str] | None = None,
+    *,
+    window: tuple[str, str] | None = None,
+    db_path=None,
+) -> dict[str, int]:
+    """Enqueue L2 per-company alias tasks. Return inserted count per backend.
+
+    Routing:
+    - BaoMoi: names + subsidiaries, one deep pass each (full BaoMoi window as
+      a single task — BaoMoi ignores date params and paginates client-side, so
+      chunking is wasteful).
+    - Google RSS / Brave: NAMES ONLY, monthly chunks. Default tail is
+      2020-01-01 to 2021-12-31 (the pre-BaoMoi coverage gap). If `window` is
+      provided it overrides the Google/Brave start+end; BaoMoi always uses its
+      full settings window regardless.
+
+    Subsidiaries are searched ONLY on BaoMoi; they remain alias-match targets
+    downstream (match.py) regardless of which backend found the article.
+
+    Args:
+        tickers: List of ticker symbols. Defaults to all tickers in COMPANIES_CSV.
+        window:  (start, end) date strings to override the Google/Brave tail
+                 window. Leave None to use the standard 2020–2021 tail.
+        db_path: Path to the SQLite database. Pass a temp path for hermetic tests.
+
+    Returns:
+        Dict mapping backend name to the number of newly inserted tasks.
+    """
+    import csv
+    if tickers is None:
+        with open(settings.COMPANIES_CSV, encoding="utf-8-sig") as f:
+            tickers = [
+                (r.get("Mã CK") or r.get("Ma CK") or "").strip()
+                for r in csv.DictReader(f)
+            ]
+            tickers = [t for t in tickers if t]
+
+    storage.init_db(db_path) if db_path else storage.init_db()
+    conn = storage.connect(db_path) if db_path else storage.connect()
+    inserted: dict[str, int] = {"baomoi": 0, "google_rss": 0, "brave": 0}
+
+    # Google/Brave tail window: default is 2020–2021 (pre-BaoMoi gap).
+    # The caller may pass `window` to override (e.g. for daily incremental runs
+    # on the tail). BaoMoi window is always taken from settings.
+    g_start, g_end = window if window else ("2020-01-01", "2021-12-31")
+    b_start = settings.BRAVE_WINDOW_START
+    b_end = settings.BRAVE_WINDOW_END
+
+    try:
+        for tk in tickers:
+            names, subs = _load_alias_lists(tk)
+
+            # BaoMoi: names + subsidiaries, one task per alias spanning the
+            # whole BaoMoi window (no chunking — BaoMoi paginates client-side).
+            for ix, alias in enumerate(names + subs):
+                if storage.enqueue_task(
+                    conn,
+                    backend="baomoi",
+                    kind="alias",
+                    ticker=tk,
+                    group_key="alias",
+                    sub_query_ix=ix,
+                    query=alias,
+                    after=settings.BAOMOI_WINDOW_START,
+                    before=settings.BAOMOI_WINDOW_END,
+                ):
+                    inserted["baomoi"] += 1
+
+            # Google RSS + Brave: NAMES ONLY, monthly chunks over the tail.
+            for backend, (start, end) in (
+                ("google_rss", (g_start, g_end)),
+                ("brave",      (b_start, b_end)),
+            ):
+                for after, before in date_chunks(start, end, settings.CHUNK_MONTHS):
+                    for ix, alias in enumerate(names):
+                        if storage.enqueue_task(
+                            conn,
+                            backend=backend,
+                            kind="alias",
+                            ticker=tk,
+                            group_key="alias",
+                            sub_query_ix=ix,
+                            query=alias,
+                            after=after,
+                            before=before,
+                        ):
+                            inserted[backend] += 1
+    finally:
+        conn.close()
+
+    return inserted
+
+
 def main() -> None:
     from datetime import datetime as _dt, timedelta as _td
     try:

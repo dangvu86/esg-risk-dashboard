@@ -286,6 +286,34 @@ def test_l1_keyword_tasks() -> None:
     print("  l1_keyword_tasks OK")
 
 
+def test_l2_alias_tasks() -> None:
+    from core import queue_builder as qb
+    from core.queue_builder import _load_alias_lists
+    from config import settings
+    import tempfile
+    from pathlib import Path
+    names, subs = _load_alias_lists("DBC")   # reads config/aliases/DBC.json (must exist)
+    assert names and subs, "DBC.json must have names + subsidiaries"
+    a_sub = subs[0]
+    with tempfile.TemporaryDirectory() as td:
+        db = Path(td) / "l2.db"
+        n = qb.build_alias_tasks(tickers=["DBC"], db_path=db)
+        assert n["baomoi"] > 0 and n["google_rss"] > 0 and n["brave"] > 0, n
+        from core import storage
+        conn = storage.connect(db)
+        baomoi_q = {r["query"] for r in conn.execute(
+            "SELECT query FROM search_queue WHERE backend='baomoi' AND kind='alias'")}
+        google_q = {r["query"] for r in conn.execute(
+            "SELECT query FROM search_queue WHERE backend='google_rss' AND kind='alias'")}
+        assert a_sub in baomoi_q, "subsidiary not searched on baomoi"
+        assert a_sub not in google_q, "subsidiary must NOT be searched on google"
+        afters = {r["after"] for r in conn.execute(
+            "SELECT after FROM search_queue WHERE backend='baomoi' AND kind='alias'")}
+        assert afters == {settings.BAOMOI_WINDOW_START}, afters
+        conn.close()
+    print("  l2_alias_tasks OK")
+
+
 def main() -> None:
     if sys.platform == "win32":
         # ensure stdout can print Vietnamese
@@ -305,6 +333,7 @@ def main() -> None:
     test_esg_filter()
     test_match_esg_integration()
     test_l1_keyword_tasks()
+    test_l2_alias_tasks()
     print("ALL OK")
 
 
