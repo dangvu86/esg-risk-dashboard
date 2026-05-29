@@ -194,6 +194,19 @@ def test_window_reaches_today() -> None:
     print("  window_reaches_today OK")
 
 
+def test_keyword_config() -> None:
+    from config import keywords as kw
+    terms = kw.search_terms()
+    assert len(terms) == len(set(terms)), "search_terms not deduped"
+    assert all(isinstance(t, str) and t for t in terms)
+    esg = kw.esg_terms()                      # [(term, type)]
+    assert all(t in ("E", "S", "G") for _, t in esg)
+    assert "ô nhiễm" in {t for t, _ in esg}
+    assert "cổ tức" in set(kw.noise_terms())
+    assert any("khởi tố" == t for t in kw.high_severity_terms())
+    print("  keyword_config OK")
+
+
 def main() -> None:
     if sys.platform == "win32":
         # ensure stdout can print Vietnamese
@@ -209,6 +222,7 @@ def main() -> None:
     test_enqueue_kinds()
     test_queue_builder_counts()
     test_window_reaches_today()
+    test_keyword_config()
     print("ALL OK")
 
 
