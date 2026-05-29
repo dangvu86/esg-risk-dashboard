@@ -116,6 +116,7 @@ def init_db(db_path: Path | str = DB_PATH) -> None:
             conn.execute("ALTER TABLE articles ADD COLUMN title_hash TEXT")
         if "cached_hits" not in cols:
             conn.execute("ALTER TABLE articles ADD COLUMN cached_hits TEXT")
+        # cols captured above before any ALTER; safe because no column appears in both the if-blocks and this loop
         # Idempotent column-adds: articles ESG verdict columns.
         for col, ddl in [
             ("ticker_hint", "ALTER TABLE articles ADD COLUMN ticker_hint TEXT"),
@@ -133,8 +134,8 @@ def init_db(db_path: Path | str = DB_PATH) -> None:
         ]:
             if col not in qcols:
                 conn.execute(ddl)
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_articles_esg ON articles(esg_status)")
         # Indexes created here (not in SCHEMA above) so legacy DBs survive init.
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_articles_esg ON articles(esg_status)")
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_articles_title_hash "
             "ON articles(title_hash, published_at)"

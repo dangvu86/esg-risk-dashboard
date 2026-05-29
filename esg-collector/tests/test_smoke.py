@@ -119,7 +119,7 @@ def test_storage_roundtrip() -> None:
 
 def test_schema_migrations() -> None:
     from core import storage
-    import tempfile, sqlite3
+    import tempfile
     from pathlib import Path
     with tempfile.TemporaryDirectory() as td:
         db = Path(td) / "m.db"
