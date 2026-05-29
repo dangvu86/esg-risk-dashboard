@@ -50,7 +50,11 @@ CREATE TABLE IF NOT EXISTS articles (
   fetched_at    TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   matched_at    TEXT,
   match_status  TEXT DEFAULT 'pending',
-  cached_hits   TEXT
+  cached_hits   TEXT,
+  ticker_hint   TEXT,
+  esg_status    TEXT DEFAULT 'pending',
+  esg_type      TEXT,
+  severity      TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_articles_match      ON articles(match_status, body_status);
 CREATE INDEX IF NOT EXISTS idx_articles_date       ON articles(published_at);
@@ -71,7 +75,9 @@ CREATE TABLE IF NOT EXISTS search_queue (
   next_attempt TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
   last_error   TEXT,
   items_found  INTEGER DEFAULT 0,
-  done_at      TEXT
+  done_at      TEXT,
+  kind         TEXT DEFAULT 'keyword',
+  ticker       TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_queue_next ON search_queue(backend, status, next_attempt);
 
@@ -110,6 +116,24 @@ def init_db(db_path: Path | str = DB_PATH) -> None:
             conn.execute("ALTER TABLE articles ADD COLUMN title_hash TEXT")
         if "cached_hits" not in cols:
             conn.execute("ALTER TABLE articles ADD COLUMN cached_hits TEXT")
+        # Idempotent column-adds: articles ESG verdict columns.
+        for col, ddl in [
+            ("ticker_hint", "ALTER TABLE articles ADD COLUMN ticker_hint TEXT"),
+            ("esg_status",  "ALTER TABLE articles ADD COLUMN esg_status TEXT DEFAULT 'pending'"),
+            ("esg_type",    "ALTER TABLE articles ADD COLUMN esg_type TEXT"),
+            ("severity",    "ALTER TABLE articles ADD COLUMN severity TEXT"),
+        ]:
+            if col not in cols:
+                conn.execute(ddl)
+        # Idempotent column-adds: search_queue task-kind columns.
+        qcols = {r["name"] for r in conn.execute("PRAGMA table_info(search_queue)")}
+        for col, ddl in [
+            ("kind",   "ALTER TABLE search_queue ADD COLUMN kind TEXT DEFAULT 'keyword'"),
+            ("ticker", "ALTER TABLE search_queue ADD COLUMN ticker TEXT"),
+        ]:
+            if col not in qcols:
+                conn.execute(ddl)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_articles_esg ON articles(esg_status)")
         # Indexes created here (not in SCHEMA above) so legacy DBs survive init.
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_articles_title_hash "
@@ -129,6 +153,7 @@ _ARTICLE_COLS = (
     "article_id", "url_canonical", "url_original", "domain", "title", "title_hash",
     "description", "sapo", "body", "body_status", "published_at",
     "source", "backend", "group_key", "sub_query_ix", "cached_hits",
+    "ticker_hint",
 )
 
 _MERGE_COLS = ("description", "sapo", "body", "source")

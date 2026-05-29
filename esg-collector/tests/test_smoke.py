@@ -117,6 +117,23 @@ def test_storage_roundtrip() -> None:
     print("  storage OK")
 
 
+def test_schema_migrations() -> None:
+    from core import storage
+    import tempfile, sqlite3
+    from pathlib import Path
+    with tempfile.TemporaryDirectory() as td:
+        db = Path(td) / "m.db"
+        storage.init_db(db)
+        storage.init_db(db)  # idempotent — must not raise
+        conn = storage.connect(db)
+        qcols = {r["name"] for r in conn.execute("PRAGMA table_info(search_queue)")}
+        acols = {r["name"] for r in conn.execute("PRAGMA table_info(articles)")}
+        assert {"kind", "ticker"} <= qcols, qcols
+        assert {"ticker_hint", "esg_status", "esg_type", "severity"} <= acols, acols
+        conn.close()
+    print("  schema_migrations OK")
+
+
 def test_queue_builder_counts() -> None:
     from config.keywords import count_subqueries
     from core import queue_builder
@@ -141,6 +158,7 @@ def main() -> None:
     test_canonicalize()
     test_alias_matcher()
     test_storage_roundtrip()
+    test_schema_migrations()
     test_queue_builder_counts()
     print("ALL OK")
 
