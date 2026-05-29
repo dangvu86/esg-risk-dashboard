@@ -160,14 +160,15 @@ def build_alias_tasks(
     conn = storage.connect(db_path)
     inserted: dict[str, int] = {"baomoi": 0, "google_rss": 0, "brave": 0}
 
-    # Google/Brave tail window: default is 2020–2021 (pre-BaoMoi gap) for Google
-    # and settings.BRAVE_WINDOW_* for Brave. When `window` is passed (daily
-    # incremental) it overrides EVERY backend including BaoMoi — same flow,
-    # just a recent window. When `window` is None (backfill) each backend uses
-    # its own historical settings window.
-    g_tail = window if window else ("2020-01-01", "2021-12-31")
-    bv_tail = window if window else (settings.BRAVE_WINDOW_START, settings.BRAVE_WINDOW_END)
-    bm_window = window if window else (settings.BAOMOI_WINDOW_START, settings.BAOMOI_WINDOW_END)
+    # Per-backend historical default window (backfill). When `window` is passed
+    # (daily incremental) it overrides EVERY backend — same flow, just a recent
+    # window. Google's historical default is the 2020–2021 pre-BaoMoi gap.
+    _defaults = {
+        "google_rss": ("2020-01-01", "2021-12-31"),
+        "brave":      (settings.BRAVE_WINDOW_START, settings.BRAVE_WINDOW_END),
+        "baomoi":     (settings.BAOMOI_WINDOW_START, settings.BAOMOI_WINDOW_END),
+    }
+    backend_windows = {b: (window or d) for b, d in _defaults.items()}
 
     try:
         for tk in tickers:
@@ -193,16 +194,14 @@ def build_alias_tasks(
                     group_key="alias",
                     sub_query_ix=ix,
                     query=alias,
-                    after=bm_window[0],
-                    before=bm_window[1],
+                    after=backend_windows["baomoi"][0],
+                    before=backend_windows["baomoi"][1],
                 ):
                     inserted["baomoi"] += 1
 
             # Google RSS + Brave: NAMES ONLY, monthly chunks over the tail.
-            for backend, (start, end) in (
-                ("google_rss", g_tail),
-                ("brave",      bv_tail),
-            ):
+            for backend in ("google_rss", "brave"):
+                start, end = backend_windows[backend]
                 for after, before in date_chunks(start, end, settings.CHUNK_MONTHS):
                     for ix, alias in enumerate(names):
                         if storage.enqueue_task(

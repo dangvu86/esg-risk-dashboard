@@ -107,6 +107,8 @@ _ASCII_STOP = {
     "vietnam", "viet", "asia", "pacific", "mega", "smart", "green", "city",
 }
 
+_VOWEL_GROUP_RE = re.compile(r"[aeiouy]+")
+
 
 def parse_subsidiaries(html: str) -> list[str]:
     """Extract full subsidiary company names from the dedicated page HTML."""
@@ -139,9 +141,10 @@ def _is_brand_token(tok: str) -> bool:
         return False
     if not (tok.isascii() and tok.isalpha() and tok[0].isupper()):
         return False
-    if tok.lower() in _ASCII_STOP or tok.lower() in _PROVINCES_LOWER:
+    low = tok.lower()
+    if low in _ASCII_STOP or low in _PROVINCES_LOWER:
         return False
-    if len(re.findall(r"[aeiouy]+", tok.lower())) < 2:
+    if len(_VOWEL_GROUP_RE.findall(low)) < 2:
         return False
     return True
 
