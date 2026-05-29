@@ -216,10 +216,13 @@ def test_esg_filter() -> None:
                              "sapo": "", "body": ""})
     assert not v.keep and v.reason == "noise", v
     v = esg_filter.classify({"title": "Phạt công ty X 2 tỷ đồng vì xả thải", "sapo": "", "body": ""})
-    assert v.keep and v.severity == "Cao", v
+    assert v.keep and v.severity == "Cao" and v.esg_type == "E", v
     v = esg_filter.classify({"title": "Công ty X tổ chức đại hội cổ đông thường niên",
                              "sapo": "", "body": ""})
     assert not v.keep and v.reason == "non_esg", v
+    v = esg_filter.classify({"title": "Thông báo của công ty",
+                             "sapo": "", "body": "Nhà máy bị xử phạt vì xả thải ra môi trường"})
+    assert v.keep and v.esg_type == "E", v
     print("  esg_filter OK")
 
 
