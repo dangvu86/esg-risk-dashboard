@@ -1,0 +1,42 @@
+{
+  "ticker": "HPA",
+  "company_name": "CTCP Phát triển Nông nghiệp Hòa Phát",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "HPA",
+    "CTCP Phát triển Nông nghiệp Hòa Phát",
+    "Nông nghiệp Hòa Phát",
+    "Phát triển Nông nghiệp Hòa Phát"
+  ],
+  "subsidiaries": [
+    "Công ty TNHH Chăn nuôi Đồng Phát",
+    "Công ty TNHH Chăn nuôi Hòa Phát Quảng Bình",
+    "Công ty TNHH Chăn nuôi Hòa Phước",
+    "Công ty TNHH Chăn nuôi Lạc Thủy",
+    "Công ty TNHH Chăn nuôi Sơn Động",
+    "Công ty TNHH Chăn nuôi Thái Thụy",
+    "Công ty TNHH Chăn nuôi Việt Hùng",
+    "Công ty TNHH MTV Chăn nuôi Hòa Yên",
+    "Công ty TNHH MTV Gia cầm Hòa Phát Đồng Nai",
+    "Công ty TNHH MTV Gia cầm Hòa Phát Phú Thọ",
+    "Công ty TNHH Thức ăn Chăn nuôi Hòa Phát Đồng Nai",
+    "Công ty TNHH Thức ăn Chăn nuôi Hòa Phát Hưng Yên",
+    "Công ty TNHH Thức ăn Chăn nuôi Hòa Phát Phú Thọ",
+    "Công ty TNHH Thương mại Hòa Phát",
+    "CTCP Phát triển Chăn nuôi Hòa Phát",
+    "Chăn nuôi Đồng Phát",
+    "Chăn nuôi Hòa Phước",
+    "Chăn nuôi Lạc Thủy",
+    "Chăn nuôi Sơn Động",
+    "Chăn nuôi Thái Thụy",
+    "Chăn nuôi Việt Hùng",
+    "Chăn nuôi Hòa Yên",
+    "Thương mại Hòa Phát"
+  ],
+  "projects": [],
+  "locations": []
+}

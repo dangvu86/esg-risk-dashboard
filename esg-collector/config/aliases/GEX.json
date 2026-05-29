@@ -1,0 +1,18 @@
+{
+  "ticker": "GEX",
+  "company_name": "CTCP Tập đoàn GELEX",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "GEX",
+    "CTCP Tập đoàn GELEX",
+    "Tập đoàn GELEX",
+    "GELEX"
+  ],
+  "subsidiaries": [],
+  "projects": [],
+  "locations": []
+}

@@ -1,0 +1,18 @@
+{
+  "ticker": "PVD",
+  "company_name": "Tổng Công ty cổ phần Khoan và Dịch vụ khoan Dầu khí",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "PVD",
+    "Tổng Công ty cổ phần Khoan và Dịch vụ khoan Dầu khí",
+    "PV DRILLING",
+    "cổ phần Khoan và Dịch vụ khoan Dầu khí"
+  ],
+  "subsidiaries": [],
+  "projects": [],
+  "locations": []
+}

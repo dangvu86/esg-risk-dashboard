@@ -1,0 +1,18 @@
+{
+  "ticker": "ANV",
+  "company_name": "CTCP Nam Việt",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "ANV",
+    "CTCP Nam Việt",
+    "NAVICO",
+    "Nam Việt"
+  ],
+  "subsidiaries": [],
+  "projects": [],
+  "locations": []
+}

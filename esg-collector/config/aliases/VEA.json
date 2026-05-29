@@ -1,0 +1,32 @@
+{
+  "ticker": "VEA",
+  "company_name": "Tổng Công ty Máy động lực và Máy nông nghiệp Việt Nam – CTCP",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "VEA",
+    "Tổng Công ty Máy động lực và Máy nông nghiệp Việt Nam – CTCP",
+    "VEAM",
+    "Máy động lực và Máy nông nghiệp Việt Nam – CTCP"
+  ],
+  "subsidiaries": [
+    "Công ty TNHH MTV Cơ khí Trần Hưng Đạo",
+    "Công ty TNHH MTV Diesel Sông Công",
+    "Công ty TNHH MTV Động cơ và Máy nông nghiệp Miền Nam",
+    "Công ty TNHH MTV Máy kéo và Máy nông nghiệp",
+    "Công ty Veam Korea",
+    "CTCP Cơ khí chính xác số 1",
+    "CTCP Cơ khí Cổ Loa",
+    "CTCP Cơ khí Phổ Yên",
+    "CTCP Phụ tùng máy số 1",
+    "CTCP Vận tải và Thương mại VEAM",
+    "Diesel Sông Công",
+    "Cơ khí Cổ Loa",
+    "Cơ khí Phổ Yên"
+  ],
+  "projects": [],
+  "locations": []
+}

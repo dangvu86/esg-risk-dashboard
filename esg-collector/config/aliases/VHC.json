@@ -1,0 +1,18 @@
+{
+  "ticker": "VHC",
+  "company_name": "CTCP Vĩnh Hoàn",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "VHC",
+    "CTCP Vĩnh Hoàn",
+    "VINHHOAN CORP",
+    "Vĩnh Hoàn"
+  ],
+  "subsidiaries": [],
+  "projects": [],
+  "locations": []
+}

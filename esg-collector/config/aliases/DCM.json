@@ -1,0 +1,21 @@
+{
+  "ticker": "DCM",
+  "company_name": "CTCP - Tổng công ty Phân bón Dầu khí Cà Mau",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "DCM",
+    "CTCP - Tổng công ty Phân bón Dầu khí Cà Mau",
+    "PVCFC",
+    "- Tổng công ty Phân bón Dầu khí Cà Mau"
+  ],
+  "subsidiaries": [
+    "Công Ty TNHH Phân bón Hàn - Việt",
+    "CTCP Bao Bì Dầu Khí Việt Nam"
+  ],
+  "projects": [],
+  "locations": []
+}

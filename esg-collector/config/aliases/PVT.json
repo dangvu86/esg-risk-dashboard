@@ -1,0 +1,30 @@
+{
+  "ticker": "PVT",
+  "company_name": "Tổng Công ty cổ phần Vận tải Dầu khí",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "PVT",
+    "Tổng Công ty cổ phần Vận tải Dầu khí",
+    "PV TRANS CORP",
+    "cổ phần Vận tải Dầu khí"
+  ],
+  "subsidiaries": [
+    "CTCP Hàng hải Thăng Long",
+    "CTCP Vận tải Dầu khí Đông Dương",
+    "CTCP Vận tải Dầu khí Hà Nội",
+    "CTCP Vận tải Dầu khí Quảng Ngãi",
+    "CTCP Vận tải Dầu khí Thái Bình Dương",
+    "CTCP Vận tải Nhật Việt",
+    "CTCP Vận tải Sản Phẩm Khí Quốc tế",
+    "CTCP Vận tải và Tiếp vận Phương Đông Việt",
+    "CTCP Vận tải Xăng Dầu Phương Nam",
+    "Hàng hải Thăng Long",
+    "Vận tải Nhật Việt"
+  ],
+  "projects": [],
+  "locations": []
+}

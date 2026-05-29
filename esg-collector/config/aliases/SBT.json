@@ -1,0 +1,18 @@
+{
+  "ticker": "SBT",
+  "company_name": "CTCP Thành Thành Công - Biên Hòa - TTC",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "SBT",
+    "CTCP Thành Thành Công - Biên Hòa - TTC",
+    "BH",
+    "Thành Thành Công - Biên Hòa - TTC"
+  ],
+  "subsidiaries": [],
+  "projects": [],
+  "locations": []
+}

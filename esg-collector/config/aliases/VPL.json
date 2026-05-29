@@ -1,0 +1,28 @@
+{
+  "ticker": "VPL",
+  "company_name": "CTCP Vinpearl",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "VPL",
+    "CTCP Vinpearl",
+    "VINPEARL JSC",
+    "Vinpearl"
+  ],
+  "subsidiaries": [
+    "Công ty TNHH Đầu tư và Phát triển Du lịch Phúc An",
+    "CTCP Đầu tư và Phát triển Khách sạn Landmark 81",
+    "CTCP Đầu tư và Phát triển Khách sạn Thanh Hóa",
+    "CTCP Vinpearl Cửa Hội",
+    "CTCP Vinwonders Nha Trang",
+    "Vinpearl Cửa Hội",
+    "Vinpearl",
+    "Vinwonders Nha Trang",
+    "Vinwonders"
+  ],
+  "projects": [],
+  "locations": []
+}

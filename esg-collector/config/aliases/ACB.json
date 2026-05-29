@@ -1,0 +1,21 @@
+{
+  "ticker": "ACB",
+  "company_name": "Ngân hàng TMCP Á Châu",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "ACB",
+    "Ngân hàng TMCP Á Châu"
+  ],
+  "subsidiaries": [
+    "Công ty TNHH Chứng khoán ACB",
+    "Công ty TNHH MTV Quản lý Quỹ ACB",
+    "Chứng khoán ACB",
+    "Quản lý Quỹ ACB"
+  ],
+  "projects": [],
+  "locations": []
+}

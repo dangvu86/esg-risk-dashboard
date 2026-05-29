@@ -1,0 +1,28 @@
+{
+  "ticker": "HHS",
+  "company_name": "CTCP Đầu tư Dịch vụ Hoàng Huy",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "HHS",
+    "CTCP Đầu tư Dịch vụ Hoàng Huy",
+    "Đầu tư Dịch vụ Hoàng Huy"
+  ],
+  "subsidiaries": [
+    "Công ty TNHH Pruksa Việt Nam",
+    "CTCP HHS Capital",
+    "CTCP Phát Triển Dịch vụ Hoàng Giang",
+    "CTCP Phát triển Nhà Đại Lộc",
+    "Tập đoàn Bất động sản CRV",
+    "CTCP Xây dựng Đại Thịnh Vượng",
+    "Pruksa Việt Nam",
+    "Pruksa",
+    "HHS Capital",
+    "Bất động sản CRV"
+  ],
+  "projects": [],
+  "locations": []
+}

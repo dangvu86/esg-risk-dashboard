@@ -1,0 +1,18 @@
+{
+  "ticker": "TCX",
+  "company_name": "CTCP Chứng khoán Kỹ Thương",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "TCX",
+    "CTCP Chứng khoán Kỹ Thương",
+    "Techcom Securities",
+    "Chứng khoán Kỹ Thương"
+  ],
+  "subsidiaries": [],
+  "projects": [],
+  "locations": []
+}

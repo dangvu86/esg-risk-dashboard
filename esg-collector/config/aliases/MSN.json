@@ -1,0 +1,18 @@
+{
+  "ticker": "MSN",
+  "company_name": "CTCP Tập đoàn Masan",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "MSN",
+    "CTCP Tập đoàn Masan",
+    "Masan Group",
+    "Masan"
+  ],
+  "subsidiaries": [],
+  "projects": [],
+  "locations": []
+}

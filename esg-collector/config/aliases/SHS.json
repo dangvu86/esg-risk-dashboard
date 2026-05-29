@@ -1,0 +1,17 @@
+{
+  "ticker": "SHS",
+  "company_name": "CTCP Chứng khoán Sài Gòn - Hà Nội",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "SHS",
+    "CTCP Chứng khoán Sài Gòn - Hà Nội",
+    "Chứng khoán Sài Gòn - Hà Nội"
+  ],
+  "subsidiaries": [],
+  "projects": [],
+  "locations": []
+}

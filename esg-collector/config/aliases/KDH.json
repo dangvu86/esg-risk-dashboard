@@ -1,52 +1,49 @@
 {
   "ticker": "KDH",
   "company_name": "CTCP Đầu tư và Kinh doanh Nhà Khang Điền",
-  "industry": "Bất động sản",
-  "headquarters": "TP HCM",
-  "derived_from": ["vietstock_profile", "baomoi_corpus"],
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
   "names": [
-    "Khang Điền",
     "KDH",
-    "Nhà Khang Điền"
+    "CTCP Đầu tư và Kinh doanh Nhà Khang Điền",
+    "KHADIHOUSE JSC",
+    "Đầu tư và Kinh doanh Nhà Khang Điền"
   ],
   "subsidiaries": [
-    "Khang Phúc",
-    "BCI",
-    "Hào Khang",
-    "BCCI",
-    "Bất động sản Thủy Sinh",
-    "Bình Trưng",
-    "Gia Phước",
-    "Kim Phát",
-    "Thành Phúc",
+    "Công ty TNHH Bất động sản Bình Trưng Mới",
+    "Công ty TNHH Đầu tư Bất động sản Nguyên Phát",
+    "Công ty TNHH Đầu Tư địa ốc Minh Phát",
+    "Công ty TNHH Đầu tư Kinh doanh Bất động sản Bình Trưng",
+    "Công ty TNHH Đầu tư Kinh doanh Bất động sản Kim Phát",
+    "Công ty TNHH Đầu tư Kinh doanh Bất động sản Saphire",
+    "Công ty TNHH Đầu tư Kinh doanh Nhà Đoàn Nguyên",
+    "Công ty TNHH Đầu tư Phát triển BCCI",
+    "Công ty TNHH Đầu tư Thành Phúc",
+    "Công ty TNHH Đầu tư và Kinh doanh Bất động sản Không Gian Xanh",
+    "Công ty TNHH Đầu tư và Kinh doanh Bất động sản Song Lập",
+    "Công ty TNHH Đầu tư và Kinh doanh Địa ốc Gia Phước",
+    "Công ty TNHH Đầu tư và Kinh doanh Địa ốc Trí Kiệt",
+    "Công ty TNHH Đô thị Mê Ga",
+    "Công ty TNHH Kinh doanh Bất động sản Phúc Thông",
+    "Công ty TNHH MTV Đầu tư Kinh doanh Nhà Khang Phúc",
+    "Công ty TNHH MTV Hào Khang",
+    "Công ty TNHH Thương mại Dịch vụ và Kinh doanh Nhà Tháp Mười",
+    "Công ty TNHH Tư vấn Quốc tế",
+    "CTCP Bất động sản Thủy Sinh",
+    "CTCP Đầu tư Bất động sản Phước Nguyên",
+    "CTCP Đầu tư và Kinh doanh Bất động sản Trí Minh",
+    "CTCP Phát triển Bất động sản Lộc Minh",
+    "CTCP Vi La",
     "Saphire",
-    "Trí Kiệt",
+    "Đầu tư Thành Phúc",
     "Đô thị Mê Ga",
-    "Trí Minh",
-    "Nhà Tháp Mười",
-    "Nguyên Phát",
-    "Phước Nguyên",
-    "Song Lập",
-    "Vi La",
-    "Không Gian Xanh"
+    "Hào Khang",
+    "Tư vấn Quốc tế",
+    "Vi La"
   ],
-  "locations": [
-    "Thủ Đức",
-    "Bình Tân",
-    "Bình Chánh",
-    "TP HCM"
-  ],
-  "projects_known_manual": [
-    "Safira Khang Điền",
-    "Lovera Vista",
-    "Verosa Park",
-    "Solina",
-    "Mega Sapphire",
-    "Mega Ruby",
-    "Khang Phúc"
-  ],
-  "gaps_not_in_vietstock": [
-    "Project names (Safira, Lovera, Verosa, Solina, etc.) — cần annual report hoặc website cty",
-    "Specific construction site locations"
-  ]
+  "projects": [],
+  "locations": []
 }

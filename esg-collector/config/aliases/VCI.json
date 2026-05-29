@@ -1,0 +1,18 @@
+{
+  "ticker": "VCI",
+  "company_name": "CTCP Chứng khoán Vietcap",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "VCI",
+    "CTCP Chứng khoán Vietcap",
+    "Vietcap",
+    "Chứng khoán Vietcap"
+  ],
+  "subsidiaries": [],
+  "projects": [],
+  "locations": []
+}

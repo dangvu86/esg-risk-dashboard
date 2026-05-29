@@ -1,0 +1,17 @@
+{
+  "ticker": "TCB",
+  "company_name": "Ngân hàng TMCP Kỹ thương Việt Nam",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "TCB",
+    "Ngân hàng TMCP Kỹ thương Việt Nam",
+    "TECHCOMBANK"
+  ],
+  "subsidiaries": [],
+  "projects": [],
+  "locations": []
+}

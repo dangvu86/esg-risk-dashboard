@@ -1,0 +1,36 @@
+{
+  "ticker": "CTD",
+  "company_name": "CTCP Xây dựng Coteccons",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "CTD",
+    "CTCP Xây dựng Coteccons",
+    "COTECCONS",
+    "Xây dựng Coteccons"
+  ],
+  "subsidiaries": [
+    "Công ty TNHH Cơ và Điện UG Việt Nam",
+    "Công ty TNHH Coteccons Nest",
+    "Công ty TNHH Covestcons",
+    "Công ty TNHH CTD Materials",
+    "Công ty TNHH Đầu tư Xây dựng Unicons",
+    "Công ty TNHH Sân Chơi Mới",
+    "Công ty TNHH Solaresco-1",
+    "CTCP CTD FutureImpact",
+    "Coteccons Nest",
+    "Coteccons",
+    "Covestcons",
+    "CTD Materials",
+    "Unicons",
+    "Sân Chơi Mới",
+    "Solaresco-1",
+    "CTD FutureImpact",
+    "FutureImpact"
+  ],
+  "projects": [],
+  "locations": []
+}

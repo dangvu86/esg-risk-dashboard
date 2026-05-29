@@ -1,0 +1,19 @@
+{
+  "ticker": "EIB",
+  "company_name": "Ngân hàng TMCP Xuất nhập khẩu Việt Nam",
+  "headquarters": "Số 27-29 L&#253; Th&#225;i Tổ - P. Ho&#224;n Kiếm - Tp. H&#224; Nội",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "EIB",
+    "Ngân hàng TMCP Xuất nhập khẩu Việt Nam",
+    "EXIMBANK"
+  ],
+  "subsidiaries": [
+    "Công ty TNHH MTV Quản lý nợ và Khai thác tài sản"
+  ],
+  "projects": [],
+  "locations": []
+}

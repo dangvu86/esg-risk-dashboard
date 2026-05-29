@@ -1,0 +1,25 @@
+{
+  "ticker": "CTG",
+  "company_name": "Ngân hàng TMCP Công Thương Việt Nam",
+  "headquarters": "108 Trần Hưng Đạo - P. Cửa Nam - Tp. H&#224; Nội",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "CTG",
+    "Ngân hàng TMCP Công Thương Việt Nam",
+    "VietinBank"
+  ],
+  "subsidiaries": [
+    "Công ty Cho thuê Tài chính TNHH MTV Ngân hàng TMCP Công Thương Việt Nam",
+    "Công ty Quản lý nợ và Khai thác Tài sản Ngân hàng TMCP Công Thương Việt Nam",
+    "Công ty TNHH MTV Chuyển tiền Toàn cầu Ngân hàng TMCP Công Thương Việt Nam",
+    "Công ty TNHH MTV Quản lý Quỹ Ngân hàng TMCP Công Thương Việt Nam",
+    "Công ty TNHH Vàng bạc Đá quý Ngân hàng TMCP Công Thương Việt Nam",
+    "CTCP Chứng khoán Ngân hàng Công thương Việt Nam",
+    "CTCP Bảo hiểm Ngân hàng TMCP Công thương Việt Nam"
+  ],
+  "projects": [],
+  "locations": []
+}

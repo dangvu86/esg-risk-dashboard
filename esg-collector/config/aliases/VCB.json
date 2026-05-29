@@ -1,0 +1,31 @@
+{
+  "ticker": "VCB",
+  "company_name": "Ngân hàng TMCP Ngoại thương Việt Nam",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "VCB",
+    "Ngân hàng TMCP Ngoại thương Việt Nam",
+    "VIETCOMBANK"
+  ],
+  "subsidiaries": [
+    "Công ty Chuyển tiền Vietcombank",
+    "Công ty liên doanh Quản lý Quỹ đầu tư chứng khoán Vietcombank",
+    "Công ty Liên doanh TNHH Vietcombank Bonday Benthanh",
+    "Công ty TNHH Cao Ốc Vietcombank 198",
+    "Công ty TNHH Chứng khoán Vietcombank",
+    "Công ty TNHH MTV Cho thuê Tài chính Vietcombank",
+    "Công ty TNHH MTV Kiều hối Vietcombank",
+    "Vietcombank",
+    "Bonday",
+    "Benthanh",
+    "Cao Ốc Vietcombank 198",
+    "Chứng khoán Vietcombank",
+    "Kiều hối Vietcombank"
+  ],
+  "projects": [],
+  "locations": []
+}

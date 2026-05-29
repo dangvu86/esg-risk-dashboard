@@ -1,0 +1,17 @@
+{
+  "ticker": "MBS",
+  "company_name": "CTCP Chứng khoán MB",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "MBS",
+    "CTCP Chứng khoán MB",
+    "Chứng khoán MB"
+  ],
+  "subsidiaries": [],
+  "projects": [],
+  "locations": []
+}

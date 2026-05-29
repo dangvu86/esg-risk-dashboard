@@ -1,0 +1,29 @@
+{
+  "ticker": "PVS",
+  "company_name": "Tổng Công ty cổ phần Dịch vụ Kỹ thuật Dầu khí Việt Nam",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "PVS",
+    "Tổng Công ty cổ phần Dịch vụ Kỹ thuật Dầu khí Việt Nam",
+    "PTSC",
+    "cổ phần Dịch vụ Kỹ thuật Dầu khí Việt Nam"
+  ],
+  "subsidiaries": [
+    "Công ty TNHH MTV Dịch vụ Cơ khí Hàng Hải PTSC",
+    "Công ty TNHH MTV Khách sạn Dầu khí PTSC",
+    "CTCP Cảng Dịch vụ Dầu khí Đình Vũ",
+    "CTCP Cảng DV Dầu khí Tổng hợp Phú Mỹ",
+    "CTCP Đầu tư Dầu khí Sao Mai - Bến Đình",
+    "CTCP Dịch vụ Dầu khí Quảng Ngãi PTSC",
+    "CTCP Dịch vụ Kỹ thuật PTSC Thanh Hóa",
+    "CTCP Dịch vụ Lắp đặt, Vận hành và Bảo dưỡng Công trình Dầu khí biển PTSC",
+    "CTCP DV Bảo vệ An Ninh Dầu khí Viêt Nam",
+    "CTCP DV Khai thác Dầu khí PTSC"
+  ],
+  "projects": [],
+  "locations": []
+}

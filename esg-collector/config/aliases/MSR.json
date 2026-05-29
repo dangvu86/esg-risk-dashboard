@@ -1,0 +1,19 @@
+{
+  "ticker": "MSR",
+  "company_name": "CTCP Masan High-Tech Materials",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "MSR",
+    "CTCP Masan High-Tech Materials",
+    "MASAN HIGH-TECH MATERIALS"
+  ],
+  "subsidiaries": [
+    "Công ty TNHH Khai thác Chế biến Khoáng sản Núi Pháo"
+  ],
+  "projects": [],
+  "locations": []
+}

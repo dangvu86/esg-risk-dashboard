@@ -1,0 +1,18 @@
+{
+  "ticker": "CTR",
+  "company_name": "Tổng Công ty cổ phần Công trình Viettel",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "CTR",
+    "Tổng Công ty cổ phần Công trình Viettel",
+    "VIETTEL CONSTRUCTION",
+    "cổ phần Công trình Viettel"
+  ],
+  "subsidiaries": [],
+  "projects": [],
+  "locations": []
+}

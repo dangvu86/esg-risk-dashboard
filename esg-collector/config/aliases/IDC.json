@@ -1,0 +1,43 @@
+{
+  "ticker": "IDC",
+  "company_name": "Tổng Công ty IDICO - CTCP",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "IDC",
+    "Tổng Công ty IDICO - CTCP",
+    "IDICO",
+    "IDICO - CTCP"
+  ],
+  "subsidiaries": [
+    "Công ty Cổ phần VTA GLOBAL PORT",
+    "Công ty TNHH MTV Dịch vụ Khu công nghiệp IDICO",
+    "Công ty TNHH MTV Phát triển Đô thị và KCN IDICO",
+    "CTCP Đầu tư Phát triển Đô thị và Khu công nghiệp Quế Võ IDICO",
+    "CTCP Đầu tư Phát triển Hạ tầng IDICO",
+    "CTCP Đầu tư Phát triển Nhà và Đô thị IDICO",
+    "CTCP Đầu tư Xây dựng Dầu khí IDICO",
+    "CTCP Đầu tư Xây dựng Long An IDICO",
+    "CTCP Đầu tư Xây dựng số 10 IDICO",
+    "CTCP Đầu tư Xây dựng Thái Bình IDICO",
+    "CTCP Đầu tư Xây dựng và Phát triển Vật liệu IDICO",
+    "CTCP Idergy",
+    "CTCP IDICO Hà Nam IDICO-IHC",
+    "CTCP IDICO Ninh Bình IDICO-INC",
+    "CTCP IDICO Tiền Giang",
+    "CTCP IDICO Vinh Quang IDICO-IVC",
+    "CTCP Thủy điện Srok Phu Miêng IDICO",
+    "VTA GLOBAL PORT",
+    "IDICO",
+    "Idergy",
+    "IDICO Hà Nam IDICO-IHC",
+    "IDICO Ninh Bình IDICO-INC",
+    "IDICO Tiền Giang",
+    "IDICO Vinh Quang IDICO-IVC"
+  ],
+  "projects": [],
+  "locations": []
+}

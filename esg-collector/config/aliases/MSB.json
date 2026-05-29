@@ -1,0 +1,18 @@
+{
+  "ticker": "MSB",
+  "company_name": "Ngân hàng TMCP Hàng hải Việt Nam",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "MSB",
+    "Ngân hàng TMCP Hàng hải Việt Nam"
+  ],
+  "subsidiaries": [
+    "Công ty Tài chính TNHH MTV TNEX"
+  ],
+  "projects": [],
+  "locations": []
+}

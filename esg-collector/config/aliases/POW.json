@@ -1,0 +1,26 @@
+{
+  "ticker": "POW",
+  "company_name": "Tổng Công ty Điện lực Dầu khí Việt Nam - CTCP",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "POW",
+    "Tổng Công ty Điện lực Dầu khí Việt Nam - CTCP",
+    "PV POWER",
+    "Điện lực Dầu khí Việt Nam - CTCP"
+  ],
+  "subsidiaries": [
+    "CTCP Dịch vụ kỹ thuật Điện lực Dầu khí Việt Nam",
+    "CTCP Điện lực Dầu khí Nhơn Trạch 2",
+    "CTCP Năng lượng tái tạo Điện lực Dầu khí",
+    "CTCP Thủy điện Đakđrinh",
+    "CTCP Thủy điện Hủa Na",
+    "Thủy điện Đakđrinh",
+    "Thủy điện Hủa Na"
+  ],
+  "projects": [],
+  "locations": []
+}

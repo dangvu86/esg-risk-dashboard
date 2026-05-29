@@ -1,0 +1,32 @@
+{
+  "ticker": "BWE",
+  "company_name": "CTCP - Tổng công ty nước - môi trường Bình Dương",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "BWE",
+    "CTCP - Tổng công ty nước - môi trường Bình Dương",
+    "Biwase",
+    "- Tổng công ty nước - môi trường Bình Dương"
+  ],
+  "subsidiaries": [
+    "Công ty TNHH MTV Liên Hợp - Khoa Học - Công Nghệ - Môi Trường BIWASE",
+    "Công ty TNHH MTV Nước BIWASE Bình Phước",
+    "Công ty TNHH MTV Sản Xuất - Thương Mại - Dịch Vụ BIWASE",
+    "Công ty TNHH MTV Tư Vấn BIWASE",
+    "CTCP Công trình đô thị Cần Giuộc",
+    "CTCP Công trình đô thị Châu Thành",
+    "CTCP nước Biwase - Long An",
+    "CTCP nước và môi trường Bằng Tâm",
+    "CTCP xây lắp - Điện Biwase",
+    "BIWASE",
+    "Nước BIWASE Bình Phước",
+    "Tư Vấn BIWASE",
+    "Biwase"
+  ],
+  "projects": [],
+  "locations": []
+}

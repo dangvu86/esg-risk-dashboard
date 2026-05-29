@@ -1,0 +1,16 @@
+{
+  "ticker": "VIB",
+  "company_name": "Ngân hàng TMCP Quốc tế Việt Nam",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "VIB",
+    "Ngân hàng TMCP Quốc tế Việt Nam"
+  ],
+  "subsidiaries": [],
+  "projects": [],
+  "locations": []
+}

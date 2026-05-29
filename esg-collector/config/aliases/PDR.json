@@ -1,0 +1,30 @@
+{
+  "ticker": "PDR",
+  "company_name": "CTCP Phát triển Bất động sản Phát Đạt",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "PDR",
+    "CTCP Phát triển Bất động sản Phát Đạt",
+    "Công ty Cổ phần PTBĐS Phát Đạt",
+    "Phát triển Bất động sản Phát Đạt"
+  ],
+  "subsidiaries": [
+    "Công ty TNHH Đầu tư Xây dựng Hạ tầng Kỹ thuật Coinin",
+    "CTCP BĐS Đầu tư và Phát triển Cao ốc Bình Dương",
+    "CTCP BĐS Đầu tư và Phát triển Cao ốc Hòa Phú",
+    "CTCP BĐS Đầu tư và Phát triển Cao ốc Thiên Long",
+    "CTCP Bến Thành Long Hải",
+    "CTCP Đầu tư Serenity",
+    "CTCP ĐK Phú Quốc",
+    "Coinin",
+    "Bến Thành Long Hải",
+    "Đầu tư Serenity",
+    "ĐK Phú Quốc"
+  ],
+  "projects": [],
+  "locations": []
+}

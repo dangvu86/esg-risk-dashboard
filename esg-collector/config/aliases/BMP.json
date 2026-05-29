@@ -1,0 +1,18 @@
+{
+  "ticker": "BMP",
+  "company_name": "CTCP Nhựa Bình Minh",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "BMP",
+    "CTCP Nhựa Bình Minh",
+    "BM PLASCO.",
+    "Nhựa Bình Minh"
+  ],
+  "subsidiaries": [],
+  "projects": [],
+  "locations": []
+}

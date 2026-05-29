@@ -1,0 +1,46 @@
+{
+  "ticker": "BAF",
+  "company_name": "CTCP Nông nghiệp BAF Việt Nam",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "BAF",
+    "CTCP Nông nghiệp BAF Việt Nam",
+    "BAF.,JSC",
+    "Nông nghiệp BAF Việt Nam"
+  ],
+  "subsidiaries": [
+    "Công ty TNHH Anh Vũ Phú Yên",
+    "Công ty TNHH Chăn nuôi Bảo Ngọc",
+    "Công ty TNHH chăn nuôi công nghệ cao sông Hinh",
+    "Công ty TNHH Chăn nuôi Nam An Khánh",
+    "Công ty TNHH Chế biến Thực phẩm BAF Tây Ninh",
+    "Công ty TNHH Đầu tư Nông nghiệp Tân Châu",
+    "Công ty TNHH Đầu tư Trang Trại xanh 1",
+    "Công ty TNHH Đầu tư Trang Trại xanh 2",
+    "Công ty TNHH Logistic BAF Việt Nam",
+    "Công ty TNHH MTV BAF Meat Bình Phước",
+    "Công ty TNHH Phân Bốn Hữu Cơ Vi Sinh BAF",
+    "Công ty TNHH Sản xuất thương mại Dịch vụ Bắc An Khánh",
+    "Công ty TNHH Sản xuất Thương mại Dịch vụ Chăn Nuôi Minh Thành",
+    "Công ty TNHH Sản xuất thương mại Dịch vụ Đông An Khánh",
+    "Công ty TNHH Sản xuất Thương mại Dịch vụ Tâm Hưng",
+    "Công ty TNHH Sản xuất Thương mại Xuất Nhập khẩu Thiên Phú Sơn",
+    "Công ty TNHH Tây An Khánh",
+    "CTCP chăn nuôi công nghệ cao Hải Đăng Tây Ninh",
+    "CTCP Nông nghiệp BAF Bình Định",
+    "CTCP Phát triển Nông nghiệp sạch Thanh Xuân",
+    "CTCP Sản xuất Thương mại Chăn nuôi Kim Hợi",
+    "CTCP Thức ăn Chăn nuôi BAF Tây Ninh",
+    "Anh Vũ Phú Yên",
+    "Chăn nuôi Bảo Ngọc",
+    "Logistic BAF Việt Nam",
+    "BAF Meat Bình Phước",
+    "Tây An Khánh"
+  ],
+  "projects": [],
+  "locations": []
+}

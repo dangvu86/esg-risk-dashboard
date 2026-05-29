@@ -1,0 +1,51 @@
+{
+  "ticker": "SAB",
+  "company_name": "Tổng Công ty cổ phần Bia - Rượu - Nước giải khát Sài Gòn",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "SAB",
+    "Tổng Công ty cổ phần Bia - Rượu - Nước giải khát Sài Gòn",
+    "SABECO",
+    "cổ phần Bia - Rượu - Nước giải khát Sài Gòn"
+  ],
+  "subsidiaries": [
+    "Công ty TNHH Bia Sài Gòn - Ninh Thuận",
+    "Công ty TNHH MTV Bia Sài Gòn",
+    "Công ty TNHH MTV Bia Sài Gòn - Hà Tĩnh",
+    "Công ty TNHH MTV Bia Sài Gòn - Phủ Lý",
+    "Công ty TNHH MTV Bia Sài Gòn - Sóc Trăng",
+    "Công ty TNHH MTV Cơ Khí SABECO",
+    "Tập đoàn Bia Sài Gòn",
+    "Công ty TNHH MTV Thương mại Bia Sài Gòn",
+    "Công ty TNHH Thương mại và Dịch vụ Bia Sài Gòn Bình Tây",
+    "CTCP Bao bì Bia Sài Gòn",
+    "CTCP Bia Sài Gòn - Hà Nội",
+    "CTCP Bia Sài Gòn - Lâm Đồng",
+    "CTCP Bia Sài Gòn - Miền Tây",
+    "CTCP Bia Sài Gòn - Nghệ Tĩnh",
+    "CTCP Bia Sài Gòn - Quảng Ngãi",
+    "CTCP Bia Sài Gòn - Sông Lam",
+    "CTCP Nước Giải khát Chương Dương",
+    "CTCP Rượu Bình Tây",
+    "CTCP Thương mại Bia Sài Gòn Bắc Trung Bộ",
+    "CTCP Thương mại Bia Sài Gòn Đông Bắc",
+    "CTCP Thương mại Bia Sài Gòn Miền Bắc",
+    "CTCP Thương mại Bia Sài Gòn Miền Đông",
+    "CTCP Thương mại Bia Sài Gòn Miền Trung",
+    "CTCP Thương mại Bia Sài Gòn Nam Trung Bộ",
+    "CTCP Thương mại Bia Sài Gòn Sông Hậu",
+    "CTCP Thương mại Bia Sài Gòn Sông Tiền",
+    "CTCP Thương mại Bia Sài Gòn Tây Nguyên",
+    "CTCP Thương mại Bia Sài Gòn Trung Tâm",
+    "Bia Sài Gòn",
+    "Cơ Khí SABECO",
+    "SABECO",
+    "Rượu Bình Tây"
+  ],
+  "projects": [],
+  "locations": []
+}

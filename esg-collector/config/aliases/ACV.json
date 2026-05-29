@@ -1,0 +1,17 @@
+{
+  "ticker": "ACV",
+  "company_name": "Tổng Công ty Cảng Hàng không Việt Nam - CTCP",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "ACV",
+    "Tổng Công ty Cảng Hàng không Việt Nam - CTCP",
+    "Cảng Hàng không Việt Nam - CTCP"
+  ],
+  "subsidiaries": [],
+  "projects": [],
+  "locations": []
+}

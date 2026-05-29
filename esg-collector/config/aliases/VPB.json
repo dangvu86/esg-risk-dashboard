@@ -1,0 +1,24 @@
+{
+  "ticker": "VPB",
+  "company_name": "Ngân hàng TMCP Việt Nam Thịnh Vượng",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "VPB",
+    "Ngân hàng TMCP Việt Nam Thịnh Vượng",
+    "VPBank"
+  ],
+  "subsidiaries": [
+    "Công ty TNHH Quản lý tài sản Ngân hàng TMCP Việt Nam Thịnh Vượng",
+    "CTCP Bảo hiểm OPES",
+    "CTCP Chứng khoán VPBank",
+    "Bảo hiểm OPES",
+    "OPES",
+    "Chứng khoán VPBank"
+  ],
+  "projects": [],
+  "locations": []
+}

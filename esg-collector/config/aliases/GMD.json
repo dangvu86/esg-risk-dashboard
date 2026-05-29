@@ -1,0 +1,18 @@
+{
+  "ticker": "GMD",
+  "company_name": "CTCP Tập đoàn Gemadept",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "GMD",
+    "CTCP Tập đoàn Gemadept",
+    "Tập đoàn Gemadept",
+    "Gemadept"
+  ],
+  "subsidiaries": [],
+  "projects": [],
+  "locations": []
+}

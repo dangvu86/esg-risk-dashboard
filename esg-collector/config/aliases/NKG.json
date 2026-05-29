@@ -1,0 +1,25 @@
+{
+  "ticker": "NKG",
+  "company_name": "CTCP Thép Nam Kim",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "NKG",
+    "CTCP Thép Nam Kim",
+    "NAKISCO",
+    "Thép Nam Kim"
+  ],
+  "subsidiaries": [
+    "Công ty TNHH Dae Myung Paper Việt Nam",
+    "Công ty TNHH MTV Ống thép Nam Kim",
+    "Công ty TNHH MTV Ống thép Nam Kim Chu Lai",
+    "Công ty TNHH MTV Tôn Nam Kim Phú Mỹ",
+    "CTCP Thương mại Dịch vụ Vận tải Nam Thành Phát",
+    "Ống thép Nam Kim"
+  ],
+  "projects": [],
+  "locations": []
+}

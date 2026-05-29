@@ -1,0 +1,18 @@
+{
+  "ticker": "HDG",
+  "company_name": "CTCP Tập đoàn Hà Đô",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "HDG",
+    "CTCP Tập đoàn Hà Đô",
+    "HADOCO.,JSC",
+    "Hà Đô"
+  ],
+  "subsidiaries": [],
+  "projects": [],
+  "locations": []
+}

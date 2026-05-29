@@ -1,0 +1,18 @@
+{
+  "ticker": "FRT",
+  "company_name": "CTCP Bán lẻ Kỹ thuật số FPT",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "FRT",
+    "CTCP Bán lẻ Kỹ thuật số FPT",
+    "FRT JSC",
+    "Bán lẻ Kỹ thuật số FPT"
+  ],
+  "subsidiaries": [],
+  "projects": [],
+  "locations": []
+}

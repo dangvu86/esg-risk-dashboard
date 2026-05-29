@@ -1,0 +1,24 @@
+{
+  "ticker": "VRE",
+  "company_name": "CTCP Vincom Retail",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "VRE",
+    "CTCP Vincom Retail",
+    "VINCOM RETAIL.,JSC",
+    "Vincom Retail"
+  ],
+  "subsidiaries": [
+    "Công ty TNHH Vận hành Vincom Retail",
+    "Công ty TNHH Vincom Retail Landmark 81",
+    "Vận hành Vincom Retail",
+    "Vincom",
+    "Vincom Retail Landmark 81"
+  ],
+  "projects": [],
+  "locations": []
+}

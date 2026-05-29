@@ -1,0 +1,21 @@
+{
+  "ticker": "BID",
+  "company_name": "Ngân hàng TMCP Đầu tư và Phát triển Việt Nam",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "BID",
+    "Ngân hàng TMCP Đầu tư và Phát triển Việt Nam",
+    "BIDV"
+  ],
+  "subsidiaries": [
+    "CTCP Chứng khoán BIDV",
+    "Tổng Công ty cổ phần Bảo hiểm Ngân hàng Đầu tư và Phát triển Việt Nam",
+    "Chứng khoán BIDV"
+  ],
+  "projects": [],
+  "locations": []
+}

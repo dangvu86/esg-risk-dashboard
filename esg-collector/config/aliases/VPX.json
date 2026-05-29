@@ -1,0 +1,18 @@
+{
+  "ticker": "VPX",
+  "company_name": "CTCP Chứng khoán VPBank",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "VPX",
+    "CTCP Chứng khoán VPBank",
+    "VPBANKS",
+    "Chứng khoán VPBank"
+  ],
+  "subsidiaries": [],
+  "projects": [],
+  "locations": []
+}

@@ -1,0 +1,17 @@
+{
+  "ticker": "HDB",
+  "company_name": "Ngân hàng TMCP Phát triển Thành phố Hồ Chí Minh",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "HDB",
+    "Ngân hàng TMCP Phát triển Thành phố Hồ Chí Minh",
+    "HDBank"
+  ],
+  "subsidiaries": [],
+  "projects": [],
+  "locations": []
+}

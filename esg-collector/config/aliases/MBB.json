@@ -1,0 +1,24 @@
+{
+  "ticker": "MBB",
+  "company_name": "Ngân hàng TMCP Quân đội",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "MBB",
+    "Ngân hàng TMCP Quân đội",
+    "Ngân hàng Quân đội (MB)"
+  ],
+  "subsidiaries": [
+    "Công ty TNHH Bảo hiểm nhân thọ MB Ageas",
+    "CTCP Chứng khoán MB",
+    "CTCP Quản lý Quỹ đầu tư MB",
+    "Tổng Công ty cổ phần Bảo hiểm Quân Đội",
+    "Ageas",
+    "Chứng khoán MB"
+  ],
+  "projects": [],
+  "locations": []
+}

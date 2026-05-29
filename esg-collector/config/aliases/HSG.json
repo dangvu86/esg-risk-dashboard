@@ -1,0 +1,35 @@
+{
+  "ticker": "HSG",
+  "company_name": "CTCP Tập đoàn Hoa Sen",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "HSG",
+    "CTCP Tập đoàn Hoa Sen",
+    "HOA SEN GROUP (HSG)",
+    "Hoa Sen"
+  ],
+  "subsidiaries": [
+    "Công ty TNHH MTV Hoa Sen Bình Định",
+    "Công ty TNHH MTV Hoa Sen Hà Nam",
+    "Công ty TNHH MTV Hoa Sen Nghệ An",
+    "Công ty TNHH MTV Hoa Sen Nhơn Hội – Bình Định",
+    "Công ty TNHH MTV Hoa Sen Phú Mỹ",
+    "Công ty TNHH MTV Tôn Hoa Sen",
+    "Công ty TNHH MTV Vật liệu Xây dựng Hoa Sen Yên Bái",
+    "CTCP Hoa Sen Yên Bái",
+    "CTCP Nhựa Hoa Sen",
+    "Hoa Sen Bình Định",
+    "Hoa Sen Hà Nam",
+    "Hoa Sen Nghệ An",
+    "Hoa Sen Phú Mỹ",
+    "Tôn Hoa Sen",
+    "Hoa Sen Yên Bái",
+    "Nhựa Hoa Sen"
+  ],
+  "projects": [],
+  "locations": []
+}

@@ -1,0 +1,32 @@
+{
+  "ticker": "SIP",
+  "company_name": "CTCP Đầu tư Sài Gòn VRG",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "SIP",
+    "CTCP Đầu tư Sài Gòn VRG",
+    "SVRG CORP",
+    "Đầu tư Sài Gòn VRG"
+  ],
+  "subsidiaries": [
+    "Công ty TNHH MTV Đầu tư AT",
+    "CTCP Bao bì Sài Gòn",
+    "CTCP Cảng và Dịch vụ Logistics VRG Thanh Phước",
+    "CTCP Đầu tư và Phát triển Đông Nam",
+    "CTCP Đầu tư và Phát triển VRG Long Thành",
+    "CTCP Đầu tư và Tư vấn Xây dựng Phú An Thành",
+    "CTCP Đầu tư VRG Long Đức",
+    "CTCP Phát triển Dịch vụ Sài Gòn VRG",
+    "CTCP Xây dựng Incontec",
+    "Đầu tư AT",
+    "Bao bì Sài Gòn",
+    "Xây dựng Incontec",
+    "Incontec"
+  ],
+  "projects": [],
+  "locations": []
+}

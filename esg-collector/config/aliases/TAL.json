@@ -1,0 +1,36 @@
+{
+  "ticker": "TAL",
+  "company_name": "CTCP Đầu tư Bất động sản Taseco",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "TAL",
+    "CTCP Đầu tư Bất động sản Taseco",
+    "Taseco Land",
+    "Đầu tư Bất động sản Taseco"
+  ],
+  "subsidiaries": [
+    "Công ty TNHH Đầu tư Taseco Ha Nam",
+    "CTCP Alacarte Hạ Long",
+    "CTCP BĐS Taseco Miền Nam",
+    "CTCP Đầu tư Bất động sản nghỉ dưỡng Taseco Đà Nẵng",
+    "CTCP Đầu tư Bất động sản Phú Mỹ",
+    "CTCP Đầu tư Dịch vụ Yên Bình",
+    "CTCP Đầu tư Du lịch Sinh thái Quốc tế",
+    "CTCP Đầu tư và Xây dựng số 4",
+    "CTCP Khu công nghiệp Taseco Hải Phòng",
+    "CTCP Quản lý Bất động sản Quốc tế",
+    "CTCP Taseco Hải Phòng",
+    "CTCP Taseco Invest",
+    "Taseco",
+    "Alacarte Hạ Long",
+    "BĐS Taseco Miền Nam",
+    "Taseco Hải Phòng",
+    "Taseco Invest"
+  ],
+  "projects": [],
+  "locations": []
+}

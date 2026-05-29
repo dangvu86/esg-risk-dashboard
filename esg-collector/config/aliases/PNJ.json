@@ -1,0 +1,23 @@
+{
+  "ticker": "PNJ",
+  "company_name": "CTCP Vàng bạc Đá quý Phú Nhuận",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "PNJ",
+    "CTCP Vàng bạc Đá quý Phú Nhuận",
+    "Vàng bạc Đá quý Phú Nhuận"
+  ],
+  "subsidiaries": [
+    "Công ty TNHH MTV Chế tác và Kinh doanh Trang sức PNJ",
+    "Công ty TNHH MTV Giám định PNJ",
+    "Công ty TNHH MTV Thời trang CAO",
+    "Giám định PNJ",
+    "Thời trang CAO"
+  ],
+  "projects": [],
+  "locations": []
+}

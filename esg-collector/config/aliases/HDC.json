@@ -1,0 +1,28 @@
+{
+  "ticker": "HDC",
+  "company_name": "CTCP Phát triển Nhà Bà Rịa - Vũng Tàu",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "HDC",
+    "CTCP Phát triển Nhà Bà Rịa - Vũng Tàu",
+    "HODECO",
+    "Phát triển Nhà Bà Rịa - Vũng Tàu"
+  ],
+  "subsidiaries": [
+    "Công ty TNHH HODECO Tây Ninh",
+    "Công ty TNHH MTV QL Bất động sản & Dịch vụ HODECO",
+    "Công ty TNHH Si Property",
+    "CTCP BÊ TÔNG & XÂY LẮP HODECO",
+    "CTCP TM&DV Bất động sản nghỉ dưỡng Ý Ngọc - Biển Đá Vàng",
+    "CTCP XÂY DỰNG - BĐS HODECO",
+    "HODECO Tây Ninh",
+    "HODECO",
+    "Si Property"
+  ],
+  "projects": [],
+  "locations": []
+}

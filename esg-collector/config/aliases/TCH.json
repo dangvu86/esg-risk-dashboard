@@ -1,0 +1,17 @@
+{
+  "ticker": "TCH",
+  "company_name": "CTCP Đầu tư Dịch vụ Tài chính Hoàng Huy",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "TCH",
+    "CTCP Đầu tư Dịch vụ Tài chính Hoàng Huy",
+    "Đầu tư Dịch vụ Tài chính Hoàng Huy"
+  ],
+  "subsidiaries": [],
+  "projects": [],
+  "locations": []
+}

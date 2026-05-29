@@ -1,0 +1,18 @@
+{
+  "ticker": "VCG",
+  "company_name": "Tổng Công ty cổ phần Xuất nhập khẩu và Xây dựng Việt Nam",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "VCG",
+    "Tổng Công ty cổ phần Xuất nhập khẩu và Xây dựng Việt Nam",
+    "VINACONEX.,JSC",
+    "cổ phần Xuất nhập khẩu và Xây dựng Việt Nam"
+  ],
+  "subsidiaries": [],
+  "projects": [],
+  "locations": []
+}

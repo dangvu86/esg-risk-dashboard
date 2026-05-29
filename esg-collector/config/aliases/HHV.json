@@ -1,0 +1,23 @@
+{
+  "ticker": "HHV",
+  "company_name": "CTCP Đầu tư Hạ tầng Giao thông Đèo Cả",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "HHV",
+    "CTCP Đầu tư Hạ tầng Giao thông Đèo Cả",
+    "DII",
+    "Đầu tư Hạ tầng Giao thông Đèo Cả"
+  ],
+  "subsidiaries": [
+    "CTCP BOT Bắc Giang - Lạng Sơn",
+    "CTCP Đầu tư Đèo Cả",
+    "CTCP Phước Tượng Phú Gia BOT",
+    "Đầu tư Đèo Cả"
+  ],
+  "projects": [],
+  "locations": []
+}

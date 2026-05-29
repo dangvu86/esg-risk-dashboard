@@ -1,0 +1,18 @@
+{
+  "ticker": "VIC",
+  "company_name": "Tập đoàn VINGROUP - CTCP",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "VIC",
+    "Tập đoàn VINGROUP - CTCP",
+    "VINGROUP",
+    "VINGROUP - CTCP"
+  ],
+  "subsidiaries": [],
+  "projects": [],
+  "locations": []
+}

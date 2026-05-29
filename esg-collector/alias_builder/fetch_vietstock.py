@@ -74,16 +74,22 @@ _PROVINCES_LOWER = {p.lower() for p in PROVINCES}
 
 # --- Subsidiary extraction (Vietstock dedicated, unblurred page) --------------
 # Each visible row reads "<company name> <charter-capital> ( Tr. VND ) <own%>".
-# Capture the NAME up to the capital number that precedes the "( Tr. VND )" marker.
+# Capture the NAME up to the capital number that precedes the "( Tr. VND )" marker,
+# AND the ownership % that follows it. The page mixes công ty con (subsidiaries,
+# >50%) with liên doanh/liên kết (JV/associates, <=50%) in one table; only true
+# subsidiaries are attributable to the parent, so we keep >50% and drop the rest
+# (this is what removes e.g. associate "IDICO" 34% from REE).
 # The body excludes the legal-form keywords themselves so the match starts at the
 # LAST entity anchor (otherwise a header like "Tên công ty Vốn điều lệ …" bleeds
 # into the first real row, since there's no paren between header and first number).
 _SUB_RE = re.compile(
     r'((?:CTCP|Công ty|Tổng [Cc]ông ty|Tập đoàn)'
     r'(?:(?!CTCP|Công ty|Tổng [Cc]ông ty|Tập đoàn)[^()]){3,80}?)'
-    r'\s+[\d,.]+\s*\(\s*Tr\. VND',
+    r'\s+[\d,.]+\s*\(\s*Tr\.\s*VND\s*\)\s*([\d.,]+)',
     re.I,
 )
+# A subsidiary (công ty con) means control: ownership strictly above this.
+_SUBSIDIARY_MIN_PCT = 50.0
 _LEGAL_PREFIX = re.compile(
     r'^(CTCP|Công ty (?:TNHH|cổ phần|CP)(?:\s+MTV)?|Tổng Công ty|Tập đoàn)\s+',
     re.I,
@@ -122,18 +128,42 @@ _ASCII_STOP = {
     # _PROVINCES_LOWER; these no-diacritic spellings appear in brand-ish names).
     "hanoi", "saigon", "danang", "haiphong", "cantho", "hue", "dalat",
     "nhatrang", "vungtau", "halong", "bienhoa", "thainguyen", "namdinh",
+    # Common English words real-estate developers use to name PROJECT
+    # subsidiaries (Novaland/Vinhomes/Nam Long/Vincom Retail…). These are not
+    # company brands; kept here so the interior-token extractor doesn't emit
+    # them (data-driven from the 100-ticker --all audit, 2026-05-29).
+    "agent", "alacarte", "care", "cargo", "commercial", "container", "course",
+    "delta", "diesel", "dragon", "festival", "final", "flora", "forest",
+    "galaxy", "golden", "holiday", "hospitality", "house", "korea", "lake",
+    "landmark", "lexington", "liberty", "lighthouse", "logistic", "lucky",
+    "materials", "mekong", "metropolis", "nova", "palace", "paragon", "prince",
+    "princess", "residence", "rivergate", "riverside", "serenity", "southgate",
+    "unity", "valley", "waterfront", "windows", "diamond", "pearl", "ocean",
+    "garden", "park", "tower", "plaza", "central", "royal", "sunrise",
+    "paradise", "riverview", "lakeview", "harmony", "melody",
 }
 
 _VOWEL_GROUP_RE = re.compile(r"[aeiouy]+")
 
 
 def parse_subsidiaries(html: str) -> list[str]:
-    """Extract full subsidiary company names from the dedicated page HTML."""
+    """Extract names of true subsidiaries (ownership > 50%) from the page HTML.
+
+    The table lumps subsidiaries with JVs/associates; we keep only rows whose
+    ownership % exceeds _SUBSIDIARY_MIN_PCT so associates (often other listed
+    companies) aren't mis-attributed to the parent.
+    """
     text = BeautifulSoup(html, "html.parser").get_text(" ", strip=True)
     seen: set[str] = set()
     out: list[str] = []
     for m in _SUB_RE.finditer(text):
         name = re.sub(r"\s+", " ", m.group(1)).strip(" -")
+        try:
+            pct = float(m.group(2).replace(",", "."))
+        except ValueError:
+            continue
+        if pct <= _SUBSIDIARY_MIN_PCT:
+            continue
         if name and name.lower() not in seen:
             seen.add(name.lower())
             out.append(name)

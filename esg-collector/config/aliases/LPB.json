@@ -1,0 +1,17 @@
+{
+  "ticker": "LPB",
+  "company_name": "Ngân hàng TMCP Lộc Phát Việt Nam",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "LPB",
+    "Ngân hàng TMCP Lộc Phát Việt Nam",
+    "LPBank"
+  ],
+  "subsidiaries": [],
+  "projects": [],
+  "locations": []
+}

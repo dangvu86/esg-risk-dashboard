@@ -1,0 +1,18 @@
+{
+  "ticker": "VNM",
+  "company_name": "CTCP Sữa Việt Nam",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "VNM",
+    "CTCP Sữa Việt Nam",
+    "VINAMILK",
+    "Sữa Việt Nam"
+  ],
+  "subsidiaries": [],
+  "projects": [],
+  "locations": []
+}

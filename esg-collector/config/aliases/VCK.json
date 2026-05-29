@@ -1,0 +1,18 @@
+{
+  "ticker": "VCK",
+  "company_name": "CTCP Chứng khoán VPS",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "VCK",
+    "CTCP Chứng khoán VPS",
+    "VPS",
+    "Chứng khoán VPS"
+  ],
+  "subsidiaries": [],
+  "projects": [],
+  "locations": []
+}

@@ -1,0 +1,41 @@
+{
+  "ticker": "PAN",
+  "company_name": "CTCP Tập đoàn PAN",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "PAN",
+    "CTCP Tập đoàn PAN",
+    "The PAN Group"
+  ],
+  "subsidiaries": [
+    "CTCP Atani Holdings",
+    "CTCP Bibica",
+    "CTCP Cà phê Golden Beans",
+    "CTCP Chế biến hàng Xuất khẩu Long An",
+    "CTCP Khử trùng Việt Nam",
+    "CTCP PAN - HULIC",
+    "CTCP PAN Farm",
+    "Tập Đoàn Giống Cây Trồng Việt Nam",
+    "CTCP Thực phẩm Khang An",
+    "CTCP Thực phẩm PAN",
+    "CTCP Thực phẩm Sao Ta",
+    "CTCP Xuất nhập khẩu Thủy sản Bến Tre",
+    "Atani Holdings",
+    "Atani",
+    "Bibica",
+    "Cà phê Golden Beans",
+    "Khử trùng Việt Nam",
+    "PAN - HULIC",
+    "HULIC",
+    "PAN Farm",
+    "Thực phẩm Khang An",
+    "Thực phẩm PAN",
+    "Thực phẩm Sao Ta"
+  ],
+  "projects": [],
+  "locations": []
+}

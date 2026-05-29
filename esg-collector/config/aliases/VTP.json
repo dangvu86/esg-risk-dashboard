@@ -1,0 +1,24 @@
+{
+  "ticker": "VTP",
+  "company_name": "Tổng Công ty cổ phần Bưu chính Viettel",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "VTP",
+    "Tổng Công ty cổ phần Bưu chính Viettel",
+    "cổ phần Bưu chính Viettel"
+  ],
+  "subsidiaries": [
+    "Công ty TNHH MTV Dịch vụ Kho Hà Nội vận Viettel",
+    "Công ty TNHH MTV Dịch Vụ và Thương Mại ViettelPost",
+    "Công ty TNHH MTV Logistics Viettel",
+    "Viettel",
+    "ViettelPost",
+    "Logistics Viettel"
+  ],
+  "projects": [],
+  "locations": []
+}

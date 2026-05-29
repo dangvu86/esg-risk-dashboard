@@ -1,0 +1,27 @@
+{
+  "ticker": "CII",
+  "company_name": "CTCP Đầu tư Hạ tầng Kỹ thuật Thành phố Hồ Chí Minh",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "CII",
+    "CTCP Đầu tư Hạ tầng Kỹ thuật Thành phố Hồ Chí Minh",
+    "Đầu tư Hạ tầng Kỹ thuật Thành phố Hồ Chí Minh"
+  ],
+  "subsidiaries": [
+    "Công ty TNHH hạ Tầng Trung Bộ",
+    "Công ty TNHH MTV Dịch vụ và Đầu tư CII",
+    "Công ty TNHH MTV Khu bắc Thủ Thiêm",
+    "CTCP Đầu tư Cầu đường CII",
+    "CTCP Đầu tư Năm Bảy Bảy",
+    "CTCP Đầu tư và Xây dựng Cầu đường Bình Triệu",
+    "CTCP xây dựng Hạ tầng CII",
+    "hạ Tầng Trung Bộ",
+    "Khu bắc Thủ Thiêm"
+  ],
+  "projects": [],
+  "locations": []
+}

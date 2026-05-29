@@ -1,0 +1,22 @@
+{
+  "ticker": "STB",
+  "company_name": "Ngân hàng TMCP Sài Gòn Thương Tín",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "STB",
+    "Ngân hàng TMCP Sài Gòn Thương Tín",
+    "Sacombank"
+  ],
+  "subsidiaries": [
+    "Công ty TNHH MTV Cho thuê tài chính Ngân hàng Sài Gòn thương tín",
+    "Công ty TNHH MTV Kiều hối Ngân hàng Sài Gòn Thương Tín",
+    "Công ty TNHH MTV Quản lý nợ và khai thác tài sản NH Sài Gòn Thương Tín",
+    "Công ty TNHH Vàng bạc đá quý Ngân hàng Sài Gòn Thương Tín"
+  ],
+  "projects": [],
+  "locations": []
+}

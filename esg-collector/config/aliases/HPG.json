@@ -1,0 +1,25 @@
+{
+  "ticker": "HPG",
+  "company_name": "CTCP Tập đoàn Hòa Phát",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "HPG",
+    "CTCP Tập đoàn Hòa Phát",
+    "Hoa Phat Group",
+    "Hòa Phát"
+  ],
+  "subsidiaries": [
+    "CTCP Điện máy gia dụng Hòa Phát",
+    "CTCP Gang thép Hòa Phát",
+    "CTCP Phát triển Bất động sản Hòa Phát",
+    "CTCP Phát triển Nông nghiệp Hòa Phát",
+    "CTCP Sản phẩm thép Hòa Phát",
+    "Gang thép Hòa Phát"
+  ],
+  "projects": [],
+  "locations": []
+}

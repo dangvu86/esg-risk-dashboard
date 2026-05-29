@@ -1,0 +1,29 @@
+{
+  "ticker": "FPT",
+  "company_name": "CTCP FPT",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "FPT",
+    "CTCP FPT",
+    "FPT Corp"
+  ],
+  "subsidiaries": [
+    "Công ty TNHH FPT Digital",
+    "Công ty TNHH FPT Smart Cloud",
+    "Công ty TNHH Giáo dục FPT",
+    "Công ty TNHH Hệ thống Thông tin FPT",
+    "Công ty TNHH Phần mềm FPT",
+    "CTCP Đầu tư FPT",
+    "FPT Digital",
+    "FPT Smart Cloud",
+    "Giáo dục FPT",
+    "Phần mềm FPT",
+    "Đầu tư FPT"
+  ],
+  "projects": [],
+  "locations": []
+}

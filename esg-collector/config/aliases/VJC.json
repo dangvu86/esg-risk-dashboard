@@ -1,0 +1,28 @@
+{
+  "ticker": "VJC",
+  "company_name": "CTCP Hàng không Vietjet",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "VJC",
+    "CTCP Hàng không Vietjet",
+    "VIETJET., JSC",
+    "Hàng không Vietjet"
+  ],
+  "subsidiaries": [
+    "Công ty TNHH Galaxy Pay",
+    "Công ty TNHH MTV Airport NEO",
+    "CTCP Swift 247",
+    "CTCP Vietjet Air Cargo",
+    "Galaxy Pay",
+    "Airport NEO",
+    "Swift 247",
+    "Vietjet Air Cargo",
+    "Vietjet"
+  ],
+  "projects": [],
+  "locations": []
+}

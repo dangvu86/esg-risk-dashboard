@@ -1,0 +1,18 @@
+{
+  "ticker": "PLX",
+  "company_name": "Tập đoàn Xăng Dầu Việt Nam",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "PLX",
+    "Tập đoàn Xăng Dầu Việt Nam",
+    "Petrolimex",
+    "Xăng Dầu Việt Nam"
+  ],
+  "subsidiaries": [],
+  "projects": [],
+  "locations": []
+}

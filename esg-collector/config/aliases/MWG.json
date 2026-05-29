@@ -1,0 +1,17 @@
+{
+  "ticker": "MWG",
+  "company_name": "CTCP Đầu tư Thế giới Di động",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "MWG",
+    "CTCP Đầu tư Thế giới Di động",
+    "Đầu tư Thế giới Di động"
+  ],
+  "subsidiaries": [],
+  "projects": [],
+  "locations": []
+}

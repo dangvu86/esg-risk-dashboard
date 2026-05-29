@@ -1,0 +1,28 @@
+{
+  "ticker": "HAH",
+  "company_name": "CTCP Vận tải và Xếp dỡ Hải An",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "HAH",
+    "CTCP Vận tải và Xếp dỡ Hải An",
+    "HAIANTS.,JSC",
+    "Vận tải và Xếp dỡ Hải An"
+  ],
+  "subsidiaries": [
+    "Công ty cổ phần Dịch vụ cảng Lưu Nguyên Cái Mép",
+    "Công ty TNHH Cảng Hải An",
+    "Công ty TNHH Đại lý và Tiếp vận Hải An",
+    "Công ty TNHH Liên doanh Zim Hải An",
+    "Công ty TNHH Một thành viên quản lý hàng hải Hải An",
+    "Công ty TNHH Pan Hải An",
+    "Công ty TNHH Vận tải Container Hải An",
+    "Cảng Hải An",
+    "Pan Hải An"
+  ],
+  "projects": [],
+  "locations": []
+}

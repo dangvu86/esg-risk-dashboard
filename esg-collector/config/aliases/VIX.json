@@ -1,0 +1,17 @@
+{
+  "ticker": "VIX",
+  "company_name": "CTCP Chứng khoán VIX",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "VIX",
+    "CTCP Chứng khoán VIX",
+    "Chứng khoán VIX"
+  ],
+  "subsidiaries": [],
+  "projects": [],
+  "locations": []
+}

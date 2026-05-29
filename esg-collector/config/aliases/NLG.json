@@ -1,0 +1,51 @@
+{
+  "ticker": "NLG",
+  "company_name": "CTCP Đầu tư Nam Long",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "NLG",
+    "CTCP Đầu tư Nam Long",
+    "NLG CORP",
+    "Đầu tư Nam Long"
+  ],
+  "subsidiaries": [
+    "Công ty TNHH Đầu tư Nam Long Land",
+    "Công ty TNHH Đầu tư Nam Phát Land",
+    "Công ty TNHH Đầu tư và Kinh doanh Bất Động sản Nguyên Phúc",
+    "Công ty TNHH Kinh doanh Vật liệu Xây dựng Nam Khang",
+    "Công ty TNHH MTV Đầu tư Xây dựng và Phát triển Nam Khang",
+    "Công ty TNHH MTV Dịch vụ Vận tải Nam Long",
+    "Công ty TNHH MTV Paragon Đại Phước",
+    "Công ty TNHH MTV Sàn Giao dịch Bất động sản Nam Long",
+    "Công ty TNHH Nam Long Commercial Property",
+    "Công ty TNHH Nam Long Retail",
+    "Công ty TNHH Nam Long SPV",
+    "Công ty TNHH NN Kikyo Valora",
+    "Công ty TNHH NNH Kikyo Flora",
+    "Công ty TNHH Phát triển Căn hộ Nam Long",
+    "Công Ty TNHH Thành phố Waterfront Đồng Nai",
+    "CTCP Bất Động Sản Nguyên Sơn",
+    "CTCP Đầu tư Nam Phan",
+    "CTCP Nam Long Mekong",
+    "CTCP Nam Long VCD",
+    "CTCP Southgate",
+    "Paragon Đại Phước",
+    "Nam Long Commercial Property",
+    "Nam Long Retail",
+    "Nam Long SPV",
+    "NN Kikyo Valora",
+    "Kikyo",
+    "Valora",
+    "NNH Kikyo Flora",
+    "Đầu tư Nam Phan",
+    "Nam Long Mekong",
+    "Nam Long VCD",
+    "Southgate"
+  ],
+  "projects": [],
+  "locations": []
+}

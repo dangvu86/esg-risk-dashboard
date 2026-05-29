@@ -1,0 +1,18 @@
+{
+  "ticker": "HCM",
+  "company_name": "CTCP Chứng khoán Thành phố Hồ Chí Minh",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "HCM",
+    "CTCP Chứng khoán Thành phố Hồ Chí Minh",
+    "HSC",
+    "Chứng khoán Thành phố Hồ Chí Minh"
+  ],
+  "subsidiaries": [],
+  "projects": [],
+  "locations": []
+}

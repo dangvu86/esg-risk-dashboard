@@ -1,0 +1,22 @@
+{
+  "ticker": "SZC",
+  "company_name": "CTCP Sonadezi Châu Đức",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "SZC",
+    "CTCP Sonadezi Châu Đức",
+    "Sonadezi Châu Đức"
+  ],
+  "subsidiaries": [
+    "Công ty TNHH MTV BOT 768",
+    "Công ty TNHH MTV Golf Course Châu Đức",
+    "BOT 768",
+    "Golf Course Châu Đức"
+  ],
+  "projects": [],
+  "locations": []
+}

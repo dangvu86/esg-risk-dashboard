@@ -1,0 +1,25 @@
+{
+  "ticker": "KDC",
+  "company_name": "CTCP Tập đoàn KIDO",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "KDC",
+    "CTCP Tập đoàn KIDO",
+    "KIDO Group",
+    "KIDO"
+  ],
+  "subsidiaries": [
+    "Công Ty TNHH MTV Chế Biến Thực Phẩm Thọ Phát",
+    "CTCP Dầu thực vật Tường An",
+    "CTCP HÙNG VƯƠNG",
+    "CTCP Thọ Phát Quốc Tế",
+    "HÙNG VƯƠNG",
+    "Thọ Phát Quốc Tế"
+  ],
+  "projects": [],
+  "locations": []
+}

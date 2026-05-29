@@ -433,10 +433,13 @@ def test_parse_subsidiaries() -> None:
     from pathlib import Path
     html = Path("tests/fixtures/vietstock_DBC_subs.html").read_text(encoding="utf-8")
     subs = fv.parse_subsidiaries(html)
-    # full names captured reliably
+    # full names captured reliably (all >50% owned)
     assert any("Nasaco" in s for s in subs), subs
     assert any("Dabaco Thanh Hóa" in s for s in subs), subs
     assert any("Dabaco Quảng Ninh" in s for s in subs), subs
+    # ownership filter: the 25.5%-owned associate must be DROPPED (only true
+    # subsidiaries >50% are kept, so liên kết like IDICO aren't mis-attributed).
+    assert not any("Vinaco" in s for s in subs), subs
     shorts = fv.short_aliases(subs)
     # simple short forms derived (legal prefix stripped, short enough)
     assert "Dabaco Thanh Hóa" in shorts, shorts

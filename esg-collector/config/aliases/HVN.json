@@ -1,0 +1,25 @@
+{
+  "ticker": "HVN",
+  "company_name": "Tổng Công ty Hàng không Việt Nam - CTCP",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "HVN",
+    "Tổng Công ty Hàng không Việt Nam - CTCP",
+    "Vietnam Airlines",
+    "Hàng không Việt Nam - CTCP"
+  ],
+  "subsidiaries": [
+    "CTCP Dịch vụ Hàng hóa Nội Bài",
+    "CTCP Dịch vụ Hàng không Sân bay Việt Nam",
+    "CTCP Sabre Việt Nam",
+    "CTCP Suất ăn Hàng không Nội Bài",
+    "Sabre Việt Nam",
+    "Sabre"
+  ],
+  "projects": [],
+  "locations": []
+}

@@ -1,0 +1,18 @@
+{
+  "ticker": "MCH",
+  "company_name": "CTCP Hàng tiêu dùng Masan",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "MCH",
+    "CTCP Hàng tiêu dùng Masan",
+    "Masan Consumer Corp",
+    "Hàng tiêu dùng Masan"
+  ],
+  "subsidiaries": [],
+  "projects": [],
+  "locations": []
+}

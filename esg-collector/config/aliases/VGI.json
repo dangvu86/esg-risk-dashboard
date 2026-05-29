@@ -1,0 +1,18 @@
+{
+  "ticker": "VGI",
+  "company_name": "Tổng Công ty cổ phần Đầu tư Quốc tế Viettel",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "VGI",
+    "Tổng Công ty cổ phần Đầu tư Quốc tế Viettel",
+    "VIETTEL GLOBAL",
+    "cổ phần Đầu tư Quốc tế Viettel"
+  ],
+  "subsidiaries": [],
+  "projects": [],
+  "locations": []
+}

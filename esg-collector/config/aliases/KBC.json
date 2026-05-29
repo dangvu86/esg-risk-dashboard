@@ -1,0 +1,41 @@
+{
+  "ticker": "KBC",
+  "company_name": "Tổng Công ty Phát triển Đô thị Kinh Bắc - CTCP",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "KBC",
+    "Tổng Công ty Phát triển Đô thị Kinh Bắc - CTCP",
+    "KINHBAC CITY GROUP",
+    "Phát triển Đô thị Kinh Bắc - CTCP"
+  ],
+  "subsidiaries": [
+    "Công ty TNHH Công nghiệp chế tạo Quảng Yên",
+    "Công ty TNHH Điện tử Quảng Yên",
+    "Công ty TNHH MTV Đầu tư NGD",
+    "Công ty TNHH MTV KCN Bắc Giang - Long An",
+    "Công ty TNHH MTV KCN Tân Phú Trung - Long An",
+    "Công ty TNHH MTV KCN Tân Phú Trung - Tây Ninh",
+    "Công ty TNHH MTV Kinh doanh Văn phòng và nhà xưởng Kinh Bắc",
+    "Công ty TNHH MTV Phát triển Đô thị Tràng Cát",
+    "CTCP Công viên Tâm Linh Bảo Lạc",
+    "CTCP Đầu tư Phát triển Long An",
+    "CTCP Dịch vụ Khách sạn Hưng Yên",
+    "CTCP Khu Công nghiệp Sài Gòn - Bắc Giang",
+    "CTCP Khu Công nghiệp Sài Gòn - Hải Phòng",
+    "CTCP Phát triển Đô thị Sài Gòn - Tây Bắc",
+    "CTCP Phát triển Đô thị Tiên Dương",
+    "Tập đoàn Đầu tư Vũng Tàu",
+    "Tập đoàn và Đầu tư Phát triển Hưng Yên",
+    "CTCP Trump International Việt Nam",
+    "Điện tử Quảng Yên",
+    "Đầu tư NGD",
+    "Đầu tư Vũng Tàu",
+    "Trump International Việt Nam"
+  ],
+  "projects": [],
+  "locations": []
+}

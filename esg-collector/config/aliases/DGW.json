@@ -1,0 +1,34 @@
+{
+  "ticker": "DGW",
+  "company_name": "CTCP Thế Giới Số",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "DGW",
+    "CTCP Thế Giới Số",
+    "DIGIWORLD",
+    "Thế Giới Số"
+  ],
+  "subsidiaries": [
+    "Công ty TNHH B2X Care Solutions Việt Nam",
+    "Công ty TNHH MTV 1 Digital Technology",
+    "Công ty TNHH MTV Dpharma",
+    "Công ty TNHH Nexta Capital",
+    "CTCP A Chi Son",
+    "CTCP Dịch vụ Phát triển Thị trường C.L.",
+    "Tập đoàn B2X",
+    "CTCP Thương mại và Sản xuất Bellvina",
+    "1 Digital Technology",
+    "Dpharma",
+    "Nexta Capital",
+    "Nexta",
+    "A Chi Son",
+    "B2X",
+    "Bellvina"
+  ],
+  "projects": [],
+  "locations": []
+}

@@ -1,0 +1,20 @@
+{
+  "ticker": "QNS",
+  "company_name": "CTCP Đường Quảng Ngãi",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "QNS",
+    "CTCP Đường Quảng Ngãi",
+    "Đường Quảng Ngãi"
+  ],
+  "subsidiaries": [
+    "Công ty TNHH MTV Thương mại Thành Phát",
+    "Thương mại Thành Phát"
+  ],
+  "projects": [],
+  "locations": []
+}

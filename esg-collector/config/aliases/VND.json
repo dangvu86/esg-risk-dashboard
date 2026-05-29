@@ -1,0 +1,18 @@
+{
+  "ticker": "VND",
+  "company_name": "CTCP Chứng khoán VNDIRECT",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "VND",
+    "CTCP Chứng khoán VNDIRECT",
+    "VNDIRECT",
+    "Chứng khoán VNDIRECT"
+  ],
+  "subsidiaries": [],
+  "projects": [],
+  "locations": []
+}

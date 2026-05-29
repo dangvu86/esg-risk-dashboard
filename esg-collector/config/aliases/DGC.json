@@ -1,44 +1,29 @@
 {
   "ticker": "DGC",
   "company_name": "CTCP Tập đoàn Hóa chất Đức Giang",
-  "industry": "Hóa chất công nghiệp, phốt pho, phân bón",
-  "headquarters": "Hà Nội",
-  "derived_from": ["vietstock_profile"],
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
   "names": [
-    "Hóa chất Đức Giang",
-    "Đức Giang",
     "DGC",
-    "Tập đoàn Hóa chất Đức Giang"
+    "CTCP Tập đoàn Hóa chất Đức Giang",
+    "Duc Giang Chemicals Group",
+    "Hóa chất Đức Giang"
   ],
   "subsidiaries": [
-    "Bất động sản Đức Giang",
-    "Hóa chất Đức Giang Nghi Sơn",
-    "Hóa chất Đức Giang Lào Cai",
-    "Hóa chất Đức Giang Đắk Nông",
-    "Hóa chất Đức Giang Đình Vũ",
-    "Phốt pho Apatit Việt Nam",
-    "PAT",
+    "Công ty TNHH MTV Bất động sản Đức Giang",
+    "Công ty TNHH MTV Hóa chất Đức Giang - Đắk Nông",
+    "Công ty TNHH MTV Hóa Chất Đức Giang - Đình Vũ",
+    "Công ty TNHH MTV Hóa chất Đức Giang - Lào Cai",
+    "Công ty TNHH MTV Hóa chất Đức Giang- Nghi Sơn",
+    "Công ty TNHH MTV Thể thao Hóa chất Đức Giang",
+    "CTCP Ắc quy Tia Sáng",
+    "CTCP Phốt pho Apatit Việt Nam",
     "Ắc quy Tia Sáng",
-    "TSB"
+    "Apatit"
   ],
-  "locations": [
-    "Hà Nội",
-    "Việt Hưng",
-    "Đức Giang",
-    "Nghi Sơn",
-    "Thanh Hóa",
-    "Lào Cai",
-    "Đắk Nông",
-    "Đình Vũ",
-    "Hải Phòng"
-  ],
-  "projects": [
-    "Nhà máy cồn",
-    "Nhà máy Xút Chất dẻo Nghi Sơn",
-    "Alumin Đắk Nông",
-    "Chung cư Hóa chất Đức Giang"
-  ],
-  "self_disclosed_risks": [
-    "Khói bụi, chất thải rắn, ô nhiễm nguồn nước"
-  ]
+  "projects": [],
+  "locations": []
 }

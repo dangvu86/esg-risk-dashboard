@@ -1,0 +1,20 @@
+{
+  "ticker": "SSI",
+  "company_name": "CTCP Chứng khoán SSI",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "SSI",
+    "CTCP Chứng khoán SSI",
+    "Chứng khoán SSI"
+  ],
+  "subsidiaries": [
+    "Công ty TNHH Quản lý Quỹ SSI",
+    "Quản lý Quỹ SSI"
+  ],
+  "projects": [],
+  "locations": []
+}

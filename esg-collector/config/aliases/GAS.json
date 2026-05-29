@@ -1,0 +1,18 @@
+{
+  "ticker": "GAS",
+  "company_name": "Tổng Công ty Khí Việt Nam - CTCP",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "GAS",
+    "Tổng Công ty Khí Việt Nam - CTCP",
+    "PV Gas",
+    "Khí Việt Nam - CTCP"
+  ],
+  "subsidiaries": [],
+  "projects": [],
+  "locations": []
+}

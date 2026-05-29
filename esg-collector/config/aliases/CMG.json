@@ -1,0 +1,18 @@
+{
+  "ticker": "CMG",
+  "company_name": "CTCP Tập đoàn Công nghệ CMC",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "CMG",
+    "CTCP Tập đoàn Công nghệ CMC",
+    "CMC Corp",
+    "Công nghệ CMC"
+  ],
+  "subsidiaries": [],
+  "projects": [],
+  "locations": []
+}

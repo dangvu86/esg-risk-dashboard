@@ -1,0 +1,20 @@
+{
+  "ticker": "BSR",
+  "company_name": "CTCP - Tổng Công ty Lọc hóa dầu Việt Nam",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "BSR",
+    "CTCP - Tổng Công ty Lọc hóa dầu Việt Nam",
+    "- Tổng Công ty Lọc hóa dầu Việt Nam"
+  ],
+  "subsidiaries": [
+    "CTCP Bao bì và Thương mại dầu khí Bình Sơn",
+    "CTCP Nhiên liệu Sinh học Dầu khí Miền Trung"
+  ],
+  "projects": [],
+  "locations": []
+}

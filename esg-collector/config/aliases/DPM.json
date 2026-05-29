@@ -1,0 +1,23 @@
+{
+  "ticker": "DPM",
+  "company_name": "Tổng Công ty Phân bón và Hóa chất Dầu khí - CTCP",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "DPM",
+    "Tổng Công ty Phân bón và Hóa chất Dầu khí - CTCP",
+    "PVFCCo",
+    "Phân bón và Hóa chất Dầu khí - CTCP"
+  ],
+  "subsidiaries": [
+    "CTCP Phân Bón và Hóa Chất Dầu khí Đông Nam Bộ",
+    "CTCP Phân bón và Hóa chất Dầu khí Miền Bắc",
+    "CTCP Phân bón và Hóa chất Dầu khí Miền Trung",
+    "CTCP Phân bón và Hóa chất Dầu khí Tây Nam Bộ"
+  ],
+  "projects": [],
+  "locations": []
+}

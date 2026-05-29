@@ -1,0 +1,21 @@
+{
+  "ticker": "TPB",
+  "company_name": "Ngân hàng TMCP Tiên Phong",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "TPB",
+    "Ngân hàng TMCP Tiên Phong",
+    "TPBank"
+  ],
+  "subsidiaries": [
+    "CTCP Chứng khoán Tiền Phong",
+    "CTCP Quản lý quỹ Việt Cát",
+    "Chứng khoán Tiền Phong"
+  ],
+  "projects": [],
+  "locations": []
+}

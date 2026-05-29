@@ -12,6 +12,10 @@ on:
         description: "Also run pipeline.match --rematch-all after deploy (slow, ~5-15 min)"
         type: boolean
         default: false
+      run_backfill:
+        description: "Also enqueue the historical backfill (queue_builder --mode backfill) after deploy"
+        type: boolean
+        default: false
 
 concurrency:
   group: deploy-esg-collector
@@ -35,6 +39,9 @@ jobs:
       - name: Deploy + migrate on VM
         env:
           REMATCH: ${{ inputs.run_rematch_all && '1' || '0' }}
+          # Backfill runs when manually dispatched OR when a push commit message
+          # contains the [backfill] marker (lets a normal push trigger it once).
+          BACKFILL: ${{ (inputs.run_backfill || contains(github.event.head_commit.message, '[backfill]')) && '1' || '0' }}
         run: |
           set -euo pipefail
           # Heredoc keeps the inner script as a single argv string so the
@@ -119,6 +126,13 @@ jobs:
             [ "$state" = "active" ] || { echo "WORKER FAILED TO START: $s"; exit 1; }
           done
 
+          if [ "$BACKFILL" = "1" ]; then
+            echo "=== 7b. Backfill enqueue (historical alias + keyword; idempotent) ==="
+            # Aliases were refreshed by the git reset in step 3; missing-alias
+            # tickers are skipped with a warning, not an error.
+            sudo -u $SVC_USER $VENV -m core.queue_builder --mode backfill
+          fi
+
           echo "=== 8. Queue stats ==="
           sudo -u $SVC_USER $VENV - <<PYEOF
           import sqlite3
@@ -136,4 +150,4 @@ jobs:
             --zone=us-central1-a \
             --tunnel-through-iap \
             --quiet \
-            --command="REMATCH=${REMATCH} bash -s" <<< "$REMOTE_SCRIPT"
+            --command="REMATCH=${REMATCH} BACKFILL=${BACKFILL} bash -s" <<< "$REMOTE_SCRIPT"

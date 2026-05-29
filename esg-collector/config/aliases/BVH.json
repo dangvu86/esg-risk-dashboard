@@ -1,0 +1,17 @@
+{
+  "ticker": "BVH",
+  "company_name": "Tập đoàn Bảo Việt",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "BVH",
+    "Tập đoàn Bảo Việt",
+    "Bảo Việt"
+  ],
+  "subsidiaries": [],
+  "projects": [],
+  "locations": []
+}

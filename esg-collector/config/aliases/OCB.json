@@ -1,0 +1,19 @@
+{
+  "ticker": "OCB",
+  "company_name": "Ngân hàng TMCP Phương Đông",
+  "headquarters": "",
+  "derived_from": [
+    "vietstock_profile_minimal",
+    "vietstock_subsidiaries"
+  ],
+  "names": [
+    "OCB",
+    "Ngân hàng TMCP Phương Đông"
+  ],
+  "subsidiaries": [
+    "Công ty TNHH MTV Chuyển tiền Quốc tế Ngân hàng Thương mại Phương Đông",
+    "Công ty TNHH MTV Quản lý nợ và Khai thác tài sản Ngân hàng Phương Đông"
+  ],
+  "projects": [],
+  "locations": []
+}
