@@ -25,7 +25,7 @@ from datetime import datetime
 
 from backends import base
 from config import settings
-from core import storage, url_cache
+from core import queue_builder, storage, url_cache
 from core.canonicalize import canonicalize, dedup_key, domain_of
 from core.title import title_hash as _title_hash
 
@@ -110,6 +110,40 @@ def _process_task(conn, backend_mod, task) -> int:
     return inserted
 
 
+# Google News RSS caps each query at ~100 results. An alias×month task that
+# returns at/near the cap was very likely truncated, so we re-enqueue that
+# month split into ~weekly children (each returns fewer → under the cap). This
+# is the ONLY place a worker writes to search_queue.
+_NEAR_CAP = 90
+
+
+def _maybe_split(conn, backend_mod, task, n_items: int) -> None:
+    """Re-enqueue a near-cap Google alias month as ~weekly child alias tasks.
+
+    Narrowly scoped: only fires for the google_rss backend on an alias task
+    that returned >= _NEAR_CAP items. Keyword tasks, other backends, and
+    below-threshold results are left untouched.
+    """
+    if backend_mod.name != "google_rss":
+        return
+    if _field(task, "kind") != "alias":
+        return
+    if n_items < _NEAR_CAP:
+        return
+    for wa, wb in queue_builder.weekly_subchunks(_field(task, "after"), _field(task, "before")):
+        storage.enqueue_task(
+            conn,
+            backend="google_rss",
+            kind="alias",
+            ticker=_field(task, "ticker"),
+            group_key="alias",
+            sub_query_ix=_field(task, "sub_query_ix"),
+            query=_field(task, "query"),
+            after=wa,
+            before=wb,
+        )
+
+
 def run(backend_name: str) -> None:
     logging.basicConfig(
         level=logging.INFO,
@@ -143,6 +177,7 @@ def run(backend_name: str) -> None:
         try:
             n_items = _process_task(conn, backend_mod, task)
             storage.mark_task_done(conn, task["task_id"], n_items)
+            _maybe_split(conn, backend_mod, task, n_items)
             log.info("  → %d items inserted/found", n_items)
         except base.RateLimitError as e:
             attempts = task["attempts"] + 1

@@ -41,6 +41,27 @@ def date_chunks(start: str, end: str, months: int = 1) -> Iterator[tuple[str, st
         cur = nxt
 
 
+def weekly_subchunks(after: str, before: str) -> list[tuple[str, str]]:
+    """Split [after, before] inclusive into contiguous ~7-day (after, before) spans.
+
+    Used to re-enqueue a Google News alias month that came back near the
+    ~100-result cap: each weekly child returns fewer items, dodging truncation.
+
+    The first span starts at `after`; the last span ends at `before`; spans are
+    contiguous and non-overlapping, and every span has a <= b. A 30-day month
+    yields 5 spans (four 7-day spans + a short tail).
+    """
+    start = _parse(after)
+    end = _parse(before)
+    spans: list[tuple[str, str]] = []
+    cur = start
+    while cur <= end:
+        span_end = min(cur + timedelta(days=6), end)
+        spans.append((cur.isoformat(), span_end.isoformat()))
+        cur = span_end + timedelta(days=1)
+    return spans
+
+
 _BACKEND_WINDOWS = {
     "google_rss": (settings.BACKFILL_START, settings.BACKFILL_END),
     "baomoi":     (settings.BAOMOI_WINDOW_START, settings.BAOMOI_WINDOW_END),

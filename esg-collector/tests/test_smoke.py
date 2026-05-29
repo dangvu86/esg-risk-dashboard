@@ -335,6 +335,36 @@ def test_worker_stamps_ticker_hint() -> None:
     print("  worker_ticker_hint OK")
 
 
+def test_weekly_subchunks() -> None:
+    from core.queue_builder import weekly_subchunks
+    weeks = weekly_subchunks("2024-06-01", "2024-06-30")
+    assert len(weeks) >= 4 and weeks[0][0] == "2024-06-01"
+    assert all(a <= b for a, b in weeks)
+    print("  weekly_subchunks OK")
+
+
+def test_runner_splits_near_cap() -> None:
+    from workers import runner
+    from core import storage
+    import tempfile
+    from pathlib import Path
+    class CapBackend:
+        name = "google_rss"
+        @staticmethod
+        def fetch(q, a, b):
+            return [{"url": f"https://x.vn/a-{i}.html", "title": "t", "published_at": a} for i in range(95)]
+    with tempfile.TemporaryDirectory() as td:
+        db = Path(td) / "s.db"; storage.init_db(db); conn = storage.connect(db)
+        task = {"task_id":"google_rss:alias:DBC:0:2024-06-01","query":"Dabaco",
+                "after":"2024-06-01","before":"2024-06-30","group_key":"alias",
+                "sub_query_ix":0,"kind":"alias","ticker":"DBC"}
+        runner._maybe_split(conn, CapBackend, task, n_items=95)
+        kids = conn.execute("SELECT COUNT(*) c FROM search_queue WHERE kind='alias'").fetchone()["c"]
+        assert kids >= 4, kids
+        conn.close()
+    print("  runner_splits_near_cap OK")
+
+
 def main() -> None:
     if sys.platform == "win32":
         # ensure stdout can print Vietnamese
@@ -356,6 +386,8 @@ def main() -> None:
     test_l1_keyword_tasks()
     test_l2_alias_tasks()
     test_worker_stamps_ticker_hint()
+    test_weekly_subchunks()
+    test_runner_splits_near_cap()
     print("ALL OK")
 
 
