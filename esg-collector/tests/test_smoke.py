@@ -340,6 +340,7 @@ def test_weekly_subchunks() -> None:
     weeks = weekly_subchunks("2024-06-01", "2024-06-30")
     assert len(weeks) >= 4 and weeks[0][0] == "2024-06-01"
     assert all(a <= b for a, b in weeks)
+    assert weeks[-1][1] == "2024-06-30", weeks
     print("  weekly_subchunks OK")
 
 
@@ -361,6 +362,10 @@ def test_runner_splits_near_cap() -> None:
         runner._maybe_split(conn, CapBackend, task, n_items=95)
         kids = conn.execute("SELECT COUNT(*) c FROM search_queue WHERE kind='alias'").fetchone()["c"]
         assert kids >= 4, kids
+        child = conn.execute(
+            "SELECT * FROM search_queue WHERE kind='alias' AND ticker='DBC' LIMIT 1").fetchone()
+        assert child["ticker"] == "DBC" and child["query"] == "Dabaco"
+        assert child["backend"] == "google_rss" and child["sub_query_ix"] == 0
         conn.close()
     print("  runner_splits_near_cap OK")
 
