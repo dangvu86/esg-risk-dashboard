@@ -25,7 +25,7 @@ SECRET = b"882QcNXV4tUZbvAsjmFOHqNC1LpcBRKW"
 SIG_WHITELIST = {"ctime", "listType", "page", "version"}
 VERSION = "0.8.4"
 
-MAX_PAGES = 50  # chunk-internal page cap; usually we stop sooner via date cutoff
+MAX_PAGES = 200  # alias deep-pass ceiling; date-cutoff early-stop keeps quiet queries fast
 
 
 def _sign(params: dict) -> str:
