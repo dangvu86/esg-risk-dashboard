@@ -207,6 +207,22 @@ def test_keyword_config() -> None:
     print("  keyword_config OK")
 
 
+def test_esg_filter() -> None:
+    from pipeline import esg_filter
+    v = esg_filter.classify({"title": "Xử phạt Dabaco 300 triệu vì vi phạm môi trường",
+                             "sapo": "", "body": ""})
+    assert v.keep and v.esg_type == "E" and v.severity == "Trung bình", v
+    v = esg_filter.classify({"title": "Cổ đông Dabaco sắp nhận cổ tức bằng tiền mặt",
+                             "sapo": "", "body": ""})
+    assert not v.keep and v.reason == "noise", v
+    v = esg_filter.classify({"title": "Phạt công ty X 2 tỷ đồng vì xả thải", "sapo": "", "body": ""})
+    assert v.keep and v.severity == "Cao", v
+    v = esg_filter.classify({"title": "Công ty X tổ chức đại hội cổ đông thường niên",
+                             "sapo": "", "body": ""})
+    assert not v.keep and v.reason == "non_esg", v
+    print("  esg_filter OK")
+
+
 def main() -> None:
     if sys.platform == "win32":
         # ensure stdout can print Vietnamese
@@ -223,6 +239,7 @@ def main() -> None:
     test_queue_builder_counts()
     test_window_reaches_today()
     test_keyword_config()
+    test_esg_filter()
     print("ALL OK")
 
 
