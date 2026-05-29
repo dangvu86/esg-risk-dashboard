@@ -134,6 +134,29 @@ def test_schema_migrations() -> None:
     print("  schema_migrations OK")
 
 
+def test_enqueue_kinds() -> None:
+    from core import storage
+    import tempfile
+    from pathlib import Path
+    with tempfile.TemporaryDirectory() as td:
+        db = Path(td) / "q.db"
+        storage.init_db(db)
+        conn = storage.connect(db)
+        assert storage.enqueue_task(conn, backend="baomoi", group_key="kw",
+            sub_query_ix=3, query="ô nhiễm", after="2024-06-01", before="2024-06-30")
+        assert storage.enqueue_task(conn, backend="baomoi", kind="alias",
+            ticker="DBC", group_key="alias", sub_query_ix=0, query="Dabaco",
+            after="2020-01-01", before="2026-05-29")
+        rows = {r["task_id"]: r for r in conn.execute("SELECT * FROM search_queue")}
+        assert any(r["kind"] == "alias" and r["ticker"] == "DBC" for r in rows.values())
+        # alias re-enqueue is idempotent
+        assert storage.enqueue_task(conn, backend="baomoi", kind="alias",
+            ticker="DBC", group_key="alias", sub_query_ix=0, query="Dabaco",
+            after="2020-01-01", before="2026-05-29") is False
+        conn.close()
+    print("  enqueue_kinds OK")
+
+
 def test_queue_builder_counts() -> None:
     from config.keywords import count_subqueries
     from core import queue_builder
@@ -159,6 +182,7 @@ def main() -> None:
     test_alias_matcher()
     test_storage_roundtrip()
     test_schema_migrations()
+    test_enqueue_kinds()
     test_queue_builder_counts()
     print("ALL OK")
 

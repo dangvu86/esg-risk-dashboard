@@ -285,13 +285,18 @@ def enqueue_task(
     query: str,
     after: str,
     before: str,
+    kind: str = "keyword",
+    ticker: str | None = None,
 ) -> bool:
-    task_id = f"{backend}:{group_key}:{sub_query_ix}:{after}"
+    if kind == "alias":
+        task_id = f"{backend}:alias:{ticker}:{sub_query_ix}:{after}"
+    else:
+        task_id = f"{backend}:{group_key}:{sub_query_ix}:{after}"
     cur = conn.execute(
         "INSERT OR IGNORE INTO search_queue "
-        "(task_id, backend, group_key, sub_query_ix, query, after, before) "
-        "VALUES (?,?,?,?,?,?,?)",
-        (task_id, backend, group_key, sub_query_ix, query, after, before),
+        "(task_id, backend, group_key, sub_query_ix, query, after, before, kind, ticker) "
+        "VALUES (?,?,?,?,?,?,?,?,?)",
+        (task_id, backend, group_key, sub_query_ix, query, after, before, kind, ticker),
     )
     return cur.rowcount > 0
 
