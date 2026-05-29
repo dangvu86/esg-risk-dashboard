@@ -1,6 +1,14 @@
 """Global runtime settings for esg-collector."""
 import os
+from datetime import datetime
 from pathlib import Path
+
+try:
+    from zoneinfo import ZoneInfo
+    _VN = ZoneInfo("Asia/Ho_Chi_Minh")
+except Exception:
+    _VN = None
+_TODAY = (datetime.now(_VN) if _VN else datetime.utcnow()).date().isoformat()
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT / "data"
@@ -12,7 +20,7 @@ COMPANIES_CSV = ROOT / "config" / "companies.csv"
 
 # Backfill window
 BACKFILL_START = "2020-01-01"
-BACKFILL_END   = "2024-12-31"
+BACKFILL_END   = _TODAY
 CHUNK_MONTHS   = 1
 
 # Per-backend throttle (seconds, base delay before each call). Jitter ±33%.
@@ -35,7 +43,7 @@ MAX_ATTEMPTS = 5
 BRAVE_WINDOW_START = "2020-01-01"
 BRAVE_WINDOW_END   = "2021-12-31"
 BAOMOI_WINDOW_START = "2022-01-01"
-BAOMOI_WINDOW_END   = "2024-12-31"
+BAOMOI_WINDOW_END   = _TODAY
 
 BRAVE_API_KEY = os.environ.get("BRAVE_API_KEY", "")
 JINA_API_KEY  = os.environ.get("JINA_API_KEY", "")  # optional; raises RPM cap

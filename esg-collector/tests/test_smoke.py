@@ -180,6 +180,19 @@ def test_queue_builder_counts() -> None:
     print("  queue_builder OK")
 
 
+def test_window_reaches_today() -> None:
+    from datetime import date
+    from config import settings
+    # BACKFILL_END and BAOMOI_WINDOW_END roll to today; BRAVE_WINDOW_END stays at 2021-12-31
+    for end in (settings.BACKFILL_END, settings.BAOMOI_WINDOW_END):
+        assert end >= "2025-01-01", f"window end {end} predates 2025"
+    assert settings.BRAVE_WINDOW_END == "2021-12-31", (
+        f"Brave window end should stay 2021-12-31 (pre-BaoMoi tail), got {settings.BRAVE_WINDOW_END}"
+    )
+    assert settings.BACKFILL_END >= date.today().isoformat()[:7], "backfill end not rolling to current month"
+    print("  window_reaches_today OK")
+
+
 def main() -> None:
     if sys.platform == "win32":
         # ensure stdout can print Vietnamese
@@ -194,6 +207,7 @@ def main() -> None:
     test_schema_migrations()
     test_enqueue_kinds()
     test_queue_builder_counts()
+    test_window_reaches_today()
     print("ALL OK")
 
 
