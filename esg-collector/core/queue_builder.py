@@ -83,6 +83,49 @@ def build_queue(
     return inserted
 
 
+def build_keyword_tasks(
+    backends: list[str] | None = None,
+    *,
+    window: tuple[str, str] | None = None,
+    db_path=None,
+) -> dict[str, int]:
+    """Enqueue L1 single-term keyword tasks: one per (backend × term × chunk).
+
+    Args:
+        backends: List of backend names. Defaults to ["google_rss", "brave"].
+        window: (start, end) date strings override default backend windows.
+        db_path: Path to the SQLite database. Pass a temp path for hermetic tests.
+
+    Returns:
+        Dict mapping each backend name to the number of newly inserted tasks.
+    """
+    from config.keywords import search_terms
+    backends = backends or ["google_rss", "brave"]
+    terms = search_terms()
+    storage.init_db(db_path) if db_path else storage.init_db()
+    conn = storage.connect(db_path) if db_path else storage.connect()
+    inserted: dict[str, int] = {b: 0 for b in backends}
+    try:
+        for backend in backends:
+            start, end = window if window else (settings.BACKFILL_START, settings.BACKFILL_END)
+            for after, before in date_chunks(start, end, settings.CHUNK_MONTHS):
+                for ix, term in enumerate(terms):
+                    if storage.enqueue_task(
+                        conn,
+                        backend=backend,
+                        kind="keyword",
+                        group_key="kw",
+                        sub_query_ix=ix,
+                        query=term,
+                        after=after,
+                        before=before,
+                    ):
+                        inserted[backend] += 1
+    finally:
+        conn.close()
+    return inserted
+
+
 def main() -> None:
     from datetime import datetime as _dt, timedelta as _td
     try:

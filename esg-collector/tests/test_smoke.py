@@ -271,6 +271,21 @@ def test_match_esg_integration() -> None:
     print("  match_esg_integration OK")
 
 
+def test_l1_keyword_tasks() -> None:
+    from core import queue_builder as qb
+    from config import keywords as kw
+    import tempfile
+    from pathlib import Path
+    terms = kw.search_terms()
+    with tempfile.TemporaryDirectory() as td:
+        db = Path(td) / "l1.db"
+        # 2 monthly chunks (June, July) × len(terms), one backend
+        n = qb.build_keyword_tasks(backends=["google_rss"],
+                                   window=("2024-06-01", "2024-07-31"), db_path=db)
+        assert n["google_rss"] == 2 * len(terms), n
+    print("  l1_keyword_tasks OK")
+
+
 def main() -> None:
     if sys.platform == "win32":
         # ensure stdout can print Vietnamese
@@ -289,6 +304,7 @@ def main() -> None:
     test_keyword_config()
     test_esg_filter()
     test_match_esg_integration()
+    test_l1_keyword_tasks()
     print("ALL OK")
 
 
