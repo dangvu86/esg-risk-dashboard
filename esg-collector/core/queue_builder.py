@@ -17,7 +17,6 @@ from datetime import date, timedelta
 from typing import Iterator
 
 from config import settings
-from config.keywords import KEYWORD_GROUPS
 from core import storage
 
 log = logging.getLogger("queue_builder")
@@ -63,48 +62,6 @@ def weekly_subchunks(after: str, before: str) -> list[tuple[str, str]]:
         spans.append((cur.isoformat(), span_end.isoformat()))
         cur = span_end + timedelta(days=1)
     return spans
-
-
-_BACKEND_WINDOWS = {
-    "google_rss": (settings.BACKFILL_START, settings.BACKFILL_END),
-    "baomoi":     (settings.BAOMOI_WINDOW_START, settings.BAOMOI_WINDOW_END),
-    "brave":      (settings.BRAVE_WINDOW_START, settings.BRAVE_WINDOW_END),
-}
-
-
-def build_queue(
-    backends: list[str] | None = None,
-    *,
-    window: tuple[str, str] | None = None,
-) -> dict[str, int]:
-    """Enqueue every (backend, sub-query, chunk). Return inserted count per backend.
-
-    If `window` is given, it overrides each backend's default range — used for
-    daily incremental fetches (1 day, 1 chunk per backend).
-    """
-    backends = backends or list(_BACKEND_WINDOWS.keys())
-    storage.init_db()
-    conn = storage.connect()
-    inserted: dict[str, int] = {b: 0 for b in backends}
-    try:
-        for backend in backends:
-            start, end = window if window else _BACKEND_WINDOWS[backend]
-            for after, before in date_chunks(start, end, settings.CHUNK_MONTHS):
-                for grp, subs in KEYWORD_GROUPS.items():
-                    for ix, query in enumerate(subs):
-                        if storage.enqueue_task(
-                            conn,
-                            backend=backend,
-                            group_key=grp,
-                            sub_query_ix=ix,
-                            query=query,
-                            after=after,
-                            before=before,
-                        ):
-                            inserted[backend] += 1
-    finally:
-        conn.close()
-    return inserted
 
 
 def build_keyword_tasks(
@@ -170,24 +127,26 @@ def build_alias_tasks(
 ) -> dict[str, int]:
     """Enqueue L2 per-company alias tasks. Return inserted count per backend.
 
-    Routing:
-    - BaoMoi: names + subsidiaries, one deep pass each (full BaoMoi window as
-      a single task — BaoMoi ignores date params and paginates client-side, so
-      chunking is wasteful).
-    - Google RSS / Brave: NAMES ONLY, monthly chunks. Default tail is
-      2020-01-01 to 2021-12-31 (the pre-BaoMoi coverage gap). If `window` is
-      provided it overrides the Google/Brave start+end; BaoMoi always uses its
-      full settings window regardless.
+    Routing (backfill, window=None):
+    - BaoMoi: names + subsidiaries, one deep pass each over its full settings
+      window as a single task — BaoMoi ignores date params and paginates
+      client-side (early-stopping at the window start), so chunking is wasteful.
+    - Google RSS / Brave: NAMES ONLY, monthly chunks. Tail is 2020-01-01 to
+      2021-12-31 for Google (the pre-BaoMoi gap) and settings.BRAVE_WINDOW_*.
+
+    When `window` is provided (daily incremental) it overrides EVERY backend,
+    including BaoMoi — the flow is identical, only the time window shrinks.
+    BaoMoi's early-stop keeps a 4–5 day daily pass to ~1–2 pages per alias.
 
     Subsidiaries are searched ONLY on BaoMoi; they remain alias-match targets
     downstream (match.py) regardless of which backend found the article.
 
     Args:
         tickers: List of ticker symbols. Defaults to all tickers in COMPANIES_CSV.
-        window:  (start, end) date strings to override the Google/Brave tail
-                 window. Leave None to use the standard 2020–2021 tail for
-                 Google and settings.BRAVE_WINDOW_* for Brave. BaoMoi always
-                 uses its full settings window regardless of this parameter.
+                 Pass a subset to backfill just-added companies (idempotent — the
+                 already-enqueued tickers' tasks are skipped by INSERT OR IGNORE).
+        window:  (start, end) date strings overriding ALL backends' windows
+                 (daily). Leave None for the historical backfill routing above.
         db_path: Path to the SQLite database. Pass a temp path for hermetic tests.
 
     Returns:
@@ -202,11 +161,13 @@ def build_alias_tasks(
     inserted: dict[str, int] = {"baomoi": 0, "google_rss": 0, "brave": 0}
 
     # Google/Brave tail window: default is 2020–2021 (pre-BaoMoi gap) for Google
-    # and settings.BRAVE_WINDOW_* for Brave. The caller may pass `window` to
-    # override BOTH (e.g. for daily incremental runs on the tail).
-    # BaoMoi window is always taken from settings regardless of `window`.
+    # and settings.BRAVE_WINDOW_* for Brave. When `window` is passed (daily
+    # incremental) it overrides EVERY backend including BaoMoi — same flow,
+    # just a recent window. When `window` is None (backfill) each backend uses
+    # its own historical settings window.
     g_tail = window if window else ("2020-01-01", "2021-12-31")
     bv_tail = window if window else (settings.BRAVE_WINDOW_START, settings.BRAVE_WINDOW_END)
+    bm_window = window if window else (settings.BAOMOI_WINDOW_START, settings.BAOMOI_WINDOW_END)
 
     try:
         for tk in tickers:
@@ -232,8 +193,8 @@ def build_alias_tasks(
                     group_key="alias",
                     sub_query_ix=ix,
                     query=alias,
-                    after=settings.BAOMOI_WINDOW_START,
-                    before=settings.BAOMOI_WINDOW_END,
+                    after=bm_window[0],
+                    before=bm_window[1],
                 ):
                     inserted["baomoi"] += 1
 
@@ -262,8 +223,30 @@ def build_alias_tasks(
     return inserted
 
 
+def build_combined_tasks(
+    *,
+    window: tuple[str, str] | None = None,
+    tickers: list[str] | None = None,
+    db_path=None,
+) -> dict[str, int]:
+    """The full flow = L2 per-company alias + L1 single-term keyword.
+
+    The SAME builder serves both jobs — only the window differs:
+    - backfill (window=None): each backend uses its historical settings window;
+    - daily (window=(start,end)): every backend uses that recent window.
+
+    L2 = alias tasks (names on all backends, subsidiaries on BaoMoi); L1 = the
+    single-term keyword net. Replaces the legacy broad OR-keyword pool. Counts
+    are summed per backend across both passes.
+    """
+    counts = build_alias_tasks(tickers=tickers, window=window, db_path=db_path)
+    for backend, n in build_keyword_tasks(window=window, db_path=db_path).items():
+        counts[backend] = counts.get(backend, 0) + n
+    return counts
+
+
 def main() -> None:
-    from datetime import datetime as _dt, timedelta as _td
+    from datetime import datetime as _dt, timedelta as _td, timezone
     try:
         from zoneinfo import ZoneInfo
         _VN = ZoneInfo("Asia/Ho_Chi_Minh")
@@ -275,13 +258,20 @@ def main() -> None:
                     help="Subset of: google_rss baomoi brave")
     ap.add_argument("--mode", choices=("backfill", "daily", "keyword", "alias"),
                     default="backfill",
-                    help="backfill: use settings.py windows (default). "
-                         "daily: rolling window ending yesterday (VN time). "
-                         "keyword: enqueue L1 single-term keyword tasks (google_rss/brave). "
-                         "alias: enqueue L2 per-company alias tasks (baomoi/google_rss/brave; "
-                         "--backends ignored).")
-    ap.add_argument("--days-back", type=int, default=3,
-                    help="daily mode: how many trailing days to enqueue (default 3). "
+                    help="backfill: full historical flow — per-company alias + "
+                         "single-term keyword over each backend's settings window "
+                         "(--backends ignored). "
+                         "daily: the SAME flow over a recent window (default last 5 "
+                         "days; --backends ignored). "
+                         "keyword: just the L1 single-term keyword half (google_rss/brave). "
+                         "alias: just the L2 per-company alias half "
+                         "(baomoi/google_rss/brave; --backends ignored).")
+    ap.add_argument("--tickers", nargs="+", default=None,
+                    help="alias/daily modes: restrict to these tickers (e.g. a "
+                         "newly-added company to backfill). Default: all in "
+                         "COMPANIES_CSV. Idempotent, so safe to re-run.")
+    ap.add_argument("--days-back", type=int, default=5,
+                    help="daily mode: how many trailing days to enqueue (default 5). "
                          "Wider window catches late-indexed Google News articles + "
                          "the 7h UTC<->VN offset. Dedup is idempotent so re-enqueueing "
                          "the same day is free.")
@@ -292,16 +282,16 @@ def main() -> None:
     if args.since and args.until:
         window = (args.since, args.until)
     elif args.mode == "daily":
-        today_vn = (_dt.now(_VN) if _VN else _dt.utcnow()).date()
+        today_vn = (_dt.now(_VN) if _VN else _dt.now(timezone.utc)).date()
         end = today_vn - _td(days=1)
         start = end - _td(days=max(0, args.days_back - 1))
         window = (start.isoformat(), end.isoformat())
     if args.mode == "keyword":
         counts = build_keyword_tasks(args.backends, window=window)
     elif args.mode == "alias":
-        counts = build_alias_tasks(window=window)
-    else:  # backfill or daily
-        counts = build_queue(args.backends, window=window)
+        counts = build_alias_tasks(tickers=args.tickers, window=window)
+    else:  # backfill or daily — same flow, window differs
+        counts = build_combined_tasks(window=window, tickers=args.tickers)
     total = sum(counts.values())
     print(f"Enqueued {total} new tasks:")
     for b, n in counts.items():

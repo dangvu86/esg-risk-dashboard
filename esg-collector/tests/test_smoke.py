@@ -168,15 +168,12 @@ def test_enqueue_kinds() -> None:
 
 
 def test_queue_builder_counts() -> None:
-    from config.keywords import count_subqueries
     from core import queue_builder
-    # 24 sub-queries × monthly chunks per window
-    expected_per_chunk = count_subqueries()
+    # monthly chunking: one chunk for a single month, three for a quarter
     chunks = list(queue_builder.date_chunks("2024-06-01", "2024-06-30", 1))
     assert chunks == [("2024-06-01", "2024-06-30")], chunks
     chunks2 = list(queue_builder.date_chunks("2024-01-01", "2024-03-31", 1))
     assert len(chunks2) == 3
-    assert expected_per_chunk == 24, f"expected 24 sub-queries, got {expected_per_chunk}"
     print("  queue_builder OK")
 
 
@@ -314,6 +311,55 @@ def test_l2_alias_tasks() -> None:
     print("  l2_alias_tasks OK")
 
 
+def test_alias_window_overrides_baomoi() -> None:
+    # An explicit window (daily mode) must override BaoMoi too — not just
+    # Google/Brave. Backfill (no window) still uses settings (see l2 test).
+    from core import queue_builder as qb
+    from core import storage
+    import tempfile
+    from pathlib import Path
+    with tempfile.TemporaryDirectory() as td:
+        db = Path(td) / "aw.db"
+        qb.build_alias_tasks(tickers=["DBC"], window=("2026-05-20", "2026-05-25"), db_path=db)
+        conn = storage.connect(db)
+        bm = {(r["after"], r["before"]) for r in conn.execute(
+            "SELECT after, before FROM search_queue WHERE backend='baomoi' AND kind='alias'")}
+        assert bm == {("2026-05-20", "2026-05-25")}, bm
+        conn.close()
+    print("  alias_window_override OK")
+
+
+def test_daily_new_flow() -> None:
+    # Daily incremental uses the NEW flow: per-company alias + single-term
+    # keyword over a recent window — NOT the retired broad OR-keyword pool.
+    from core import queue_builder as qb
+    from core import storage
+    import tempfile
+    from pathlib import Path
+    with tempfile.TemporaryDirectory() as td:
+        db = Path(td) / "daily.db"
+        n = qb.build_combined_tasks(window=("2026-05-20", "2026-05-25"),
+                                    tickers=["DBC"], db_path=db)
+        assert sum(n.values()) > 0, n
+        conn = storage.connect(db)
+        kinds = {r["kind"] for r in conn.execute("SELECT DISTINCT kind FROM search_queue")}
+        assert kinds == {"alias", "keyword"}, kinds
+        assert conn.execute(
+            "SELECT COUNT(*) c FROM search_queue WHERE kind='alias' AND ticker='DBC'"
+        ).fetchone()["c"] > 0
+        # keyword tasks use the new single-term group ('kw'), not the retired
+        # broad pool's per-group keys ('E'/'S'/'G').
+        kw_groups = {r["group_key"] for r in conn.execute(
+            "SELECT DISTINCT group_key FROM search_queue WHERE kind='keyword'")}
+        assert kw_groups == {"kw"}, kw_groups
+        # recent window respected on baomoi alias (the deep-pass start moves).
+        bm = {r["after"] for r in conn.execute(
+            "SELECT after FROM search_queue WHERE backend='baomoi' AND kind='alias'")}
+        assert bm == {"2026-05-20"}, bm
+        conn.close()
+    print("  daily_new_flow OK")
+
+
 def test_worker_stamps_ticker_hint() -> None:
     from workers import runner
     from core import storage
@@ -432,6 +478,8 @@ def main() -> None:
     test_match_esg_integration()
     test_l1_keyword_tasks()
     test_l2_alias_tasks()
+    test_alias_window_overrides_baomoi()
+    test_daily_new_flow()
     test_worker_stamps_ticker_hint()
     test_weekly_subchunks()
     test_runner_splits_near_cap()
