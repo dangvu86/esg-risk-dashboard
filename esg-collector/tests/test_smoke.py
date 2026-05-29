@@ -190,6 +190,7 @@ def test_window_reaches_today() -> None:
         f"Brave window end should stay 2021-12-31 (pre-BaoMoi tail), got {settings.BRAVE_WINDOW_END}"
     )
     assert settings.BACKFILL_END >= date.today().isoformat()[:7], "backfill end not rolling to current month"
+    assert settings.BAOMOI_WINDOW_END >= date.today().isoformat()[:7], "baomoi window end not rolling to current month"
     print("  window_reaches_today OK")
 
 

@@ -1,6 +1,6 @@
 """Global runtime settings for esg-collector."""
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 try:
@@ -8,7 +8,7 @@ try:
     _VN = ZoneInfo("Asia/Ho_Chi_Minh")
 except Exception:
     _VN = None
-_TODAY = (datetime.now(_VN) if _VN else datetime.utcnow()).date().isoformat()
+_TODAY = (datetime.now(_VN) if _VN else datetime.now(timezone.utc)).date().isoformat()
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT / "data"
