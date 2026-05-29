@@ -226,6 +226,43 @@ def test_esg_filter() -> None:
     print("  esg_filter OK")
 
 
+def test_match_esg_integration() -> None:
+    from core import storage, alias_matcher
+    from pipeline import match
+    from config import settings
+    import tempfile, json
+    from pathlib import Path
+    with tempfile.TemporaryDirectory() as td:
+        db = Path(td) / "x.db"
+        settings.PER_TICKER_DIR = Path(td) / "pt"; settings.PER_TICKER_DIR.mkdir()
+        storage.init_db(db)
+        conn = storage.connect(db)
+        alias_matcher.reload()
+        # (a) real ESG event → kept
+        storage.insert_article(conn, {"article_id":"a::1","url_canonical":"u1","url_original":"u1",
+            "domain":"d","title":"Xử phạt Dabaco 300 triệu vì vi phạm môi trường","title_hash":"h1",
+            "backend":"google_rss","group_key":"alias","sub_query_ix":0,"body_status":"fetched"})
+        # (b) noise → dropped (esg_status=noise, not in per_ticker)
+        storage.insert_article(conn, {"article_id":"a::2","url_canonical":"u2","url_original":"u2",
+            "domain":"d","title":"Cổ đông Dabaco nhận cổ tức","title_hash":"h2",
+            "backend":"google_rss","group_key":"alias","sub_query_ix":0,"body_status":"fetched"})
+        # (c) alias only matchable in body, body still pending → deferred
+        storage.insert_article(conn, {"article_id":"a::3","url_canonical":"u3","url_original":"u3",
+            "domain":"d","title":"Một nhà máy bị phạt xả thải","title_hash":"h3",
+            "backend":"google_rss","group_key":"alias","sub_query_ix":0,"body_status":"pending"})
+        match.run(db_path=db)
+        rows = {r["article_id"]: r for r in conn.execute("SELECT * FROM articles")}
+        assert rows["a::1"]["esg_status"] == "esg" and rows["a::1"]["esg_type"] == "E"
+        assert rows["a::2"]["esg_status"] == "noise"
+        assert rows["a::3"]["esg_status"] == "pending"
+        doc = json.loads((settings.PER_TICKER_DIR / "DBC.json").read_text(encoding="utf-8"))
+        ids = {a["article_id"] for a in doc["articles"]}
+        assert "a::1" in ids and "a::2" not in ids
+        assert doc["articles"][0].get("type") == "E"
+        conn.close()
+    print("  match_esg_integration OK")
+
+
 def main() -> None:
     if sys.platform == "win32":
         # ensure stdout can print Vietnamese
@@ -243,6 +280,7 @@ def main() -> None:
     test_window_reaches_today()
     test_keyword_config()
     test_esg_filter()
+    test_match_esg_integration()
     print("ALL OK")
 
 

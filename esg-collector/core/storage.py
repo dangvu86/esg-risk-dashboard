@@ -239,6 +239,13 @@ def mark_match(conn: sqlite3.Connection, article_id: str, status: str) -> None:
     )
 
 
+def mark_esg(conn, article_id, status, esg_type=None, severity=None) -> None:
+    conn.execute(
+        "UPDATE articles SET esg_status=?, esg_type=?, severity=? WHERE article_id=?",
+        (status, esg_type, severity, article_id),
+    )
+
+
 def cache_hits(conn: sqlite3.Connection, article_id: str, hits_json: str) -> None:
     """Persist alias matches discovered by the body_fetcher's pre-check so
     pipeline.match can skip re-running the regex pool on the same article.

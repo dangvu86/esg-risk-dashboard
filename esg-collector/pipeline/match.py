@@ -26,6 +26,7 @@ from pathlib import Path
 from config import settings
 from core import alias_matcher, storage
 from core.alias_matcher import AliasHit
+from pipeline import esg_filter
 
 
 log = logging.getLogger("match")
@@ -86,6 +87,7 @@ def run(
     limit: int | None = None,
     *,
     rematch_all: bool = False,
+    db_path: str | None = None,
 ) -> dict[str, int]:
     logging.basicConfig(
         level=logging.INFO,
@@ -94,10 +96,11 @@ def run(
     alias_matcher.reload()
     log.info("loaded aliases for %d tickers", len(alias_matcher.loaded_tickers()))
 
-    conn = storage.connect()
+    conn = storage.connect(db_path) if db_path is not None else storage.connect()
     if rematch_all:
         n = conn.execute(
-            "UPDATE articles SET match_status='pending', matched_at=NULL"
+            "UPDATE articles SET match_status='pending', matched_at=NULL, "
+            "esg_status='pending', esg_type=NULL, severity=NULL"
         ).rowcount
         log.info("rematch_all: reset %d articles to pending", n)
         # Per-ticker JSONs are also stale — wipe so they rebuild cleanly.
@@ -123,8 +126,13 @@ def run(
             hits = alias_matcher.match_article(
                 art_d, fields=("title", "description", "sapo", "body"),
             )
-        if hits:
+        # ESG verdict layered on top of alias attribution, using the same
+        # title/desc/sapo/body dict the matcher saw.
+        verdict = esg_filter.classify(art_d)
+        if hits and verdict.keep:
             storage.mark_match(conn, art["article_id"], "matched")
+            storage.mark_esg(conn, art["article_id"], "esg",
+                             verdict.esg_type, verdict.severity)
             counts["matched"] += 1
             for hit in hits:
                 doc = per_ticker.get(hit.ticker)
@@ -146,12 +154,19 @@ def run(
                     "matched_alias":  hit.alias,
                     "location":       hit.location,
                     "snippet":        _snippet(art_d),
+                    "type":           verdict.esg_type,
+                    "severity":       verdict.severity,
                 })
         elif art["body_status"] in _BODY_TERMINAL:
+            # Terminal body: either no ticker, or ticker but ESG filter rejected
+            # it. Either way the article is finished — drop it from coverage.
             storage.mark_match(conn, art["article_id"], "unmatched")
+            storage.mark_esg(conn, art["article_id"], verdict.reason, None, None)
             counts["unmatched"] += 1
         else:
-            counts["deferred"] += 1  # waiting for body fetch
+            # body still pending — leave match_status AND esg_status pending so
+            # the body fetcher can fill the body and the next cycle re-runs.
+            counts["deferred"] += 1
 
     for ticker, doc in per_ticker.items():
         doc["articles"].sort(key=lambda a: (a.get("published_at") or ""), reverse=True)
