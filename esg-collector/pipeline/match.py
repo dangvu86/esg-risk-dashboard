@@ -152,6 +152,9 @@ def run(
                     "backend":        art["backend"],
                     "group_key":      art["group_key"],
                     "matched_alias":  hit.alias,
+                    # hit.location is the matched FIELD name (title|description|
+                    # sapo|body), not geography. Kept under both keys for
+                    # backward compat with existing dashboard consumers.
                     "location":       hit.location,
                     "match_source":   hit.location,
                     "snippet":        _snippet(art_d),

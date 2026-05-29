@@ -12,12 +12,15 @@ Run with:  python -m core.queue_builder
 from __future__ import annotations
 
 import argparse
+import logging
 from datetime import date, timedelta
 from typing import Iterator
 
 from config import settings
 from config.keywords import KEYWORD_GROUPS
 from core import storage
+
+log = logging.getLogger("queue_builder")
 
 
 def _parse(d: str) -> date:
@@ -207,10 +210,19 @@ def build_alias_tasks(
 
     try:
         for tk in tickers:
+            # Skip (don't abort) tickers without a built alias file — a multi-day
+            # enqueue over ~100 companies shouldn't die on one missing file.
+            if not (settings.ALIASES_DIR / f"{tk}.json").exists():
+                log.warning("no alias file for %s — skipping (run fetch_vietstock --all)", tk)
+                continue
             names, subs = _load_alias_lists(tk)
 
             # BaoMoi: names + subsidiaries, one task per alias spanning the
             # whole BaoMoi window (no chunking — BaoMoi paginates client-side).
+            # NOTE: sub_query_ix here indexes `names + subs`, whereas the
+            # Google/Brave loop below indexes `names` only — so the same ix
+            # is NOT a stable cross-backend alias identifier. Uniqueness is
+            # fine because the task_id also keys on backend.
             for ix, alias in enumerate(names + subs):
                 if storage.enqueue_task(
                     conn,

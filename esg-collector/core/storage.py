@@ -305,7 +305,10 @@ def enqueue_task(
     if kind == "alias" and ticker is None:
         raise ValueError("ticker is required when kind='alias'")
     if kind == "alias":
-        task_id = f"{backend}:alias:{ticker}:{sub_query_ix}:{after}"
+        # Include `before` so weekly split-children (which share the parent's
+        # `after` for the first week) get distinct ids instead of colliding
+        # with the already-done parent under INSERT OR IGNORE.
+        task_id = f"{backend}:alias:{ticker}:{sub_query_ix}:{after}:{before}"
     else:
         task_id = f"{backend}:{group_key}:{sub_query_ix}:{after}"
     cur = conn.execute(

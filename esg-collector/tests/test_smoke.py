@@ -356,16 +356,28 @@ def test_runner_splits_near_cap() -> None:
             return [{"url": f"https://x.vn/a-{i}.html", "title": "t", "published_at": a} for i in range(95)]
     with tempfile.TemporaryDirectory() as td:
         db = Path(td) / "s.db"; storage.init_db(db); conn = storage.connect(db)
-        task = {"task_id":"google_rss:alias:DBC:0:2024-06-01","query":"Dabaco",
-                "after":"2024-06-01","before":"2024-06-30","group_key":"alias",
-                "sub_query_ix":0,"kind":"alias","ticker":"DBC"}
+        # Enqueue the parent month exactly as build_alias_tasks would, then mark
+        # it done — this is the state in which _maybe_split runs in production.
+        storage.enqueue_task(conn, backend="google_rss", kind="alias", ticker="DBC",
+            group_key="alias", sub_query_ix=0, query="Dabaco",
+            after="2024-06-01", before="2024-06-30")
+        parent_id = conn.execute("SELECT task_id FROM search_queue").fetchone()["task_id"]
+        storage.mark_task_done(conn, parent_id, 95)
+        task = conn.execute("SELECT * FROM search_queue WHERE task_id=?", (parent_id,)).fetchone()
         runner._maybe_split(conn, CapBackend, task, n_items=95)
-        kids = conn.execute("SELECT COUNT(*) c FROM search_queue WHERE kind='alias'").fetchone()["c"]
-        assert kids >= 4, kids
-        child = conn.execute(
-            "SELECT * FROM search_queue WHERE kind='alias' AND ticker='DBC' LIMIT 1").fetchone()
-        assert child["ticker"] == "DBC" and child["query"] == "Dabaco"
-        assert child["backend"] == "google_rss" and child["sub_query_ix"] == 0
+        # A 30-day month yields 5 weekly children; with `before` in the alias
+        # task_id none collide with the done parent (regression: the first week
+        # used to share the parent's id and get dropped by INSERT OR IGNORE).
+        kids = conn.execute(
+            "SELECT COUNT(*) c FROM search_queue WHERE kind='alias' AND status='pending'"
+        ).fetchone()["c"]
+        assert kids == 5, kids
+        first_week = conn.execute(
+            "SELECT * FROM search_queue WHERE kind='alias' "
+            "AND after='2024-06-01' AND before='2024-06-07'").fetchone()
+        assert first_week is not None, "first weekly child was dropped (id collision)"
+        assert first_week["ticker"] == "DBC" and first_week["query"] == "Dabaco"
+        assert first_week["backend"] == "google_rss" and first_week["sub_query_ix"] == 0
         conn.close()
     print("  runner_splits_near_cap OK")
 
