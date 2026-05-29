@@ -20,7 +20,6 @@ CLI:
 from __future__ import annotations
 
 import argparse
-import csv
 import gzip
 import json
 import logging
@@ -33,6 +32,7 @@ from pathlib import Path
 from bs4 import BeautifulSoup
 
 from config import settings
+from config.companies import read_tickers
 
 
 log = logging.getLogger("vietstock")
@@ -250,17 +250,6 @@ def write_alias(ticker: str, force: bool = False) -> str:
     return "written"
 
 
-def _read_companies() -> list[str]:
-    tickers: list[str] = []
-    with open(settings.COMPANIES_CSV, "r", encoding="utf-8-sig") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            t = (row.get("Mã CK") or row.get("Ma CK") or "").strip()
-            if t:
-                tickers.append(t)
-    return tickers
-
-
 def main() -> None:
     logging.basicConfig(
         level=logging.INFO,
@@ -275,7 +264,7 @@ def main() -> None:
     if not args.ticker and not args.all:
         ap.error("pass --ticker or --all")
 
-    tickers = [args.ticker] if args.ticker else _read_companies()
+    tickers = [args.ticker] if args.ticker else read_tickers()
     stats = {"written": 0, "exists": 0, "failed": 0}
     for i, t in enumerate(tickers, 1):
         outcome = write_alias(t, force=args.force)

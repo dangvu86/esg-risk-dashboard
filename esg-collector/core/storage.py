@@ -96,7 +96,9 @@ CREATE TABLE IF NOT EXISTS export_state (
 """
 
 
-def connect(db_path: Path | str = DB_PATH) -> sqlite3.Connection:
+def connect(db_path: Path | str | None = None) -> sqlite3.Connection:
+    if db_path is None:
+        db_path = DB_PATH
     conn = sqlite3.connect(str(db_path), timeout=30, isolation_level=None)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
@@ -105,7 +107,9 @@ def connect(db_path: Path | str = DB_PATH) -> sqlite3.Connection:
     return conn
 
 
-def init_db(db_path: Path | str = DB_PATH) -> None:
+def init_db(db_path: Path | str | None = None) -> None:
+    if db_path is None:
+        db_path = DB_PATH
     Path(db_path).parent.mkdir(parents=True, exist_ok=True)
     conn = connect(db_path)
     try:

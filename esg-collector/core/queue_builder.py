@@ -123,8 +123,8 @@ def build_keyword_tasks(
     from config.keywords import search_terms
     backends = backends or ["google_rss", "brave"]
     terms = search_terms()
-    storage.init_db(db_path) if db_path else storage.init_db()
-    conn = storage.connect(db_path) if db_path else storage.connect()
+    storage.init_db(db_path)
+    conn = storage.connect(db_path)
     inserted: dict[str, int] = {b: 0 for b in backends}
     try:
         for backend in backends:
@@ -190,17 +190,12 @@ def build_alias_tasks(
     Returns:
         Dict mapping backend name to the number of newly inserted tasks.
     """
-    import csv
     if tickers is None:
-        with open(settings.COMPANIES_CSV, encoding="utf-8-sig") as f:
-            tickers = [
-                (r.get("Mã CK") or r.get("Ma CK") or "").strip()
-                for r in csv.DictReader(f)
-            ]
-            tickers = [t for t in tickers if t]
+        from config.companies import read_tickers
+        tickers = read_tickers()
 
-    storage.init_db(db_path) if db_path else storage.init_db()
-    conn = storage.connect(db_path) if db_path else storage.connect()
+    storage.init_db(db_path)
+    conn = storage.connect(db_path)
     inserted: dict[str, int] = {"baomoi": 0, "google_rss": 0, "brave": 0}
 
     # Google/Brave tail window: default is 2020–2021 (pre-BaoMoi gap) for Google
