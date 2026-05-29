@@ -32,6 +32,20 @@ from core.title import title_hash as _title_hash
 
 log = logging.getLogger("runner")
 
+
+def _field(task, key):
+    """Safe field access that works for both sqlite3.Row and plain dict.
+
+    sqlite3.Row raises IndexError for missing keys; dict raises KeyError.
+    Both are caught here so callers get None for absent columns (e.g. legacy
+    rows without kind/ticker, or plain-dict tasks in tests).
+    """
+    try:
+        return task[key]
+    except (KeyError, IndexError):
+        return None
+
+
 BACKEND_MODULES = {
     "google_rss": "backends.google_rss",
     "baomoi":     "backends.baomoi",
@@ -56,6 +70,9 @@ def _process_task(conn, backend_mod, task) -> int:
     items = backend_mod.fetch(task["query"], task["after"], task["before"])
     inserted = 0
     is_google = backend_mod.name == "google_rss"
+    # Stamp advisory provenance for alias tasks so downstream pipeline can use
+    # ticker_hint as a soft signal (attribution still lives in alias_matcher).
+    ticker_hint = _field(task, "ticker") if _field(task, "kind") == "alias" else None
     for it in items:
         url = it.get("url") or ""
         if not url:
@@ -86,6 +103,7 @@ def _process_task(conn, backend_mod, task) -> int:
             "backend":       backend_mod.name,
             "group_key":     task["group_key"],
             "sub_query_ix":  task["sub_query_ix"],
+            "ticker_hint":   ticker_hint,
         }
         if storage.insert_article(conn, rec):
             inserted += 1

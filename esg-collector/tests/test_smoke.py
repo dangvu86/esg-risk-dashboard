@@ -314,6 +314,27 @@ def test_l2_alias_tasks() -> None:
     print("  l2_alias_tasks OK")
 
 
+def test_worker_stamps_ticker_hint() -> None:
+    from workers import runner
+    from core import storage
+    import tempfile
+    from pathlib import Path
+    class FakeBackend:
+        name = "baomoi"
+        @staticmethod
+        def fetch(q, a, b):
+            return [{"url":"https://x.vn/a-1.html","title":"t","published_at":"2024-06-01","source":"s"}]
+    with tempfile.TemporaryDirectory() as td:
+        db = Path(td) / "w.db"; storage.init_db(db); conn = storage.connect(db)
+        task = {"task_id":"t1","query":"Dabaco","after":"2020-01-01","before":"2026-01-01",
+                "group_key":"alias","sub_query_ix":0,"kind":"alias","ticker":"DBC"}
+        runner._process_task(conn, FakeBackend, task)
+        row = conn.execute("SELECT ticker_hint FROM articles LIMIT 1").fetchone()
+        assert row["ticker_hint"] == "DBC", dict(row)
+        conn.close()
+    print("  worker_ticker_hint OK")
+
+
 def main() -> None:
     if sys.platform == "win32":
         # ensure stdout can print Vietnamese
@@ -334,6 +355,7 @@ def main() -> None:
     test_match_esg_integration()
     test_l1_keyword_tasks()
     test_l2_alias_tasks()
+    test_worker_stamps_ticker_hint()
     print("ALL OK")
 
 
