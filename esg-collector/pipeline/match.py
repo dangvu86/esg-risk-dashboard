@@ -31,6 +31,8 @@ from pipeline import esg_filter
 
 log = logging.getLogger("match")
 
+BATCH_SIZE = 2000  # rows held in RAM per pagination batch (tunable)
+
 _BODY_TERMINAL = {"fetched", "skipped", "failed"}
 
 
@@ -82,12 +84,72 @@ def _snippet(art: dict) -> str:
     return ""
 
 
+def _process_article(conn, art, per_ticker, counts):
+    art_d = dict(art)
+    # Stage 1: title/desc/sapo — reuse body_fetcher's cached hits if any.
+    hits = _load_cached_hits(art_d.get("cached_hits"))
+    if hits is None:
+        hits = alias_matcher.match_article(
+            art_d, fields=("title", "description", "sapo"),
+        )
+    if not hits and art["body_status"] == "fetched":
+        hits = alias_matcher.match_article(
+            art_d, fields=("title", "description", "sapo", "body"),
+        )
+    # ESG verdict layered on top of alias attribution, using the same
+    # title/desc/sapo/body dict the matcher saw.
+    verdict = esg_filter.classify(art_d)
+    if hits and verdict.keep:
+        storage.mark_match(conn, art["article_id"], "matched")
+        storage.mark_esg(conn, art["article_id"], "esg",
+                         verdict.esg_type, verdict.severity)
+        counts["matched"] += 1
+        for hit in hits:
+            doc = per_ticker.get(hit.ticker)
+            if doc is None:
+                doc = _load_existing(_per_ticker_path(hit.ticker))
+                per_ticker[hit.ticker] = doc
+            # dedup by article_id
+            if any(a["article_id"] == art["article_id"] for a in doc["articles"]):
+                continue
+            doc["articles"].append({
+                "article_id":     art["article_id"],
+                "url":            art["url_canonical"],
+                "url_original":   art["url_original"],
+                "title":          art["title"],
+                "published_at":   art["published_at"],
+                "source":         art["source"],
+                "backend":        art["backend"],
+                "group_key":      art["group_key"],
+                "matched_alias":  hit.alias,
+                # hit.location is the matched FIELD name (title|description|
+                # sapo|body), not geography. Kept under both keys for
+                # backward compat with existing dashboard consumers.
+                "location":       hit.location,
+                "match_source":   hit.location,
+                "snippet":        _snippet(art_d),
+                "type":           verdict.esg_type,
+                "severity":       verdict.severity,
+            })
+    elif art["body_status"] in _BODY_TERMINAL:
+        # Terminal body: either no ticker, or ticker but ESG filter rejected
+        # it. Either way the article is finished — drop it from coverage.
+        storage.mark_match(conn, art["article_id"], "unmatched")
+        storage.mark_esg(conn, art["article_id"], verdict.reason, None, None)
+        counts["unmatched"] += 1
+    else:
+        # body still pending — leave match_status AND esg_status pending so
+        # the body fetcher can fill the body and the next cycle re-runs.
+        counts["deferred"] += 1
+
+
 def run(
     since: str | None = None,
     limit: int | None = None,
     *,
     rematch_all: bool = False,
     db_path: str | None = None,
+    status_json: str | None = None,
 ) -> dict[str, int]:
     logging.basicConfig(
         level=logging.INFO,
@@ -106,71 +168,25 @@ def run(
         # Per-ticker JSONs are also stale — wipe so they rebuild cleanly.
         for p in settings.PER_TICKER_DIR.glob("*.json"):
             p.unlink()
-    pending = list(storage.iter_articles(
-        conn, match_status="pending", since=since, limit=limit,
-    ))
-    log.info("scanning %d pending articles", len(pending))
+    # snapshot the work list FIRST (autocommit + we mutate match_status below,
+    # so we must not iterate a live SELECT on that column)
+    sql = "SELECT article_id FROM articles WHERE match_status='pending'"
+    args: list = []
+    if since:
+        sql += " AND published_at >= ?"; args.append(since)
+    sql += " ORDER BY published_at DESC"
+    if limit:
+        sql += f" LIMIT {int(limit)}"
+    ids = [r["article_id"] for r in conn.execute(sql, args)]
+    log.info("scanning %d pending articles in batches of %d", len(ids), BATCH_SIZE)
 
     per_ticker: dict[str, dict] = {}
     counts = {"matched": 0, "unmatched": 0, "deferred": 0}
 
-    for art in pending:
-        art_d = dict(art)
-        # Stage 1: title/desc/sapo — reuse body_fetcher's cached hits if any.
-        hits = _load_cached_hits(art_d.get("cached_hits"))
-        if hits is None:
-            hits = alias_matcher.match_article(
-                art_d, fields=("title", "description", "sapo"),
-            )
-        if not hits and art["body_status"] == "fetched":
-            hits = alias_matcher.match_article(
-                art_d, fields=("title", "description", "sapo", "body"),
-            )
-        # ESG verdict layered on top of alias attribution, using the same
-        # title/desc/sapo/body dict the matcher saw.
-        verdict = esg_filter.classify(art_d)
-        if hits and verdict.keep:
-            storage.mark_match(conn, art["article_id"], "matched")
-            storage.mark_esg(conn, art["article_id"], "esg",
-                             verdict.esg_type, verdict.severity)
-            counts["matched"] += 1
-            for hit in hits:
-                doc = per_ticker.get(hit.ticker)
-                if doc is None:
-                    doc = _load_existing(_per_ticker_path(hit.ticker))
-                    per_ticker[hit.ticker] = doc
-                # dedup by article_id
-                if any(a["article_id"] == art["article_id"] for a in doc["articles"]):
-                    continue
-                doc["articles"].append({
-                    "article_id":     art["article_id"],
-                    "url":            art["url_canonical"],
-                    "url_original":   art["url_original"],
-                    "title":          art["title"],
-                    "published_at":   art["published_at"],
-                    "source":         art["source"],
-                    "backend":        art["backend"],
-                    "group_key":      art["group_key"],
-                    "matched_alias":  hit.alias,
-                    # hit.location is the matched FIELD name (title|description|
-                    # sapo|body), not geography. Kept under both keys for
-                    # backward compat with existing dashboard consumers.
-                    "location":       hit.location,
-                    "match_source":   hit.location,
-                    "snippet":        _snippet(art_d),
-                    "type":           verdict.esg_type,
-                    "severity":       verdict.severity,
-                })
-        elif art["body_status"] in _BODY_TERMINAL:
-            # Terminal body: either no ticker, or ticker but ESG filter rejected
-            # it. Either way the article is finished — drop it from coverage.
-            storage.mark_match(conn, art["article_id"], "unmatched")
-            storage.mark_esg(conn, art["article_id"], verdict.reason, None, None)
-            counts["unmatched"] += 1
-        else:
-            # body still pending — leave match_status AND esg_status pending so
-            # the body fetcher can fill the body and the next cycle re-runs.
-            counts["deferred"] += 1
+    for i in range(0, len(ids), BATCH_SIZE):
+        batch = storage.fetch_articles_by_ids(conn, ids[i:i + BATCH_SIZE])
+        for art in batch:
+            _process_article(conn, art, per_ticker, counts)
 
     for ticker, doc in per_ticker.items():
         doc["articles"].sort(key=lambda a: (a.get("published_at") or ""), reverse=True)
@@ -179,6 +195,8 @@ def run(
 
     log.info("done: matched=%d unmatched=%d deferred=%d",
              counts["matched"], counts["unmatched"], counts["deferred"])
+    if status_json:
+        Path(status_json).write_text(json.dumps(counts), encoding="utf-8")
     conn.close()
     return counts
 
@@ -190,8 +208,10 @@ def main() -> None:
     ap.add_argument("--rematch-all", action="store_true",
                     help="reset match_status='pending' for every article and wipe per_ticker/ first "
                          "(use after fixing aliases)")
+    ap.add_argument("--status-json", help="write final {matched,unmatched,deferred} counts to this path")
     args = ap.parse_args()
-    run(since=args.since, limit=args.limit, rematch_all=args.rematch_all)
+    run(since=args.since, limit=args.limit, rematch_all=args.rematch_all,
+        status_json=args.status_json)
 
 
 if __name__ == "__main__":

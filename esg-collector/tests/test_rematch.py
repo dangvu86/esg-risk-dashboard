@@ -121,6 +121,46 @@ def test_fetch_by_ids() -> None:
     print("  fetch_by_ids OK")
 
 
+def test_chunked_rematch() -> None:
+    from core import storage, alias_matcher
+    from pipeline import match
+    from config import settings
+    alias_matcher.reload()
+    with tempfile.TemporaryDirectory() as td:
+        db = Path(td) / "r.db"
+        _orig_pt, _orig_bs = settings.PER_TICKER_DIR, match.BATCH_SIZE
+        try:
+            settings.PER_TICKER_DIR = Path(td) / "pt"; settings.PER_TICKER_DIR.mkdir()
+            match.BATCH_SIZE = 2  # force multiple batches over 3 articles
+            storage.init_db(db)
+            conn = storage.connect(db)
+            storage.insert_article(conn, {"article_id":"a::1","url_canonical":"u1","url_original":"u1",
+                "domain":"d","title":"Xử phạt Dabaco 300 triệu vì vi phạm môi trường","title_hash":"h1",
+                "backend":"google_rss","group_key":"alias","sub_query_ix":0,"body_status":"fetched"})
+            storage.insert_article(conn, {"article_id":"a::2","url_canonical":"u2","url_original":"u2",
+                "domain":"d","title":"Cổ đông Dabaco nhận cổ tức","title_hash":"h2",
+                "backend":"google_rss","group_key":"alias","sub_query_ix":0,"body_status":"fetched"})
+            storage.insert_article(conn, {"article_id":"a::3","url_canonical":"u3","url_original":"u3",
+                "domain":"d","title":"Xử phạt công ty xả thải ra môi trường","title_hash":"h3",
+                "backend":"google_rss","group_key":"alias","sub_query_ix":0,"body_status":"fetched"})
+            status = Path(td) / "status.json"
+            counts = match.run(db_path=db, rematch_all=True, status_json=str(status))
+            assert counts["matched"] >= 1, counts
+            # a::1 (Dabaco + ESG) kept; a::2 noise dropped
+            rows = {r["article_id"]: r for r in conn.execute("SELECT * FROM articles")}
+            assert rows["a::1"]["esg_status"] == "esg"
+            assert rows["a::2"]["esg_status"] == "noise"
+            doc = json.loads((settings.PER_TICKER_DIR / "DBC.json").read_text(encoding="utf-8"))
+            assert "a::1" in {a["article_id"] for a in doc["articles"]}
+            # status file written with counts
+            st = json.loads(status.read_text(encoding="utf-8"))
+            assert st["matched"] == counts["matched"]
+            conn.close()
+        finally:
+            settings.PER_TICKER_DIR, match.BATCH_SIZE = _orig_pt, _orig_bs
+    print("  chunked_rematch OK")
+
+
 def main() -> None:
     if sys.platform == "win32":
         try:
@@ -130,6 +170,7 @@ def main() -> None:
     print("running rematch tests…")
     test_matcher_equivalence()
     test_fetch_by_ids()
+    test_chunked_rematch()
     print("ALL OK")
 
 
