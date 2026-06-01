@@ -70,11 +70,15 @@ jobs:
           trap restart_workers EXIT HUP TERM
 
           echo "=== 1. Stop workers ==="
-          sudo systemctl stop \
-            esg-collector-google.service \
-            esg-collector-baomoi.service \
-            esg-collector-brave.service \
-            esg-collector-body.service
+          if [ "$REMATCH" != "1" ]; then
+            sudo systemctl stop \
+              esg-collector-google.service \
+              esg-collector-baomoi.service \
+              esg-collector-brave.service \
+              esg-collector-body.service
+          else
+            echo "  (REMATCH=1: managed rematch unit owns worker stop/start; skipping)"
+          fi
 
           echo "=== 2. Backup DB (rolling 7 daily snapshots) ==="
           sudo install -d -o $SVC_USER -g $SVC_USER $APP_DIR/data/backups
@@ -122,22 +126,28 @@ jobs:
           sudo -u $SVC_USER $VENV -c "from pipeline import match, export; from workers import body_fetcher, runner; from body_fetcher import jina; print('imports OK')"
 
           if [ "$REMATCH" = "1" ]; then
-            echo "=== 6b. Rematch all (user-requested) ==="
-            sudo -u $SVC_USER $VENV -m pipeline.match --rematch-all
+            echo "=== 6b. Launch DETACHED managed rematch (fire-and-return) ==="
+            sudo systemd-run --no-block --collect --unit=esg-rematch \
+              "$APP_DIR/deploy/rematch_managed.sh"
+            echo "  launched esg-rematch unit; it owns worker lifecycle, deploy returns now"
           fi
 
           echo "=== 7. Restart workers ==="
-          sudo systemctl start \
-            esg-collector-google.service \
-            esg-collector-baomoi.service \
-            esg-collector-brave.service \
-            esg-collector-body.service
-          sleep 3
-          for s in google baomoi brave body; do
-            state=$(systemctl is-active esg-collector-$s.service)
-            echo "  $s: $state"
-            [ "$state" = "active" ] || { echo "WORKER FAILED TO START: $s"; exit 1; }
-          done
+          if [ "$REMATCH" != "1" ]; then
+            sudo systemctl start \
+              esg-collector-google.service \
+              esg-collector-baomoi.service \
+              esg-collector-brave.service \
+              esg-collector-body.service
+            sleep 3
+            for s in google baomoi brave body; do
+              state=$(systemctl is-active esg-collector-$s.service)
+              echo "  $s: $state"
+              [ "$state" = "active" ] || { echo "WORKER FAILED TO START: $s"; exit 1; }
+            done
+          else
+            echo "  (REMATCH=1: workers managed by esg-rematch unit)"
+          fi
 
           if [ "$BACKFILL" = "1" ]; then
             echo "=== 7b. Backfill enqueue (historical alias + keyword; idempotent) ==="
