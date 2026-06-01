@@ -99,6 +99,28 @@ def test_matcher_equivalence() -> None:
     print("  matcher_equivalence OK")
 
 
+def test_fetch_by_ids() -> None:
+    from core import storage
+    with tempfile.TemporaryDirectory() as td:
+        db = Path(td) / "f.db"
+        storage.init_db(db)
+        conn = storage.connect(db)
+        for i in range(5):
+            storage.insert_article(conn, {
+                "article_id": f"d::{i}", "url_canonical": f"u{i}", "url_original": f"u{i}",
+                "domain": "d", "title": f"t{i}", "backend": "google_rss",
+                "group_key": "kw", "sub_query_ix": 0})
+        ids = [f"d::{i}" for i in range(5)]
+        rows = storage.fetch_articles_by_ids(conn, ids)
+        assert {r["article_id"] for r in rows} == set(ids), rows
+        # sub-chunking: force tiny chunk size, still returns all
+        rows2 = storage.fetch_articles_by_ids(conn, ids, chunk=2)
+        assert {r["article_id"] for r in rows2} == set(ids)
+        assert storage.fetch_articles_by_ids(conn, []) == []
+        conn.close()
+    print("  fetch_by_ids OK")
+
+
 def main() -> None:
     if sys.platform == "win32":
         try:
@@ -107,6 +129,7 @@ def main() -> None:
             pass
     print("running rematch tests…")
     test_matcher_equivalence()
+    test_fetch_by_ids()
     print("ALL OK")
 
 

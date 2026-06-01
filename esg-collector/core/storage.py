@@ -286,6 +286,21 @@ def iter_articles(
     return conn.execute(sql, args)
 
 
+def fetch_articles_by_ids(
+    conn: sqlite3.Connection, ids: list[str], *, chunk: int = 500
+) -> list[sqlite3.Row]:
+    """Fetch full rows for the given article_ids. Sub-chunks the IN(...) list to
+    stay under SQLite's bound-variable cap. Order is not guaranteed."""
+    out: list[sqlite3.Row] = []
+    for i in range(0, len(ids), chunk):
+        part = ids[i:i + chunk]
+        ph = ",".join("?" * len(part))
+        out.extend(conn.execute(
+            f"SELECT * FROM articles WHERE article_id IN ({ph})", part
+        ).fetchall())
+    return out
+
+
 # ---------------- queue ----------------
 
 def enqueue_task(
