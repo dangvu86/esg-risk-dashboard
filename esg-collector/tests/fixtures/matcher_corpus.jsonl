@@ -1,0 +1,50 @@
+{"text": "Xổ số kiến thiết TP.HCM giảm lãi do bị phạt thuế 110 tỷ đồng", "note": "HCM city — must NOT hit HCM ticker"}
+{"text": "CSGT TPHCM xử lý hàng loạt vi phạm giao thông trong dịp lễ", "note": "HCM city (TPHCM) — must NOT hit HCM ticker"}
+{"text": "Người dân TP. Hồ Chí Minh phản ánh ô nhiễm kênh rạch", "note": "HCM city spelled out — must NOT hit HCM ticker"}
+{"text": "Thành phố Hồ Chí Minh triển khai dự án chống ngập", "note": "HCM city bare — must NOT hit HCM ticker"}
+{"text": "Công ty Chứng khoán TP.Hồ Chí Minh (HSC) bị xử phạt 125 triệu đồng", "note": "real HSC -> HCM ticker"}
+{"text": "Chứng khoán HSC công bố báo cáo tài chính quý 3", "note": "HSC short alias -> HCM ticker"}
+{"text": "Chứng khoán Thành phố Hồ Chí Minh bị Ủy ban Chứng khoán nhắc nhở", "note": "HCM full name -> HCM ticker"}
+{"text": "Nhiều nhà thuốc của Công ty Cổ phần Dược phẩm FPT Long Châu bị xử phạt", "note": "FRT brand: Dược phẩm FPT Long Châu (also FPT nested -> FRT+FPT)"}
+{"text": "FPT Shop khai trương cửa hàng mới tại Cần Thơ", "note": "FRT brand FPT Shop (FPT nested -> FRT+FPT)"}
+{"text": "Nhà thuốc Long Châu mở rộng chuỗi lên 1.500 điểm bán", "note": "FRT subsidiary Nhà thuốc Long Châu -> FRT only"}
+{"text": "FPT Retail báo lãi tăng trưởng mạnh nhờ mảng dược phẩm", "note": "FRT brand FPT Retail (FPT nested -> FRT+FPT)"}
+{"text": "FPT Long Châu bị xử phạt vì vi phạm quảng cáo thuốc", "note": "FRT subsidiary FPT Long Châu (FPT nested -> FRT+FPT)"}
+{"text": "Tập đoàn FPT công bố kết quả kinh doanh năm 2025", "note": "FPT standalone -> FPT only"}
+{"text": "Cổ phiếu Hóa chất Đức Giang bị hạn chế giao dịch", "note": "DGC full brand Hóa chất Đức Giang"}
+{"text": "CTCP Tập đoàn Hóa chất Đức Giang bị phạt vì xả thải vượt chuẩn", "note": "DGC full company name"}
+{"text": "Phường Đức Giang quận Long Biên tổ chức họp dân", "note": "bare Đức Giang (ward name) — must NOT hit DGC (no bare 'Đức Giang' alias)"}
+{"text": "Cầu Đức Giang đang được sửa chữa gây ùn tắc", "note": "bare Đức Giang (place) — must NOT hit DGC"}
+{"text": "Dabaco bị phạt vì xả thải ra môi trường", "note": "DBC name Dabaco"}
+{"text": "CTCP Tập đoàn Dabaco Việt Nam công bố lợi nhuận quý 4", "note": "DBC full company name"}
+{"text": "Nasaco vừa thông báo kế hoạch mở rộng nhà máy thức ăn chăn nuôi", "note": "DBC subsidiary Nasaco"}
+{"text": "Dacovet ra mắt sản phẩm thú y mới", "note": "DBC subsidiary Dacovet"}
+{"text": "Dabaco Thanh Hóa khởi công trang trại lợn giống", "note": "DBC subsidiary Dabaco Thanh Hóa"}
+{"text": "GIAVICO Việt Nam ký hợp đồng cung ứng nguyên liệu", "note": "DBC subsidiary GIAVICO"}
+{"text": "Công ty TNHH MTV Gia cầm Hòa Phát Phú Thọ bị xử phạt vì xả thải", "note": "CROSS-TICKER NESTED: 'Hòa Phát' (HPG name) nested inside HPA subsidiary -> both HPG+HPA"}
+{"text": "Nông nghiệp Hòa Phát mở rộng quy mô chăn nuôi heo", "note": "CROSS-TICKER NESTED: HPA subsidiary 'Nông nghiệp Hòa Phát' contains HPG alias 'Hòa Phát' -> both HPG+HPA"}
+{"text": "Tập đoàn Hòa Phát đạt sản lượng thép kỷ lục", "note": "HPG name 'Hòa Phát' standalone -> HPG only"}
+{"text": "CTCP Hàng tiêu dùng Masan ra mắt sản phẩm mới", "note": "CROSS-TICKER NESTED: 'Masan' (MSN) nested inside MCH name -> both MSN+MCH"}
+{"text": "Masan High-Tech Materials báo cáo sản lượng vonfram", "note": "CROSS-TICKER NESTED: 'Masan' (MSN) inside MSR alias -> both MSN+MSR"}
+{"text": "Tập đoàn Masan công bố chiến lược bán lẻ", "note": "MSN 'Masan' standalone -> MSN only"}
+{"text": "Chứng khoán VPBank bị phạt vì vi phạm công bố thông tin", "note": "CROSS-TICKER NESTED: 'VPBank' (VPB) inside VPX alias 'Chứng khoán VPBank' -> both VPB+VPX"}
+{"text": "Ngân hàng VPBank tăng vốn điều lệ", "note": "VPB 'VPBank' standalone -> VPB only"}
+{"text": "Pan Hải An đầu tư cảng container mới", "note": "CROSS-TICKER NESTED: 'PAN' inside HAH alias 'Pan Hải An' -> both PAN+HAH"}
+{"text": "Hòa Phát bị thanh tra môi trường tại khu liên hợp gang thép", "note": "HPG real ESG hit"}
+{"text": "Apatit bị xử phạt vì khai thác vượt phép", "note": "DGC subsidiary Apatit -> DGC"}
+{"text": "Đội tuyển Việt Nam thắng 3-0 trước Thái Lan", "note": "negative — no ticker"}
+{"text": "Giá vàng trong nước tăng mạnh phiên cuối tuần", "note": "negative — no ticker"}
+{"text": "Thời tiết Hà Nội hôm nay nắng nóng gay gắt", "note": "negative — no ticker"}
+{"text": "Học sinh lớp 12 chuẩn bị cho kỳ thi tốt nghiệp THPT", "note": "negative — no ticker"}
+{"text": "Quán phở nổi tiếng ở phố cổ thu hút du khách", "note": "negative — no ticker"}
+{"text": "Nhà máy đức giang sản xuất linh kiện điện tử", "note": "diacritic/case: lowercase 'đức giang' as place — must NOT hit DGC (no bare alias)"}
+{"text": "Khu công nghiệp Đức Giang thu hút đầu tư nước ngoài", "note": "bare 'Đức Giang' in KCN name — must NOT hit DGC"}
+{"text": "Sản phẩm Dabacoo không liên quan đến công ty niêm yết", "note": "word-boundary: 'Dabacoo' must NOT hit DBC (trailing letter breaks boundary)"}
+{"text": "Công ty XDabaco là tên gọi khác hoàn toàn", "note": "word-boundary: leading letter 'XDabaco' must NOT hit DBC"}
+{"text": "Tin tức HSCB ngân hàng nước ngoài tại Việt Nam", "note": "word-boundary: 'HSCB' must NOT hit HCM via 'HSC'"}
+{"text": "Hòa Phát và Dabaco cùng bị nhắc tên trong báo cáo môi trường", "note": "multi-ticker: HPG + DBC in one text"}
+{"text": "FPT Shop và Nhà thuốc Long Châu mở rộng tại miền Tây", "note": "multi-alias FRT (+FPT nested) in one text"}
+{"text": "Hóa chất Đức Giang và Dabaco đều nằm trong danh sách theo dõi ESG", "note": "DGC + DBC in one text"}
+{"text": "GIAVICO và Nasaco là các công ty con của tập đoàn", "note": "two DBC subsidiaries -> DBC once"}
+{"text": "Cổ phiếu HPG của Hòa Phát tăng trần", "note": "HPG ticker symbol + name -> HPG"}
+{"text": "Báo cáo của FRT về kết quả kinh doanh chuỗi nhà thuốc", "note": "FRT ticker symbol -> FRT only"}
