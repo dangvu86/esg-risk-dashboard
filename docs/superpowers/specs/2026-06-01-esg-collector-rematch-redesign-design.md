@@ -76,43 +76,99 @@ alternation pattern** built once at load time:
   `AliasHit`) is unchanged**, so `pipeline/match.py` and any other caller need
   no edits.
 
-**Overlap edge case:** alternation returns one match per position, so if two
-aliases for *different* tickers overlap at the same position (one a substring
-of the other) the old per-alias loop could report both while alternation
-reports one. Mitigation: order alternatives longest-first so the longer alias
-wins, and let the equivalence test (below) surface any residual discrepancy; if
-found, fall back to a secondary scan only for the affected overlapping alias
-set. This is expected to be rare-to-nonexistent in the current alias data.
+**Exact-equivalence requirement (overlaps).** The old code searches each alias
+*independently*, so at a single text position it can register both a short
+alias (ticker A) and a longer alias that contains it (ticker B). A plain
+consuming `finditer` over an alternation is non-overlapping and would report
+only one — a behaviour change. To preserve exact semantics we wrap the
+alternation in a **zero-width lookahead with a capture group**:
+
+```
+(?=((?<!\w)(?:alias_1|alias_2|…)(?!\w)))
+```
+
+Because the match is zero-width, `finditer` advances one character at a time
+and `group(1)` yields *every* alias occurrence at *every* position, including
+overlapping ones — identical to running each alias's `rx.search` separately,
+but in a single regex pass. Alternatives are still ordered longest-first for
+determinism. This removes the need for any "fallback scan"; the equivalence
+test (below) is the gate that proves the two produce identical hit sets.
 
 ### 2. Chunked / streamed rematch (`pipeline/match.py`)
 
-- Remove `pending = list(iter_articles(...))`. Iterate the generator directly,
-  processing in **batches of ~2000 articles**: match → mark → accumulate
-  per-ticker docs → `conn.commit()` per batch → release the batch from memory.
-- Per-ticker accumulation stays in memory (it holds only the *matched* subset,
-  a few thousand entries) and is written once at the end as today. The OOM
-  source is the *input* list, which streaming eliminates → peak RAM drops to
-  tens of MB.
-- `--rematch-all`'s "reset all to pending + wipe per_ticker/" prelude is
-  unchanged. `--since` / `--limit` keep working.
+**Cursor strategy (must not stream-while-mutating).** `storage.connect()` opens
+with `isolation_level=None` (autocommit) + `PRAGMA journal_mode=WAL`. The match
+loop UPDATEs `match_status` — the very column the input query filters on — so we
+must **not** iterate a live `SELECT … WHERE match_status='pending'` cursor while
+flipping those rows. Instead:
+
+1. **Snapshot the work list first:** `SELECT article_id FROM articles WHERE
+   match_status='pending' [AND published_at >= since] [LIMIT n]` into a list of
+   ids. Ids are tiny (~50k × ~40 B ≈ 2 MB) — safe to hold fully.
+2. **Paginate by id:** walk the id list in slices of `BATCH_SIZE` (a named
+   constant, default 2000). For each slice, fetch the *full* rows
+   (`WHERE article_id IN (…)`), match them, and `mark_match`/`mark_esg` each.
+   Only one batch of full rows (with bodies) is in memory at a time → peak RAM
+   tens of MB.
+
+**Transactions.** Because the connection is autocommit, each `mark_*` UPDATE
+commits on its own; there is no separate per-batch `conn.commit()` to add (it
+would be a no-op / "no transaction" error). If batch-level durability/throughput
+tuning is wanted, wrap each slice in an explicit `BEGIN`/`COMMIT` via
+`conn.execute("BEGIN")` … `conn.execute("COMMIT")`; this is optional and the
+plan should pick one and state it — the default is "rely on autocommit, no
+explicit transaction."
+
+- Per-ticker accumulation stays in memory (only the *matched* subset, a few
+  thousand entries) and is written once at the end, as today.
+- `--rematch-all`'s "reset all to pending + wipe per_ticker/" prelude runs
+  **before** the id snapshot, unchanged. `--since` / `--limit` keep working
+  (applied to the snapshot query).
 
 ### 3. Detached rematch deploy step (`.github/workflows/deploy-esg-collector.yml`)
 
 Replace the inline `if [ "$REMATCH" = "1" ]; then … pipeline.match
---rematch-all … fi` with a **fire-and-return** launch:
+--rematch-all … fi` with a **fire-and-return** launch of a transient unit that
+owns the whole rematch lifecycle on the VM. A committed wrapper script
+`deploy/rematch_managed.sh` (shipped in the repo, runnable on the VM) does:
 
-```bash
-systemd-run --no-block --unit=esg-rematch --uid=esg \
-  --setenv=PYTHONUNBUFFERED=1 \
-  /opt/esg-collector/.venv/bin/python -m pipeline.match --rematch-all --managed
+```
+1. systemctl stop the 4 worker services        # needs root
+2. sudo -u esg <venv> -m pipeline.match --rematch-all   # heavy work as esg
+3. sudo -u esg <venv> -m pipeline.export --ndjson --upload
+4. systemctl start the 4 worker services        # needs root
+5. write gs://esg-scan-data/_setup/rematch_status.json (state/counts)
 ```
 
-A new `--managed` flag (or a small wrapper) makes the run own its lifecycle on
-the VM: stop the four workers → rematch (chunked) → export+upload → restart
-workers → write the status file. The deploy job returns in seconds (like
-backfill), so the CI step no longer holds a long SSH wait and can never be
-killed mid-rematch. The `trap restart_workers` safety net added earlier stays
-as defence in depth for the *deploy* script itself.
+The deploy launches it detached and returns immediately:
+
+```bash
+systemd-run --no-block --unit=esg-rematch --collect \
+  /opt/esg-collector/esg-collector/deploy/rematch_managed.sh
+```
+
+**Run as root, not `--uid=esg`.** The wrapper must `systemctl stop/start` the
+worker units, which the unprivileged `esg` user cannot do; so the transient unit
+runs as root (the deploy SSH user is already sudo-capable) and drops to `esg`
+via `sudo -u esg` only for the python steps (matching how the existing
+deploy/leftover scripts invoke the venv). GCS upload uses the **VM's attached
+service account** (already proven by the daily exports), not a user credential.
+
+**Control-flow split in the deploy script.** With the rematch detached, the
+deploy must not also restart the workers itself — otherwise its step-7 restart
+and the wrapper's step-1 stop race over the same units. So:
+- `REMATCH=0` (normal deploy/push): unchanged — stop (step 1) … restart +
+  active-check (step 7).
+- `REMATCH=1`: skip the deploy's own step-1 stop and step-7 restart; instead
+  launch `esg-rematch` (above) and let the wrapper own stop → rematch → restart.
+  The deploy job still smoke-imports modules (step 6) before launching.
+
+The deploy job returns in seconds (like backfill run #4), so the CI step never
+holds a long SSH wait and can never be killed mid-rematch. The
+`trap restart_workers` safety net stays as defence in depth for the deploy
+script's own (REMATCH=0) path. Single-instance enforcement: the fixed unit name
+`esg-rematch` means a second launch while one is running fails fast, so a stray
+concurrent deploy cannot start a second rematch.
 
 ### 4. Observability (status file on GCS)
 
@@ -124,21 +180,40 @@ start and end:
  "counts":{"matched":N,"unmatched":N,"deferred":N},"error":"…"}
 ```
 
-Polling this file from the local box (already has GCS access via
-`dangvule@gmail.com`) gives progress and completion without SSH.
+**Identities.** The VM **writes** the status file (and the per-ticker exports)
+with its **attached instance service account** — already proven by the working
+daily `gsutil cp … gs://esg-scan-data/…` uploads. The **local box reads** it
+with the `dangvule@gmail.com` gcloud account, which is the local identity
+confirmed to have list/read on the bucket (the other local account
+`alphax2signal@gmail.com` does not). Two different identities, both with bucket
+access; no user credential is needed on the VM. Polling this file from the local
+box gives progress and completion without SSH.
 
 ## Testing
 
-- **Matcher equivalence (local, pytest):** run the OLD matcher and the NEW
-  matcher over a representative corpus (sample real titles/snippets/bodies,
-  including the HCM/FRT/DGC cases already captured under `_health/`) and assert
-  **identical** `{ticker, alias, location}` results for every input. This is the
-  gate that proves the rewrite changes nothing about *what* matches.
-- **Chunked rematch (local, pytest):** build a small temp SQLite with a known
-  set of articles, run `run(rematch_all=True)` against it, assert correct
-  matched/unmatched/deferred counts and correct per-ticker JSON output, and
-  that it streams (no full-corpus list).
-- **Deferred (needs live VM):** the `systemd-run` detached launch and the
+- **Matcher equivalence (local, pytest):** keep the current per-alias matcher as
+  a reference implementation (a small `_legacy_match_text` kept in the test file,
+  copied from today's `alias_matcher.py`), then run both the reference and the
+  new single-pass matcher over a **committed fixture corpus** at
+  `tests/fixtures/matcher_corpus.jsonl` and assert **identical**
+  `{ticker, alias, location}` result sets for every input. The fixture is a new
+  curated file (≈40–60 short Vietnamese texts) deliberately covering: the HCM
+  city false-positive strings (`TP.HCM`, `CSGT TPHCM`), real HSC/`Chứng khoán
+  HSC` hits, FRT brand strings (`FPT Shop`, `Nhà thuốc Long Châu`, `FPT Long
+  Châu`), DGC full-brand vs bare-`Đức Giang`, diacritic word-boundary cases, and
+  at least one cross-ticker substring-overlap case. It does **not** depend on any
+  out-of-repo scratch data. This is the gate that proves the rewrite changes
+  nothing about *what* matches.
+- **Chunked rematch (local, pytest):** build a small temp SQLite (via
+  `storage.init_db` on a temp path) with a known set of articles, run
+  `run(rematch_all=True, db_path=…)` against it, assert correct
+  matched/unmatched/deferred counts and correct per-ticker JSON output. Set
+  `BATCH_SIZE` small (e.g. 2) in the test so the multi-batch pagination path is
+  exercised. Note: this proves *correctness and that pagination works*, not the
+  e2-micro memory ceiling — the OOM fix is validated by code inspection +
+  bounded-batch design, and confirmed only on the live VM (see deferred).
+- **Deferred (needs live VM):** the `systemd-run` detached launch, the
+  root→`esg` privilege drop, the worker stop/start by the wrapper, and the
   status-file round-trip can only be verified once the VM is back up. This is
   the single remaining manual verification, performed on the first real
   detached rematch after deploy.
