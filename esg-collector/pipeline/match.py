@@ -196,7 +196,9 @@ def run(
     log.info("done: matched=%d unmatched=%d deferred=%d",
              counts["matched"], counts["unmatched"], counts["deferred"])
     if status_json:
-        Path(status_json).write_text(json.dumps(counts), encoding="utf-8")
+        sp = Path(status_json)
+        sp.parent.mkdir(parents=True, exist_ok=True)
+        sp.write_text(json.dumps(counts), encoding="utf-8")
     conn.close()
     return counts
 
