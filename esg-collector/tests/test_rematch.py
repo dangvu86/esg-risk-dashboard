@@ -77,15 +77,24 @@ def test_matcher_equivalence() -> None:
     alias_matcher.reload()
     legacy = _legacy_index(settings.ALIASES_DIR)
     corpus = _load_corpus()
+    # Cover multiple field placements + both weak tiers so the _NESTED recovery
+    # and the weak-alias path are guarded, not just single-field/strong-only.
+    configs = [
+        (lambda t: {"title": t}, False),
+        (lambda t: {"body": t}, False),
+        (lambda t: {"description": t}, True),
+    ]
     divergences = []
     for row in corpus:
-        art = {"title": row["text"]}  # single field keeps location deterministic
-        new = {(h.ticker, h.location) for h in alias_matcher.match_article(art)}
-        old = _legacy_match_article(legacy, art)
-        if new != old:
-            divergences.append((row["text"], sorted(old), sorted(new)))
-    for text, old, new in divergences:
-        print(f"  DIVERGENCE: {text!r}\n    old={old}\n    new={new}")
+        for make_art, weak in configs:
+            art = make_art(row["text"])
+            new = {(h.ticker, h.location)
+                   for h in alias_matcher.match_article(art, include_weak=weak)}
+            old = _legacy_match_article(legacy, art, include_weak=weak)
+            if new != old:
+                divergences.append((weak, row["text"], sorted(old), sorted(new)))
+    for weak, text, old, new in divergences:
+        print(f"  DIVERGENCE (weak={weak}): {text!r}\n    old={old}\n    new={new}")
     assert not divergences, f"{len(divergences)} (ticker,location) divergences"
     print("  matcher_equivalence OK")
 
