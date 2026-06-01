@@ -1,14 +1,17 @@
 """Match free text against the alias pool to determine which tickers it covers.
 
-Aliases live in `config/aliases/<TICKER>.json`. We load once at import time
-(also exposed via `reload()` for callers that hot-swap files). Each alias
-becomes a compiled regex with case-insensitive Unicode word boundaries.
+Aliases live in `config/aliases/<TICKER>.json`. Loaded once at import (also via
+`reload()`). All strong aliases (names/subsidiaries/projects) are compiled into
+ONE longest-first alternation; weak aliases (locations) into a second one. Each
+text field is scanned with a single consuming `finditer`, and the matched alias
+text is mapped back to its owning ticker(s). A precomputed `_NESTED` map also
+emits the tickers of any shorter alias that is a word-bounded substring of the
+matched alias, so overlapping matches a non-overlapping scan would drop are
+recovered — keeping the result exactly equivalent to independent per-alias search.
 
-Strong aliases: names, subsidiaries, projects.
-Weak  aliases: locations (filter out by default; they cause false positives
-                like every news article mentioning a province).
+Strong aliases: names, subsidiaries, projects (weight 1.0).
+Weak  aliases: locations (weight 0.3, filtered out by default).
 """
-
 from __future__ import annotations
 
 import json
@@ -30,69 +33,83 @@ class AliasHit:
 _STRONG_FIELDS = ("names", "subsidiaries", "projects")
 _WEAK_FIELDS = ("locations",)
 
-
-# {ticker: [(alias_str, weight, compiled_regex), ...]}
-_INDEX: dict[str, list[tuple[str, float, re.Pattern]]] = {}
-
-
-def _compile(alias: str) -> re.Pattern:
-    # `\b` doesn't match Vietnamese diacritics well in Python, so we use
-    # an explicit non-word lookaround that treats Latin + Vietnamese chars
-    # as "word".
-    esc = re.escape(alias.strip())
-    return re.compile(rf"(?<!\w){esc}(?!\w)", re.IGNORECASE | re.UNICODE)
+_OWNERS: dict[str, list[tuple[str, str, float]]] = {}
+_NESTED: dict[str, list[tuple[str, str, float]]] = {}
+_TICKERS: set[str] = set()
+_PATTERN_STRONG: re.Pattern | None = None
+_PATTERN_ALL: re.Pattern | None = None
 
 
-def _load_one(path: Path) -> tuple[str, list[tuple[str, float, re.Pattern]]] | None:
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+def _build_pattern(aliases: set[str]) -> re.Pattern | None:
+    if not aliases:
         return None
-    ticker = (data.get("ticker") or path.stem).upper()
-    aliases: list[tuple[str, float, re.Pattern]] = []
-    seen: set[str] = set()
-    for field in _STRONG_FIELDS:
-        for a in data.get(field) or []:
-            a = (a or "").strip()
-            if not a or len(a) < 2 or a.lower() in seen:
-                continue
-            seen.add(a.lower())
-            aliases.append((a, 1.0, _compile(a)))
-    for field in _WEAK_FIELDS:
-        for a in data.get(field) or []:
-            a = (a or "").strip()
-            if not a or len(a) < 2 or a.lower() in seen:
-                continue
-            seen.add(a.lower())
-            aliases.append((a, 0.3, _compile(a)))
-    return ticker, aliases
+    ordered = sorted(aliases, key=len, reverse=True)
+    alt = "|".join(re.escape(a) for a in ordered)
+    return re.compile(rf"(?<!\w)(?:{alt})(?!\w)", re.IGNORECASE | re.UNICODE)
+
+
+def _bounded(needle: str, haystack: str) -> bool:
+    rx = re.compile(rf"(?<!\w){re.escape(needle)}(?!\w)", re.IGNORECASE | re.UNICODE)
+    return rx.search(haystack) is not None
 
 
 def reload(aliases_dir: Path = settings.ALIASES_DIR) -> None:
-    _INDEX.clear()
+    global _PATTERN_STRONG, _PATTERN_ALL
+    _OWNERS.clear()
+    _NESTED.clear()
+    _TICKERS.clear()
+    strong: set[str] = set()
+    alla: set[str] = set()
     for p in sorted(Path(aliases_dir).glob("*.json")):
-        loaded = _load_one(p)
-        if loaded:
-            ticker, items = loaded
-            _INDEX[ticker] = items
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        ticker = (data.get("ticker") or p.stem).upper()
+        _TICKERS.add(ticker)
+        seen: set[str] = set()
+        for field, weight in [(f, 1.0) for f in _STRONG_FIELDS] + [(f, 0.3) for f in _WEAK_FIELDS]:
+            for a in data.get(field) or []:
+                a = (a or "").strip()
+                if not a or len(a) < 2 or a.lower() in seen:
+                    continue
+                seen.add(a.lower())
+                _OWNERS.setdefault(a.lower(), []).append((ticker, a, weight))
+                alla.add(a)
+                if weight >= 1.0:
+                    strong.add(a)
+    _PATTERN_STRONG = _build_pattern(strong)
+    _PATTERN_ALL = _build_pattern(alla)
+    al = sorted(alla, key=len)
+    for i, b in enumerate(al):
+        bl = b.lower()
+        b_owners = _OWNERS.get(bl, ())
+        for a in al[i + 1:]:
+            if len(a) <= len(b):
+                continue
+            if bl in a.lower() and _bounded(b, a):
+                _NESTED.setdefault(a.lower(), []).extend(b_owners)
 
 
 def loaded_tickers() -> list[str]:
-    return sorted(_INDEX.keys())
+    return sorted(_TICKERS)
 
 
 def match_text(text: str, *, include_weak: bool = False) -> list[AliasHit]:
     if not text:
         return []
-    hits: list[AliasHit] = []
-    for ticker, aliases in _INDEX.items():
-        for alias, weight, rx in aliases:
+    pattern = _PATTERN_ALL if include_weak else _PATTERN_STRONG
+    if pattern is None:
+        return []
+    found: dict[str, AliasHit] = {}
+    for m in pattern.finditer(text):
+        key = m.group().lower()
+        for ticker, alias, weight in (*_OWNERS.get(key, ()), *_NESTED.get(key, ())):
             if not include_weak and weight < 1.0:
                 continue
-            if rx.search(text):
-                hits.append(AliasHit(ticker, alias, "", weight))
-                break  # one hit per ticker per text is enough
-    return hits
+            if ticker not in found:
+                found[ticker] = AliasHit(ticker, alias, "", weight)
+    return list(found.values())
 
 
 def match_article(
