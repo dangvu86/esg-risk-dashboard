@@ -24,7 +24,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 40  # rematch-all can take ~15 min; old 15-min cap killed the job mid-rematch, leaving workers stopped
     steps:
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v2
@@ -55,6 +55,19 @@ jobs:
           VENV=$INSTALL_DIR/.venv/bin/python
           DB=$APP_DIR/data/articles.db
           SVC_USER=esg
+
+          # Safety net: no matter how this script exits (rematch error, job
+          # timeout / SIGHUP from a killed SSH session), bring the workers back
+          # up. Step 7 still does the authoritative start + active-check; this
+          # only guards the case where we never reach step 7.
+          restart_workers() {
+            sudo systemctl start \
+              esg-collector-google.service \
+              esg-collector-baomoi.service \
+              esg-collector-brave.service \
+              esg-collector-body.service || true
+          }
+          trap restart_workers EXIT HUP TERM
 
           echo "=== 1. Stop workers ==="
           sudo systemctl stop \
