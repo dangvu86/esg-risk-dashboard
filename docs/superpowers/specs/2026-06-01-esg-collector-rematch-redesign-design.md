@@ -76,23 +76,39 @@ alternation pattern** built once at load time:
   `AliasHit`) is unchanged**, so `pipeline/match.py` and any other caller need
   no edits.
 
-**Exact-equivalence requirement (overlaps).** The old code searches each alias
-*independently*, so at a single text position it can register both a short
-alias (ticker A) and a longer alias that contains it (ticker B). A plain
-consuming `finditer` over an alternation is non-overlapping and would report
-only one — a behaviour change. To preserve exact semantics we wrap the
-alternation in a **zero-width lookahead with a capture group**:
+**Pattern + scan strategy — consuming `finditer`, longest-first.** Build a
+single `re.compile((?<!\w)(?:alias_1|alias_2|…)(?!\w), re.IGNORECASE |
+re.UNICODE)` with alternatives ordered **longest-first**, and scan each field
+with a normal **consuming `finditer`**. `match.group()` gives the matched alias
+text; a `dict[str_lower → list[(ticker, alias, weight)]]` maps it back to its
+owning ticker(s). This is the fast path: one pass per field, and CPython's `re`
+first-character optimisation skips non-matching positions, so it avoids the
+600-separate-`search()` overhead.
 
-```
-(?=((?<!\w)(?:alias_1|alias_2|…)(?!\w)))
-```
+**Why not the zero-width lookahead.** An earlier design used
+`(?=((?<!\w)(?:…)(?!\w)))` to catch *every* overlapping occurrence (exactly
+reproducing independent per-alias search). But a zero-width match forces the
+engine to advance one character at a time and **disables the first-char
+skip-ahead**, making it as slow as the old loop — defeating the whole point.
+We deliberately use the consuming scan instead.
 
-Because the match is zero-width, `finditer` advances one character at a time
-and `group(1)` yields *every* alias occurrence at *every* position, including
-overlapping ones — identical to running each alias's `rx.search` separately,
-but in a single regex pass. Alternatives are still ordered longest-first for
-determinism. This removes the need for any "fallback scan"; the equivalence
-test (below) is the gate that proves the two produce identical hit sets.
+**Known, bounded behaviour difference.** A consuming scan is non-overlapping
+(leftmost-longest), so it diverges from the old per-alias search in exactly one
+rare case: a short alias of ticker A that appears *only* nested inside a longer
+alias of ticker B at the same position (and never standalone elsewhere in the
+text). Longest-first ordering makes the longer alias win there. In practice the
+short alias (usually a company's own short name) also occurs standalone, so its
+ticker still matches. The equivalence test (below) **measures** this divergence
+on the fixture and on a larger real sample; the gate is "zero or
+explainable-as-more-correct divergences," not byte-identity.
+
+**Performance expectation (honest).** The algorithmic win from single-pass
+matching is **modest (~2–5×)**, not an order of magnitude — true 10×+ would need
+an Aho-Corasick/trie engine, which was rejected to avoid a new VM dependency.
+The changes that actually make rematch *complete* on the e2-micro are the
+chunking (§2, removes OOM) and the detached run (§3, removes the CI-timeout
+kill + orphan wedge). Expect a full rematch to take ~10–20 min running detached
+on the VM — fine, because nothing is waiting on it synchronously.
 
 ### 2. Chunked / streamed rematch (`pipeline/match.py`)
 
@@ -210,8 +226,13 @@ box gives progress and completion without SSH.
   a reference implementation (a small `_legacy_match_text` kept in the test file,
   copied from today's `alias_matcher.py`), then run both the reference and the
   new single-pass matcher over a **committed fixture corpus** at
-  `tests/fixtures/matcher_corpus.jsonl` and assert **identical**
-  `{ticker, alias, location}` result sets for every input. The fixture is a new
+  `tests/fixtures/matcher_corpus.jsonl` and assert the **`{(ticker, location)}`
+  set is identical** for every input — i.e. the same tickers match in the same
+  fields (the load-bearing invariant). The matched-alias *label* is allowed to
+  differ and is not asserted. The test also **counts** any `(ticker, location)`
+  divergence and prints offenders; the gate is **zero** divergences on the
+  fixture (and the test is reused as a one-off over a larger real sample pulled
+  from GCS before the live rematch). The fixture is a new
   curated file (≈40–60 short Vietnamese texts) deliberately covering: the HCM
   city false-positive strings (`TP.HCM`, `CSGT TPHCM`), real HSC/`Chứng khoán
   HSC` hits, FRT brand strings (`FPT Shop`, `Nhà thuốc Long Châu`, `FPT Long
