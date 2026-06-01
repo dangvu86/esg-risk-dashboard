@@ -238,6 +238,12 @@ _WEAK_FIELDS = ("locations",)
 
 # lowercased alias string -> list of (ticker, original_alias, weight)
 _OWNERS: dict[str, list[tuple[str, str, float]]] = {}
+# lowercased alias A -> owners of OTHER aliases B that are word-bounded
+# substrings of A. So when the consuming scan matches the longer A, we also
+# emit the tickers of every shorter alias nested inside it — recovering the
+# overlapping matches a non-overlapping `finditer` would otherwise drop, and
+# making the new matcher exactly equivalent to the old per-alias search.
+_NESTED: dict[str, list[tuple[str, str, float]]] = {}
 # every ticker whose file loaded (even with no usable aliases)
 _TICKERS: set[str] = set()
 # combined consuming patterns
@@ -254,9 +260,16 @@ def _build_pattern(aliases: set[str]) -> re.Pattern | None:
     return re.compile(rf"(?<!\w)(?:{alt})(?!\w)", re.IGNORECASE | re.UNICODE)
 
 
+def _bounded(needle: str, haystack: str) -> bool:
+    """True if `needle` occurs in `haystack` with our word boundaries."""
+    rx = re.compile(rf"(?<!\w){re.escape(needle)}(?!\w)", re.IGNORECASE | re.UNICODE)
+    return rx.search(haystack) is not None
+
+
 def reload(aliases_dir: Path = settings.ALIASES_DIR) -> None:
     global _PATTERN_STRONG, _PATTERN_ALL
     _OWNERS.clear()
+    _NESTED.clear()
     _TICKERS.clear()
     strong: set[str] = set()
     alla: set[str] = set()
@@ -280,6 +293,18 @@ def reload(aliases_dir: Path = settings.ALIASES_DIR) -> None:
                     strong.add(a)
     _PATTERN_STRONG = _build_pattern(strong)
     _PATTERN_ALL = _build_pattern(alla)
+    # Precompute nested map: for each alias A, the owners of every OTHER alias B
+    # that is a word-bounded substring of A. Cheap `in` prefilter before the
+    # boundary check keeps this ~O(n^2) load-time pass fast.
+    al = sorted(alla, key=len)  # short -> long
+    for i, b in enumerate(al):
+        bl = b.lower()
+        b_owners = _OWNERS.get(bl, ())
+        for a in al[i + 1:]:
+            if len(a) <= len(b):
+                continue
+            if bl in a.lower() and _bounded(b, a):
+                _NESTED.setdefault(a.lower(), []).extend(b_owners)
 
 
 def loaded_tickers() -> list[str]:
@@ -294,7 +319,9 @@ def match_text(text: str, *, include_weak: bool = False) -> list[AliasHit]:
         return []
     found: dict[str, AliasHit] = {}
     for m in pattern.finditer(text):
-        for ticker, alias, weight in _OWNERS.get(m.group().lower(), ()):
+        key = m.group().lower()
+        # owners of the matched alias + owners of any alias nested inside it
+        for ticker, alias, weight in (*_OWNERS.get(key, ()), *_NESTED.get(key, ())):
             if not include_weak and weight < 1.0:
                 continue
             if ticker not in found:
@@ -328,10 +355,13 @@ reload()
 - [ ] **Step 2: Run the equivalence test — must PASS (zero divergences)**
 
 Run: `python -m tests.test_rematch`
-Expected: `matcher_equivalence OK`. If it prints DIVERGENCE lines, inspect each:
-a genuine nested-substring case is acceptable only if the new result is the
-more-correct one — but the gate for this fixture is **zero**; fix the matcher or
-the fixture understanding before proceeding.
+Expected: `matcher_equivalence OK` with **zero** divergences. The `_NESTED`
+recovery is what makes this hold even on the fixture's cross-ticker
+nested-substring lines (e.g. `Hòa Phát`⊂`Nông nghiệp Hòa Phát`,
+`Masan`⊂`Hàng tiêu dùng Masan`, `FPT`⊂`FPT Shop`) — the longer alias matches and
+the nested map re-emits the parent ticker, reproducing the old per-alias result.
+If it prints any DIVERGENCE line, that is a real bug in the new matcher (or the
+`_NESTED` build) — fix it before proceeding; do not relax the gate.
 
 - [ ] **Step 3: Run the existing smoke suite — must still PASS**
 
