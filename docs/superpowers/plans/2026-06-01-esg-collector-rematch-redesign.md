@@ -50,6 +50,15 @@ one cross-ticker nested-substring case. ~40–60 lines. Example lines:
 {"text": "Đội tuyển Việt Nam thắng 3-0", "note": "negative — no ticker"}
 ```
 
+**Required:** the fixture MUST include at least one **cross-ticker
+nested-substring** line — the only scenario where the consuming scan can diverge
+from per-alias search — so the equivalence gate is meaningful. Pick a real pair
+from the alias files where one ticker's alias is a substring of another's (e.g. a
+bare short token vs a longer brand containing it) and write a line where the
+short token appears ONLY inside the longer one. If no such pair exists in the
+current alias data, document that in the `note` and add a synthetic-looking but
+representative line so the test still exercises the path.
+
 - [ ] **Step 2: Commit**
 
 ```bash
@@ -628,22 +637,47 @@ git commit -m "feat(deploy): managed detached rematch wrapper"
 
 - [ ] **Step 1: Gate the existing stop (step 1) and restart (step 7) on `REMATCH=0`, and add the detached launch**
 
-In the remote heredoc:
-- Wrap the step-1 `systemctl stop … ` block so it only runs when `[ "$REMATCH" != "1" ]`.
-- Replace the inline `if [ "$REMATCH" = "1" ]; then … pipeline.match --rematch-all … fi` (step 6b) with:
+Three literal edits inside the remote heredoc (`trap restart_workers EXIT HUP TERM` stays untouched as the REMATCH=0 safety net).
+
+**Edit 1 — step 1, gate the stop.** Wrap the existing stop block:
+
+```bash
+          echo "=== 1. Stop workers ==="
+          if [ "$REMATCH" != "1" ]; then
+            sudo systemctl stop \
+              esg-collector-google.service \
+              esg-collector-baomoi.service \
+              esg-collector-brave.service \
+              esg-collector-body.service
+          else
+            echo "  (REMATCH=1: managed rematch unit owns worker stop/start; skipping)"
+          fi
+```
+
+**Edit 2 — step 6b, replace inline rematch with detached launch.** Replace:
+
+```bash
+          if [ "$REMATCH" = "1" ]; then
+            echo "=== 6b. Rematch all (user-requested) ==="
+            sudo -u $SVC_USER $VENV -m pipeline.match --rematch-all
+          fi
+```
+
+with:
 
 ```bash
           if [ "$REMATCH" = "1" ]; then
             echo "=== 6b. Launch DETACHED managed rematch (fire-and-return) ==="
-            systemd-run --no-block --collect --unit=esg-rematch \
+            sudo systemd-run --no-block --collect --unit=esg-rematch \
               "$APP_DIR/deploy/rematch_managed.sh"
-            echo "launched esg-rematch; workers are managed by the unit, deploy returns now"
+            echo "  launched esg-rematch unit; it owns worker lifecycle, deploy returns now"
           fi
 ```
 
-- Wrap the step-7 `systemctl start …` + active-check block so it only runs when
-  `[ "$REMATCH" != "1" ]` (when REMATCH=1 the wrapper owns worker lifecycle).
-  Leave the `trap restart_workers` line intact for the REMATCH=0 path.
+**Edit 3 — step 7, gate the restart + active-check.** Wrap the existing
+`systemctl start … ` and the `for s in google baomoi brave body; do … active …`
+block in `if [ "$REMATCH" != "1" ]; then … else echo "  (REMATCH=1: workers
+managed by esg-rematch unit)"; fi`, preserving the inner heredoc indentation.
 
 - [ ] **Step 2: Lint the YAML / shell**
 
