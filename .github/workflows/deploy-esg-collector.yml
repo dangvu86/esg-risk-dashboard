@@ -61,6 +61,10 @@ jobs:
           # up. Step 7 still does the authoritative start + active-check; this
           # only guards the case where we never reach step 7.
           restart_workers() {
+            if [ "$REMATCH" = "1" ]; then
+              echo "  (REMATCH=1: esg-rematch unit owns workers; deploy trap no-op)"
+              return 0
+            fi
             sudo systemctl start \
               esg-collector-google.service \
               esg-collector-baomoi.service \
@@ -130,6 +134,10 @@ jobs:
             sudo systemd-run --no-block --collect --unit=esg-rematch \
               "$APP_DIR/deploy/rematch_managed.sh"
             echo "  launched esg-rematch unit; it owns worker lifecycle, deploy returns now"
+            sleep 2
+            state=$(systemctl is-active esg-rematch 2>/dev/null || true)
+            echo "  esg-rematch unit: $state"
+            [ "$state" = "failed" ] && { echo "rematch unit failed to start"; exit 1; }
           fi
 
           echo "=== 7. Restart workers ==="
