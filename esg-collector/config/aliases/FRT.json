@@ -10,9 +10,15 @@
     "FRT",
     "CTCP Bán lẻ Kỹ thuật số FPT",
     "FRT JSC",
-    "Bán lẻ Kỹ thuật số FPT"
+    "Bán lẻ Kỹ thuật số FPT",
+    "FPT Retail",
+    "FPT Shop"
   ],
-  "subsidiaries": [],
+  "subsidiaries": [
+    "Nhà thuốc Long Châu",
+    "FPT Long Châu",
+    "Dược phẩm FPT Long Châu"
+  ],
   "projects": [],
   "locations": []
 }
