@@ -106,10 +106,17 @@ flipping those rows. Instead:
    match_status='pending' [AND published_at >= since] [LIMIT n]` into a list of
    ids. Ids are tiny (~50k × ~40 B ≈ 2 MB) — safe to hold fully.
 2. **Paginate by id:** walk the id list in slices of `BATCH_SIZE` (a named
-   constant, default 2000). For each slice, fetch the *full* rows
-   (`WHERE article_id IN (…)`), match them, and `mark_match`/`mark_esg` each.
-   Only one batch of full rows (with bodies) is in memory at a time → peak RAM
-   tens of MB.
+   constant, default 2000). For each slice, fetch the *full* rows, match them,
+   and `mark_match`/`mark_esg` each. Only one batch of full rows (with bodies)
+   is in memory at a time → peak RAM tens of MB.
+   - `storage.iter_articles` today filters only by `match_status`/`body_status`/
+     `since`/`limit` and has no by-ids mode — the plan adds a
+     `storage.fetch_articles_by_ids(conn, ids)` helper (preferred) rather than
+     inlining SQL in `match.py`.
+   - **SQLite variable cap:** a single `WHERE article_id IN (?,?,…)` is limited
+     to ~999 (older) / 32766 (newer) bound params. Since `BATCH_SIZE`=2000 can
+     exceed the old cap, the helper must sub-chunk the `IN` list (e.g. 500/query)
+     or join against a temp table — do not assume one `IN` per batch.
 
 **Transactions.** Because the connection is autocommit, each `mark_*` UPDATE
 commits on its own; there is no separate per-batch `conn.commit()` to add (it
@@ -139,6 +146,14 @@ owns the whole rematch lifecycle on the VM. A committed wrapper script
 4. systemctl start the 4 worker services        # needs root
 5. write gs://esg-scan-data/_setup/rematch_status.json (state/counts)
 ```
+
+**Status counts.** `run()` returns its `{matched,unmatched,deferred}` dict in
+Python (match.py:183), not on stdout, so the shell wrapper cannot read it
+directly. The plan adds a small `--status-json <path>` option to
+`pipeline.match` that writes those counts to a local file on completion; the
+wrapper reads that file and folds it into `rematch_status.json` (with
+`state=done`). On any failure the wrapper writes `state=failed` + the error and
+still restarts the workers. The wrapper writes `state=running` at step 1.
 
 The deploy launches it detached and returns immediately:
 
@@ -232,9 +247,11 @@ box gives progress and completion without SSH.
 
 - **Matcher behaviour drift** — mitigated by the equivalence test gate; we do
   not ship the new matcher unless it matches the old one exactly.
-- **systemd-run availability / uid** — `systemd-run --uid=esg` must be allowed
-  on the VM; verify on first live run. Fallback: a dedicated oneshot service
-  unit shipped in `deploy/`.
+- **systemd-run availability** — the transient `esg-rematch` unit runs as
+  **root** (per §3) and drops to `esg` via `sudo -u esg` for the python steps;
+  verify on first live run that `systemd-run --no-block --collect` is available
+  and the wrapper can `systemctl stop/start` the worker units. Fallback: ship a
+  dedicated oneshot service unit in `deploy/` instead of `systemd-run`.
 - **Detached job ↔ deploy race** — the managed rematch stops/starts workers; a
   concurrent push-deploy also touches workers. The existing `concurrency` group
   on the workflow plus the rematch unit name (`esg-rematch`, single instance)
