@@ -60,3 +60,37 @@ export function controversyLabel(level: ControversyLevel | undefined, lang: Lang
   // Levels are language-neutral tokens (Major/Minor/No); shown as-is in both languages.
   return level;
 }
+
+export interface Filters {
+  ticker: string;       // "" = all
+  pillar: "" | Pillar;  // "" = all
+  severity: "" | Severity;
+  controversy: "" | ControversyLevel | "none"; // "none" = not classified
+  query: string;
+}
+
+export function matchesSearch(event: EsgEvent, query: string): boolean {
+  const q = normalizeText(query);
+  if (!q) return true;
+  return (
+    normalizeText(event.summary).includes(q) ||
+    normalizeText(event.summary_en).includes(q)
+  );
+}
+
+export function filterEvents(events: EsgEvent[], f: Filters): EsgEvent[] {
+  return events.filter((e) => {
+    if (f.ticker && e.ticker !== f.ticker) return false;
+    if (f.pillar && e.type !== f.pillar) return false;
+    if (f.severity && e.severity !== f.severity) return false;
+    if (f.controversy) {
+      if (f.controversy === "none") {
+        if (e.controversy_level) return false;
+      } else if (e.controversy_level !== f.controversy) {
+        return false;
+      }
+    }
+    if (!matchesSearch(e, f.query)) return false;
+    return true;
+  });
+}

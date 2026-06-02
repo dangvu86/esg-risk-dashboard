@@ -51,3 +51,38 @@ describe("normalizeText", () => {
     expect(normalizeText(undefined)).toBe("");
   });
 });
+
+import { filterEvents, type Filters, type EsgEvent } from "./esg";
+
+const ev = (over: Partial<EsgEvent>): EsgEvent => ({
+  ticker: "DBC", company: "Dabaco", type: "E", date: "2026-05-27",
+  summary: "Thanh Hoá xả thải", summary_en: "Thanh Hoa wastewater",
+  severity: "Trung bình", source: "Lao Dong", url: "x", controversy_level: "Minor", ...over,
+});
+
+const NONE: Filters = { ticker: "", pillar: "", severity: "", controversy: "", query: "" };
+
+describe("filterEvents", () => {
+  const data = [
+    ev({ ticker: "DBC", type: "E", severity: "Trung bình", controversy_level: "Minor" }),
+    ev({ ticker: "HPG", type: "S", severity: "Cao", controversy_level: "Major" }),
+    ev({ ticker: "NVL", type: "G", severity: "Trung bình", controversy_level: "" }),
+  ];
+  it("returns all with empty filters", () => {
+    expect(filterEvents(data, NONE)).toHaveLength(3);
+  });
+  it("filters by ticker, pillar, severity, controversy", () => {
+    expect(filterEvents(data, { ...NONE, ticker: "HPG" })).toHaveLength(1);
+    expect(filterEvents(data, { ...NONE, pillar: "G" })).toHaveLength(1);
+    expect(filterEvents(data, { ...NONE, severity: "Cao" })).toHaveLength(1);
+    expect(filterEvents(data, { ...NONE, controversy: "Major" })).toHaveLength(1);
+  });
+  it("controversy 'none' matches empty/missing level", () => {
+    expect(filterEvents(data, { ...NONE, controversy: "none" })).toHaveLength(1);
+  });
+  it("search is accent-insensitive across summary and summary_en", () => {
+    expect(filterEvents(data, { ...NONE, query: "thanh hoa" })).toHaveLength(3);
+    expect(filterEvents(data, { ...NONE, query: "wastewater" })).toHaveLength(3);
+    expect(filterEvents(data, { ...NONE, query: "zzz" })).toHaveLength(0);
+  });
+});
