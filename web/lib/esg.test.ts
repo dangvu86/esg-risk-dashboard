@@ -1,6 +1,18 @@
 import { describe, it, expect } from "vitest";
-import { normalizeText } from "./esg";
-import { pickHeadline, severityLabel, controversyLabel } from "./esg";
+import {
+  normalizeText,
+  pickHeadline,
+  severityLabel,
+  controversyLabel,
+  filterEvents,
+  sortEvents,
+  paginate,
+  mergeTickers,
+  PAGE_SIZE,
+  type Filters,
+  type EsgEvent,
+  type SortKey,
+} from "./esg";
 
 const base = {
   ticker: "DBC", company: "Dabaco", type: "E" as const, date: "2026-05-27",
@@ -52,8 +64,6 @@ describe("normalizeText", () => {
   });
 });
 
-import { filterEvents, type Filters, type EsgEvent } from "./esg";
-
 const ev = (over: Partial<EsgEvent>): EsgEvent => ({
   ticker: "DBC", company: "Dabaco", type: "E", date: "2026-05-27",
   summary: "Thanh Hoá xả thải", summary_en: "Thanh Hoa wastewater",
@@ -89,8 +99,6 @@ describe("filterEvents", () => {
   });
 });
 
-import { sortEvents, type SortKey } from "./esg";
-
 describe("sortEvents", () => {
   const data = [
     ev({ ticker: "HPG", date: "2026-05-26", created_at: "2026-05-26T01:00:00Z" }),
@@ -122,8 +130,6 @@ describe("sortEvents", () => {
     expect(data).toEqual(copy);
   });
 });
-
-import { paginate, mergeTickers, PAGE_SIZE } from "./esg";
 
 describe("paginate", () => {
   const rows = Array.from({ length: 120 }, (_, i) => i);
