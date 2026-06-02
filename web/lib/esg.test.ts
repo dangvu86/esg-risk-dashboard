@@ -86,3 +86,34 @@ describe("filterEvents", () => {
     expect(filterEvents(data, { ...NONE, query: "zzz" })).toHaveLength(0);
   });
 });
+
+import { sortEvents, type SortKey } from "./esg";
+
+describe("sortEvents", () => {
+  const data = [
+    ev({ ticker: "HPG", date: "2026-05-26", created_at: "2026-05-26T01:00:00Z" }),
+    ev({ ticker: "DBC", date: "2026-05-27", created_at: "2026-05-27T02:00:00Z" }),
+    ev({ ticker: "AAA", date: "2026-05-27", created_at: "2026-05-27T05:00:00Z" }),
+    ev({ ticker: "AAA", date: "2026-05-27", created_at: undefined }),
+  ];
+  const tickers = (k: SortKey) => sortEvents(data, k).map((e) => e.ticker + "/" + e.date);
+
+  it("date_desc: newest date first; tie -> created_at desc, missing last, then ticker asc", () => {
+    expect(tickers("date_desc")).toEqual([
+      "AAA/2026-05-27", "DBC/2026-05-27", "AAA/2026-05-27", "HPG/2026-05-26",
+    ]);
+  });
+  it("date_asc: oldest date first; same-date tie still created_at desc then ticker asc", () => {
+    expect(tickers("date_asc")[0]).toBe("HPG/2026-05-26");
+  });
+  it("ticker_asc: A→Z; tie -> date desc", () => {
+    expect(sortEvents(data, "ticker_asc").map((e) => e.ticker)).toEqual([
+      "AAA", "AAA", "DBC", "HPG",
+    ]);
+  });
+  it("does not mutate the input array", () => {
+    const copy = [...data];
+    sortEvents(data, "date_desc");
+    expect(data).toEqual(copy);
+  });
+});

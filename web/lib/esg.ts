@@ -94,3 +94,33 @@ export function filterEvents(events: EsgEvent[], f: Filters): EsgEvent[] {
     return true;
   });
 }
+
+export type SortKey = "date_desc" | "date_asc" | "ticker_asc";
+
+// Descending compare of created_at; missing sorts LAST.
+function createdAtDesc(a: EsgEvent, b: EsgEvent): number {
+  const av = a.created_at ?? "";
+  const bv = b.created_at ?? "";
+  if (av === bv) return 0;
+  if (!av) return 1; // a missing -> a after b
+  if (!bv) return -1;
+  return bv.localeCompare(av); // later timestamp first
+}
+
+export function sortEvents(events: EsgEvent[], key: SortKey): EsgEvent[] {
+  const copy = [...events];
+  copy.sort((a, b) => {
+    if (key === "ticker_asc") {
+      const t = a.ticker.localeCompare(b.ticker);
+      if (t !== 0) return t;
+      return b.date.localeCompare(a.date); // tie -> date desc
+    }
+    // date sorts
+    const d = key === "date_desc" ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date);
+    if (d !== 0) return d;
+    const c = createdAtDesc(a, b); // tie -> created_at desc
+    if (c !== 0) return c;
+    return a.ticker.localeCompare(b.ticker); // then ticker asc
+  });
+  return copy;
+}
