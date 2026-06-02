@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   type EsgEvent,
   type Company,
@@ -78,10 +78,13 @@ export default function Home() {
     document.documentElement.lang = lang;
   }, [lang]);
 
-  function load() {
-    setLoading(true);
-    setError(false);
-    fetch("/api/events")
+  const load = useCallback(() => {
+    Promise.resolve()
+      .then(() => {
+        setLoading(true);
+        setError(false);
+        return fetch("/api/events");
+      })
       .then((r) => {
         if (!r.ok) throw new Error("events");
         return r.json();
@@ -94,10 +97,9 @@ export default function Home() {
       .then((r) => (r.ok ? r.json() : []))
       .then((data: Company[]) => setCompanies(data))
       .catch(() => setCompanies([]));
-  }
+  }, []);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
 
   // Any change to a filter, the query, or the sort returns to page 1.
   function updateFilters(patch: Partial<Filters>) {
@@ -121,8 +123,12 @@ export default function Home() {
   );
   const pageData = useMemo(() => paginate(processed, page, PAGE_SIZE), [processed, page]);
 
-  const isFiltered =
-    filters.ticker || filters.pillar || filters.severity || filters.controversy || filters.query;
+  const isFiltered = Boolean(
+    filters.ticker || filters.pillar || filters.severity || filters.controversy || filters.query,
+  );
+
+  const start = processed.length === 0 ? 0 : (pageData.page - 1) * PAGE_SIZE + 1;
+  const end = Math.min(pageData.page * PAGE_SIZE, processed.length);
 
   if (loading) {
     return (
@@ -267,7 +273,7 @@ export default function Home() {
                         </td>
                         <td className="py-4">
                           {e.controversy_level
-                            ? <span className={`badge ctrl-${e.controversy_level}`}>{controversyLabel(e.controversy_level, lang)}</span>
+                            ? <span className={`badge ctrl-${e.controversy_level}`}>{controversyLabel(e.controversy_level)}</span>
                             : <span className="subtle-text text-xs">—</span>}
                         </td>
                         <td className="py-4 text-xs subtle-text max-w-[200px]">
@@ -290,8 +296,8 @@ export default function Home() {
           <div className="px-7 py-4 flex justify-between items-center text-sm border-t border-violet-100/50">
             <span className="subtle-text">
               {lang === "en"
-                ? `Showing page ${pageData.page} of ${pageData.totalPages}`
-                : `Trang ${pageData.page}/${pageData.totalPages}`}
+                ? `Showing ${start.toLocaleString()}–${end.toLocaleString()} of ${processed.length.toLocaleString()}`
+                : `Hiện ${start.toLocaleString()}–${end.toLocaleString()} / ${processed.length.toLocaleString()}`}
             </span>
             <div className="flex items-center gap-2">
               <button className="pill-btn-light" disabled={pageData.page <= 1}

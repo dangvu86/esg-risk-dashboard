@@ -55,7 +55,7 @@ export function severityLabel(sev: Severity, lang: Lang): string {
   return sev;
 }
 
-export function controversyLabel(level: ControversyLevel | undefined, lang: Lang): string {
+export function controversyLabel(level: ControversyLevel | undefined): string {
   if (!level) return "—";
   // Levels are language-neutral tokens (Major/Minor/No); shown as-is in both languages.
   return level;

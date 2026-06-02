@@ -31,8 +31,8 @@ describe("label maps", () => {
     expect(severityLabel("Trung bình", "en")).toBe("Medium");
   });
   it("controversyLabel returns dash for empty", () => {
-    expect(controversyLabel("", "en")).toBe("—");
-    expect(controversyLabel("Major", "vi")).toBe("Major");
+    expect(controversyLabel("")).toBe("—");
+    expect(controversyLabel("Major")).toBe("Major");
   });
 });
 
