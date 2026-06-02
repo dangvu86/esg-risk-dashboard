@@ -20,6 +20,9 @@ on:
 concurrency:
   group: deploy-esg-collector
   cancel-in-progress: false  # don't kill an in-flight deploy mid-pull
+  # Op note: if a deploy hangs against a wedged VM, cancel that run before
+  # re-triggering in a post-reset calm window — else this group queues the new
+  # run behind the hung one (match.timer OnBootSec=10min may re-wedge first).
 
 jobs:
   deploy:
