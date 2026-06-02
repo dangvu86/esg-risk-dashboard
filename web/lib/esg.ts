@@ -69,16 +69,9 @@ export interface Filters {
   query: string;
 }
 
-export function matchesSearch(event: EsgEvent, query: string): boolean {
-  const q = normalizeText(query);
-  if (!q) return true;
-  return (
-    normalizeText(event.summary).includes(q) ||
-    normalizeText(event.summary_en).includes(q)
-  );
-}
-
 export function filterEvents(events: EsgEvent[], f: Filters): EsgEvent[] {
+  // Normalize the query once, not once per event.
+  const q = normalizeText(f.query);
   return events.filter((e) => {
     if (f.ticker && e.ticker !== f.ticker) return false;
     if (f.pillar && e.type !== f.pillar) return false;
@@ -90,7 +83,9 @@ export function filterEvents(events: EsgEvent[], f: Filters): EsgEvent[] {
         return false;
       }
     }
-    if (!matchesSearch(e, f.query)) return false;
+    if (q && !normalizeText(e.summary).includes(q) && !normalizeText(e.summary_en).includes(q)) {
+      return false;
+    }
     return true;
   });
 }

@@ -20,6 +20,12 @@ import {
 } from "@/lib/esg";
 
 const PILLAR_CLASS: Record<Pillar, string> = { E: "group-E", S: "group-S", G: "group-G" };
+const SEVERITY_CLASS: Record<Severity, string> = { Cao: "sev-high", "Trung bình": "sev-med" };
+const CONTROVERSY_CLASS: Record<"Major" | "Minor" | "No", string> = {
+  Major: "badge ctrl-Major",
+  Minor: "badge ctrl-Minor",
+  No: "badge ctrl-No",
+};
 
 // Minimal bilingual UI string table.
 const T = {
@@ -38,6 +44,8 @@ const T = {
   allControversy: { en: "All controversy", vi: "Tất cả tranh cãi" },
   notClassified: { en: "Not classified", vi: "Chưa phân loại" },
   clear: { en: "Clear", vi: "Xoá lọc" },
+  subtitle: { en: "events · sorted by most recent", vi: "sự kiện · sắp xếp theo ngày mới nhất" },
+  perPage: { en: "/ page", vi: "/ trang" },
   colDate: { en: "Date", vi: "Ngày" },
   colCompany: { en: "Company", vi: "Công ty" },
   colHeadline: { en: "Headline", vi: "Tiêu đề" },
@@ -122,12 +130,25 @@ export default function Home() {
   );
   const pageData = useMemo(() => paginate(processed, page, PAGE_SIZE), [processed, page]);
 
-  const isFiltered = Boolean(
-    filters.ticker || filters.pillar || filters.severity || filters.controversy || filters.query,
-  );
+  const isFiltered = Object.values(filters).some(Boolean);
 
   const start = processed.length === 0 ? 0 : (pageData.page - 1) * PAGE_SIZE + 1;
   const end = Math.min(pageData.page * PAGE_SIZE, processed.length);
+
+  // Numbered labels (can't be static T entries because they interpolate counts).
+  const total = processed.length.toLocaleString();
+  const headerCount =
+    lang === "en"
+      ? `events · page ${pageData.page} of ${pageData.totalPages}`
+      : `sự kiện · trang ${pageData.page}/${pageData.totalPages}`;
+  const showingRange =
+    lang === "en"
+      ? `Showing ${start.toLocaleString()}–${end.toLocaleString()} of ${total}`
+      : `Hiện ${start.toLocaleString()}–${end.toLocaleString()} / ${total}`;
+  const pageOf =
+    lang === "en"
+      ? `Page ${pageData.page} of ${pageData.totalPages}`
+      : `Trang ${pageData.page}/${pageData.totalPages}`;
 
   if (loading) {
     return (
@@ -179,8 +200,7 @@ export default function Home() {
           <span className="pill-tag mb-4 inline-block">{T.tag[lang]}</span>
           <h1 className="display-h1">{T.title[lang]}</h1>
           <p className="subtle-text mt-2 text-sm">
-            {processed.length.toLocaleString()}{" "}
-            {lang === "en" ? "events · sorted by most recent" : "sự kiện · sắp xếp theo ngày mới nhất"}
+            {processed.length.toLocaleString()} {T.subtitle[lang]}
           </p>
         </div>
 
@@ -235,12 +255,9 @@ export default function Home() {
         <div className="glass-card overflow-hidden">
           <div className="px-7 py-4 flex justify-between items-center text-sm border-b border-violet-100/50">
             <div>
-              <strong>{processed.length.toLocaleString()}</strong>{" "}
-              {lang === "en"
-                ? `events · page ${pageData.page} of ${pageData.totalPages}`
-                : `sự kiện · trang ${pageData.page}/${pageData.totalPages}`}
+              <strong>{processed.length.toLocaleString()}</strong> {headerCount}
             </div>
-            <div className="subtle-text">{PAGE_SIZE} / page</div>
+            <div className="subtle-text">{PAGE_SIZE} {T.perPage[lang]}</div>
           </div>
 
           <div className="overflow-x-auto">
@@ -275,13 +292,13 @@ export default function Home() {
                         </td>
                         <td className="py-4"><span className={`badge ${PILLAR_CLASS[e.type]}`}>{e.type}</span></td>
                         <td className="py-4">
-                          <span className={e.severity === "Cao" ? "sev-high" : "sev-med"}>
+                          <span className={SEVERITY_CLASS[e.severity]}>
                             {severityLabel(e.severity, lang)}
                           </span>
                         </td>
                         <td className="py-4">
                           {e.controversy_level
-                            ? <span className={`badge ctrl-${e.controversy_level}`}>{controversyLabel(e.controversy_level)}</span>
+                            ? <span className={CONTROVERSY_CLASS[e.controversy_level]}>{controversyLabel(e.controversy_level)}</span>
                             : <span className="subtle-text text-xs">—</span>}
                         </td>
                         <td className="py-4 text-xs subtle-text max-w-[200px]">
@@ -302,17 +319,11 @@ export default function Home() {
 
           {/* Pagination footer */}
           <div className="px-7 py-4 flex justify-between items-center text-sm border-t border-violet-100/50">
-            <span className="subtle-text">
-              {lang === "en"
-                ? `Showing ${start.toLocaleString()}–${end.toLocaleString()} of ${processed.length.toLocaleString()}`
-                : `Hiện ${start.toLocaleString()}–${end.toLocaleString()} / ${processed.length.toLocaleString()}`}
-            </span>
+            <span className="subtle-text">{showingRange}</span>
             <div className="flex items-center gap-2">
               <button className="pill-btn-light" disabled={pageData.page <= 1}
                 onClick={() => setPage((p) => p - 1)}>{T.prev[lang]}</button>
-              <span className="subtle-text text-xs px-2">
-                {lang === "en" ? `Page ${pageData.page} of ${pageData.totalPages}` : `Trang ${pageData.page}/${pageData.totalPages}`}
-              </span>
+              <span className="subtle-text text-xs px-2">{pageOf}</span>
               <button className="pill-btn-light" disabled={pageData.page >= pageData.totalPages}
                 onClick={() => setPage((p) => p + 1)}>{T.next[lang]}</button>
             </div>
