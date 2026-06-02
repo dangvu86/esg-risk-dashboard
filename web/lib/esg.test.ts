@@ -79,6 +79,8 @@ describe("filterEvents", () => {
   });
   it("controversy 'none' matches empty/missing level", () => {
     expect(filterEvents(data, { ...NONE, controversy: "none" })).toHaveLength(1);
+    const withUndefined = [ev({ controversy_level: undefined })];
+    expect(filterEvents(withUndefined, { ...NONE, controversy: "none" })).toHaveLength(1);
   });
   it("search is accent-insensitive across summary and summary_en", () => {
     expect(filterEvents(data, { ...NONE, query: "thanh hoa" })).toHaveLength(3);
@@ -107,8 +109,11 @@ describe("sortEvents", () => {
     expect(tickers("date_asc")[0]).toBe("HPG/2026-05-26");
   });
   it("ticker_asc: A→Z; tie -> date desc", () => {
-    expect(sortEvents(data, "ticker_asc").map((e) => e.ticker)).toEqual([
-      "AAA", "AAA", "DBC", "HPG",
+    expect(sortEvents(data, "ticker_asc").map((e) => e.ticker + "/" + (e.created_at ?? "none"))).toEqual([
+      "AAA/2026-05-27T05:00:00Z",
+      "AAA/none",
+      "DBC/2026-05-27T02:00:00Z",
+      "HPG/2026-05-26T01:00:00Z",
     ]);
   });
   it("does not mutate the input array", () => {

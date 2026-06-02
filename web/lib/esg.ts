@@ -104,7 +104,7 @@ function createdAtDesc(a: EsgEvent, b: EsgEvent): number {
   if (av === bv) return 0;
   if (!av) return 1; // a missing -> a after b
   if (!bv) return -1;
-  return bv.localeCompare(av); // later timestamp first
+  return av > bv ? -1 : 1; // later timestamp first (desc)
 }
 
 export function sortEvents(events: EsgEvent[], key: SortKey): EsgEvent[] {
