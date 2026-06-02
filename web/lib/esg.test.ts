@@ -117,3 +117,33 @@ describe("sortEvents", () => {
     expect(data).toEqual(copy);
   });
 });
+
+import { paginate, mergeTickers, PAGE_SIZE } from "./esg";
+
+describe("paginate", () => {
+  const rows = Array.from({ length: 120 }, (_, i) => i);
+  it("uses PAGE_SIZE of 50", () => {
+    expect(PAGE_SIZE).toBe(50);
+  });
+  it("returns the right slice and total pages", () => {
+    const r = paginate(rows, 1, PAGE_SIZE);
+    expect(r.rows).toHaveLength(50);
+    expect(r.totalPages).toBe(3);
+    expect(r.page).toBe(1);
+  });
+  it("clamps page above range to last page", () => {
+    expect(paginate(rows, 99, PAGE_SIZE).page).toBe(3);
+  });
+  it("clamps page below 1 and handles empty -> 1 page", () => {
+    expect(paginate(rows, 0, PAGE_SIZE).page).toBe(1);
+    expect(paginate([], 1, PAGE_SIZE).totalPages).toBe(1);
+  });
+});
+
+describe("mergeTickers", () => {
+  it("merges api + event tickers, dedupes, sorts A→Z", () => {
+    const api = [{ ticker: "VIC", company: "VinGroup" }, { ticker: "DBC", company: "Dabaco" }];
+    const events = [ev({ ticker: "HPG" }), ev({ ticker: "DBC" })];
+    expect(mergeTickers(api, events)).toEqual(["DBC", "HPG", "VIC"]);
+  });
+});

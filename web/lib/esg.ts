@@ -124,3 +124,26 @@ export function sortEvents(events: EsgEvent[], key: SortKey): EsgEvent[] {
   });
   return copy;
 }
+
+export const PAGE_SIZE = 50;
+
+export interface Page<T> {
+  rows: T[];
+  page: number;       // clamped, 1-based
+  totalPages: number; // >= 1
+}
+
+export function paginate<T>(rows: T[], page: number, size = PAGE_SIZE): Page<T> {
+  const totalPages = Math.max(1, Math.ceil(rows.length / size));
+  const clamped = Math.min(Math.max(1, page), totalPages);
+  const start = (clamped - 1) * size;
+  return { rows: rows.slice(start, start + size), page: clamped, totalPages };
+}
+
+/** Union of API tickers and tickers seen in events, deduped, sorted A→Z. */
+export function mergeTickers(apiTickers: Company[], events: EsgEvent[]): string[] {
+  const set = new Set<string>();
+  for (const c of apiTickers) set.add(c.ticker);
+  for (const e of events) set.add(e.ticker);
+  return [...set].sort((a, b) => a.localeCompare(b));
+}
