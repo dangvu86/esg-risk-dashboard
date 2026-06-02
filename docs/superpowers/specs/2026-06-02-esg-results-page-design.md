@@ -52,7 +52,8 @@ interface EsgEvent {
 
 Fields shown in the mockup but **absent** from live data (`fetcher`, `matched alias`,
 `sector`, `location`) are not rendered. The component should keep clean optional-field handling
-so they can be added later without restructuring.
+so they can be added later without restructuring. `created_at` exists in the data but is used
+only as a sort tie-breaker — it is **not** a visible column.
 
 Data is fetched **once on load**; all filtering, sorting, counting, and pagination happen
 **client-side** over the in-memory array (dataset is a few thousand rows — well within budget).
@@ -66,16 +67,61 @@ All wrapped in `max-w-7xl mx-auto px-6`, on the mockup's gradient background.
 2. **Header** — page title + subtitle line showing the filtered event count
    ("N events · sorted by most recent" / "N sự kiện · sắp xếp theo ngày mới nhất").
 3. **Filter bar** —
-   - Title search input (matches against `summary` and `summary_en`)
-   - Ticker dropdown (populated from `/api/tickers`, plus any tickers present in events)
+   - Title search input (see **Search semantics** below)
+   - Ticker dropdown (see **Ticker dropdown** below)
    - Pillar select: All / E / S / G
    - Severity select: All / High (`Cao`) / Medium (`Trung bình`)
-   - Controversy select: All / Major / Minor / No / Not classified (empty)
-   - Sort control: Date (newest→oldest, default), Date (oldest→newest), Ticker (A→Z)
-   - "Clear filters" button (shown only when a filter is active)
+   - Controversy select: All / Major / Minor / No / Not classified (empty `controversy_level`)
+   - Sort control: see **Sort semantics** below
+   - "Clear filters" button (shown only when any filter or search is active; resets all
+     filters, search, and sort to defaults and returns to page 1)
 4. **Results table** (`glass-card`, paginated 50/page) — columns:
-   `Date · Ticker (chip) · Headline · Pillar (badge) · Severity · Controversy (badge) · Justification · Source (link ↗)`.
-   Pagination footer: "N events · page X of Y", 50/page.
+   `Date · Ticker (chip) · Company · Headline · Pillar (badge) · Severity · Controversy (badge) · Justification · Source (link ↗)`.
+   The **Company** column is retained from the current app (full column set was the locked
+   choice). Pagination control sits in the footer (see **Pagination** below).
+
+### Search semantics
+
+- Substring match against **both** `summary` and `summary_en`.
+- **Case-insensitive and accent-insensitive** (required for Vietnamese): normalize both the
+  query and the target by lowercasing and stripping diacritics
+  (`str.normalize("NFD").replace(/\p{Diacritic}/gu, "")`) before comparing, so "thanh hoa"
+  matches "Thanh Hoá".
+
+### Sort semantics
+
+- Sorting is an **explicit client-side sort** applied after filtering (the source array order
+  is not assumed). Options:
+  - **Date, newest→oldest** (default)
+  - **Date, oldest→newest**
+  - **Ticker, A→Z**
+- `date` is an ISO `YYYY-MM-DD` string → lexicographic comparison is date-correct.
+- **Tie-break:** for the Date sorts, equal `date` falls back to `created_at` descending then
+  `ticker` ascending. For the Ticker sort, equal `ticker` falls back to `date` descending
+  (same-ticker rows read newest-first). A missing `created_at` sorts last (treated as empty).
+
+### Pagination
+
+- Client-side, **50 rows per page**, applied after filter + sort.
+- Footer shows "N events · page X of Y" (bilingual) **and** a navigation control:
+  **Prev / Next** buttons plus the current page indicator (disabled at the ends).
+- **Any change to a filter, the search query, or the sort resets to page 1.**
+
+### Ticker dropdown
+
+- Options merge `/api/tickers` (`{ticker, company}`) with any ticker present in events,
+  deduped by ticker, sorted A→Z. Label format: `TICKER` (company shown via the existing
+  Company column, not in the dropdown). Mockup's per-ticker count badges are **out of scope**.
+
+## States: loading / empty / error
+
+- **Loading:** while the initial `/api/events` fetch is in flight, show a centered
+  "Loading… / Đang tải…" placeholder (preserve the current app's loading screen, restyled).
+- **Empty (filtered):** when filters produce zero rows, show an in-table empty row
+  "No matching events / Không có sự kiện phù hợp" (replaces the current "No data" row).
+- **Fetch failure:** if `/api/events` fails, show an error message with a Retry action rather
+  than a blank table. `/api/tickers` failure degrades gracefully (ticker dropdown falls back to
+  tickers derived from events only).
 
 ## Bilingual behavior
 
@@ -101,6 +147,11 @@ Reuse the mockup's exact values; do not re-design.
   Arial `body` font must not override the light glass design — scope or remove them.
 - Tailwind utility classes from the mockup (`max-w-7xl`, `grid`, `px-6`, etc.) carry over
   unchanged under the app's Tailwind v4 build.
+- **`.ticker-chip` font:** mockup declares `font-family: 'Inter', monospace`. Inter is not
+  loaded; the chip falls back to the system monospace stack. This fallback is intentional
+  (no extra font load) — keep the declaration as-is.
+- **Nav pill balance:** with the Dashboard/Feed/Ticker center links removed, the `pill-nav`
+  holds only logo+title (left) and the lang-toggle (right); keep the `justify-between` layout.
 
 ## Removed from current app
 
@@ -126,6 +177,9 @@ Reuse the mockup's exact values; do not re-design.
 - New page renders at `/` with mockup-v5 visual fidelity (font, colors, glass, badges).
 - EN/VI toggle flips all labels and headlines; missing EN headlines fall back to VI with tag.
 - All five filters + search narrow the table correctly; counts and pagination reflect the
-  filtered set; sort reorders correctly.
+  filtered set; sort reorders correctly with deterministic tie-breaking.
+- Search is accent- and case-insensitive ("thanh hoa" matches "Thanh Hoá").
+- Changing any filter/search/sort resets to page 1; Prev/Next paginate the filtered set.
+- Loading, empty-filtered, and fetch-error states all render (no blank table).
 - Source links open the original article; no "Scan now" button or cloud-function calls remain.
 - No dark-mode/Arial regression from the old `globals.css`.
