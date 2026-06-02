@@ -75,13 +75,17 @@ jobs:
 
           echo "=== 1. Stop workers ==="
           if [ "$REMATCH" != "1" ]; then
+            # Also stop the match timer + any in-flight matcher so the deploy
+            # never races a 6h/boot match (which, on the OLD non-chunked code +
+            # a big 'pending' backlog, is what OOM-wedges the VM and hangs SSH).
+            sudo systemctl stop esg-collector-match.timer esg-collector-match.service 2>/dev/null || true
             sudo systemctl stop \
               esg-collector-google.service \
               esg-collector-baomoi.service \
               esg-collector-brave.service \
               esg-collector-body.service
           else
-            echo "  (REMATCH=1: managed rematch unit owns worker stop/start; skipping)"
+            echo "  (REMATCH=1: managed rematch unit owns worker + match-timer stop/start; skipping)"
           fi
 
           echo "=== 2. Backup DB (rolling 7 daily snapshots) ==="
@@ -100,6 +104,13 @@ jobs:
           echo "=== 4. init_db (auto ADD COLUMN cached_hits + indexes) ==="
           cd $APP_DIR
           sudo -u $SVC_USER $VENV -c "from core import storage; storage.init_db(); print('init_db OK')"
+
+          echo "=== 4b. Sync systemd unit files + daemon-reload (apply resource caps) ==="
+          # Deploy previously only git-reset the app code; unit files were frozen
+          # at whatever install.sh last wrote. Re-install them every deploy so
+          # MemoryMax/CPUQuota/Nice edits to the units actually take effect.
+          sudo install -m 644 $APP_DIR/deploy/esg-collector-*.service $APP_DIR/deploy/esg-collector-*.timer /etc/systemd/system/
+          sudo systemctl daemon-reload
 
           echo "=== 5. Normalize legacy timestamps (idempotent, via Python sqlite3) ==="
           # VM has no sqlite3 CLI; use the venv's stdlib sqlite3 module instead.
@@ -131,7 +142,18 @@ jobs:
 
           if [ "$REMATCH" = "1" ]; then
             echo "=== 6b. Launch DETACHED managed rematch (fire-and-return) ==="
+            # Resource caps so the detached rematch can grind for as long as it
+            # needs (no CI timeout — fire-and-return) without OOM-wedging the box:
+            #  MemoryMax  → cgroup-OOM-kill a runaway instead of the kernel taking
+            #               down sshd/guest-agent (workers are stopped, so more
+            #               headroom than the periodic match.service).
+            #  CPUQuota/Nice/IO → keep the VM SSH-responsive; rematch just runs slower.
             sudo systemd-run --no-block --collect --unit=esg-rematch \
+              --property=MemoryHigh=450M \
+              --property=MemoryMax=600M \
+              --property=CPUQuota=70% \
+              --property=Nice=15 \
+              --property=IOSchedulingClass=idle \
               "$APP_DIR/deploy/rematch_managed.sh"
             echo "  launched esg-rematch unit; it owns worker lifecycle, deploy returns now"
             sleep 2
@@ -153,6 +175,9 @@ jobs:
               echo "  $s: $state"
               [ "$state" = "active" ] || { echo "WORKER FAILED TO START: $s"; exit 1; }
             done
+            # Re-arm the 6h match timer we stopped in step 1 (now under MemoryMax,
+            # so even an old-style big-backlog match can't wedge the VM anymore).
+            sudo systemctl start esg-collector-match.timer
           else
             echo "  (REMATCH=1: workers managed by esg-rematch unit)"
           fi

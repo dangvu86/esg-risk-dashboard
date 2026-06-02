@@ -31,7 +31,13 @@ from pipeline import esg_filter
 
 log = logging.getLogger("match")
 
-BATCH_SIZE = 2000  # rows held in RAM per pagination batch (tunable)
+BATCH_SIZE = 1000  # rows held in RAM per pagination batch (tunable).
+# This batch is the only buffer holding full Jina bodies (~5-10KB/row), so 1000
+# rows ≈ 5-10MB transient, released each loop. The OTHER RAM driver is per_ticker
+# below — it accumulates matched rows (snippet-sized, ~1KB) for the whole run and
+# is the true rematch high-water mark, but stays ~tens of MB (whole matched corpus
+# is ~6MB on disk). systemd MemoryMax is the hard backstop for both. Tune that,
+# not this, if a run ever actually approaches the cap.
 
 _BODY_TERMINAL = {"fetched", "skipped", "failed"}
 
