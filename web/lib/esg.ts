@@ -34,3 +34,29 @@ export function normalizeText(s: string | undefined): string {
     .replace(/Đ/g, "d")
     .toLowerCase();
 }
+
+export interface Headline {
+  text: string;
+  isFallback: boolean; // true when EN requested but only VI available
+}
+
+export function pickHeadline(event: EsgEvent, lang: Lang): Headline {
+  if (lang === "en") {
+    const en = event.summary_en?.trim();
+    if (en) return { text: en, isFallback: false };
+    return { text: event.summary, isFallback: true };
+  }
+  return { text: event.summary, isFallback: false };
+}
+
+export function severityLabel(sev: Severity, lang: Lang): string {
+  if (sev === "Cao") return lang === "en" ? "High" : "Cao";
+  if (sev === "Trung bình") return lang === "en" ? "Medium" : "Trung bình";
+  return sev;
+}
+
+export function controversyLabel(level: ControversyLevel | undefined, lang: Lang): string {
+  if (!level) return "—";
+  // Levels are language-neutral tokens (Major/Minor/No); shown as-is in both languages.
+  return level;
+}
