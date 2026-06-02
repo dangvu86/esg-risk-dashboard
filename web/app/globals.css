@@ -1,26 +1,45 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --ink: #1a1625;
+  --ink-soft: #4a4458;
+  --muted: #7c7592;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-manrope), -apple-system, sans-serif;
+  color: var(--ink);
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(167, 139, 250, 0.12) 0%, transparent 65%),
+    radial-gradient(ellipse 60% 40% at 100% 50%, rgba(196, 181, 253, 0.08) 0%, transparent 65%),
+    linear-gradient(180deg, #fefdff 0%, #faf9ff 100%);
 }
+
+.pill-nav { background: rgba(255,255,255,0.7); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.8); box-shadow: 0 4px 24px rgba(124,58,237,0.08); border-radius: 9999px; }
+.pill-btn-light { background: white; color: var(--ink); border: 1px solid rgba(167,139,250,0.3); border-radius: 9999px; padding: 8px 18px; font-weight: 500; font-size: 13px; cursor: pointer; }
+.pill-btn-light:disabled { opacity: 0.4; cursor: not-allowed; }
+.pill-tag { display: inline-block; background: white; color: var(--ink-soft); border: 1px solid rgba(167,139,250,0.2); border-radius: 9999px; padding: 6px 16px; font-size: 13px; font-weight: 500; box-shadow: 0 2px 8px rgba(124,58,237,0.06); }
+.lang-toggle { display: inline-flex; background: rgba(255,255,255,0.5); border-radius: 9999px; padding: 2px; }
+.lang-btn { padding: 5px 12px; border-radius: 9999px; font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer; border: none; background: transparent; transition: all 0.15s; }
+.lang-btn.active { background: linear-gradient(135deg, #a78bfa 0%, #c4b5fd 100%); color: white; box-shadow: 0 2px 8px rgba(167,139,250,0.4); }
+.glass-card { background: rgba(255,255,255,0.7); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.9); border-radius: 24px; box-shadow: 0 8px 32px rgba(124,58,237,0.08), 0 2px 8px rgba(124,58,237,0.04); }
+.ticker-chip { display: inline-block; background: rgba(255,255,255,0.8); border: 1px solid rgba(167,139,250,0.2); color: var(--ink); padding: 4px 12px; border-radius: 9999px; font-family: "Inter", monospace; font-weight: 600; font-size: 12px; letter-spacing: 0.5px; }
+.badge { display: inline-block; padding: 3px 10px; font-size: 11px; font-weight: 600; border-radius: 9999px; letter-spacing: 0.3px; }
+.group-E { background: rgba(16,185,129,0.12); color: #047857; }
+.group-S { background: rgba(245,158,11,0.12); color: #b45309; }
+.group-G { background: rgba(244,63,94,0.12); color: #be123c; }
+.ctrl-Major { background: rgba(244,63,94,0.12); color: #be123c; border: 1px solid rgba(244,63,94,0.25); }
+.ctrl-Minor { background: rgba(245,158,11,0.12); color: #b45309; border: 1px solid rgba(245,158,11,0.25); }
+.ctrl-No { background: rgba(16,185,129,0.12); color: #047857; border: 1px solid rgba(16,185,129,0.25); }
+.row { transition: background 0.1s; }
+.row:hover { background: rgba(167,139,250,0.06); }
+.gradient-accent { background: linear-gradient(135deg, #a78bfa 0%, #c4b5fd 100%); }
+.display-h1 { font-size: 36px; line-height: 1.1; letter-spacing: -1.2px; font-weight: 700; color: var(--ink); }
+.subtle-text { color: var(--muted); }
+.sev-high { color: #be123c; font-weight: 600; }
+.sev-med { color: #b45309; font-weight: 600; }
+.filter-input { background: rgba(255,255,255,0.7); border: 1px solid rgba(167,139,250,0.3); border-radius: 9999px; padding: 9px 16px; font-size: 13px; color: var(--ink); }
+.fallback-tag { font-size: 9px; color: var(--muted); font-style: italic; margin-left: 4px; }
+
+table { border-collapse: separate; border-spacing: 0; }
