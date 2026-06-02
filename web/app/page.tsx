@@ -79,12 +79,7 @@ export default function Home() {
   }, [lang]);
 
   const load = useCallback(() => {
-    Promise.resolve()
-      .then(() => {
-        setLoading(true);
-        setError(false);
-        return fetch("/api/events");
-      })
+    fetch("/api/events")
       .then((r) => {
         if (!r.ok) throw new Error("events");
         return r.json();
@@ -99,7 +94,11 @@ export default function Home() {
       .catch(() => setCompanies([]));
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  // Fetch once on mount. Initial state is already loading:true / error:false,
+  // so the effect itself sets no state synchronously.
+  useEffect(() => {
+    load();
+  }, [load]);
 
   // Any change to a filter, the query, or the sort returns to page 1.
   function updateFilters(patch: Partial<Filters>) {
@@ -142,7 +141,16 @@ export default function Home() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4">
         <p className="subtle-text">{T.error[lang]}</p>
-        <button className="pill-btn-light" onClick={load}>{T.retry[lang]}</button>
+        <button
+          className="pill-btn-light"
+          onClick={() => {
+            setLoading(true);
+            setError(false);
+            load();
+          }}
+        >
+          {T.retry[lang]}
+        </button>
       </div>
     );
   }
