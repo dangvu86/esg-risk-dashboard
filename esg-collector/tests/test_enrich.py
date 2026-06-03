@@ -50,12 +50,37 @@ def test_enrich_columns_and_queries() -> None:
     print("  enrich_columns_and_queries OK")
 
 
+def test_llm_resolve_provider(monkeyenv=None) -> None:
+    import importlib, os
+    from enrich import llm
+    saved = dict(os.environ)
+    try:
+        for k in list(os.environ):
+            if k.endswith("_API_KEY") or k in ("LLM_PROVIDER", "LLM_MODEL"):
+                del os.environ[k]
+        assert llm.resolve_provider() is None          # no keys → None
+        os.environ["GROQ_API_KEY"] = "gsk_test"
+        p = llm.resolve_provider()
+        assert p and p["name"] == "groq" and p["key"] == "gsk_test"
+        assert p["schema"] == "openai" and p["model"]   # default model present
+        os.environ["LLM_MODEL"] = "meta-llama/llama-4-scout-17b-16e-instruct"
+        assert llm.resolve_provider()["model"] == "meta-llama/llama-4-scout-17b-16e-instruct"
+        # build_request shape for openai schema
+        url, payload, headers, extract = llm._build_request(p, "hello")
+        assert url.startswith("https://api.groq.com") and b"hello" in payload
+        assert headers["Authorization"] == "Bearer gsk_test"
+    finally:
+        os.environ.clear(); os.environ.update(saved)
+    print("  llm_resolve_provider OK")
+
+
 def main() -> None:
     if sys.platform == "win32":
         try: sys.stdout.reconfigure(encoding="utf-8")
         except Exception: pass
     print("running enrich tests…")
     test_enrich_columns_and_queries()
+    test_llm_resolve_provider()
     print("ALL OK")
 
 
