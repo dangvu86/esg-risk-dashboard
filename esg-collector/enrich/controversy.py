@@ -5,7 +5,7 @@ Ported from cloud-function/controversy_classifier.py.
 Key differences from the original:
   - No Jina/URL fetching — body is passed in directly from the DB.
   - classify_events() removed — the runner calls classify_event() per row.
-  - LLM calls delegated to enrich.llm (resolve_provider, call_llm).
+  - LLM calls delegated to enrich.llm (call_llm); the runner resolves the provider.
   - Revenue lookup via enrich.revenue.get_revenue_for_year.
 
 Output per event: {level, cg_indicator, justification, confidence}

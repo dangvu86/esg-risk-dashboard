@@ -146,9 +146,15 @@ def test_controversy() -> None:
                                          body=body, revenues={"HPG": {2026: 150000.0}})
         assert out["level"] == "Major" and out["cg_indicator"] is None
         assert out["justification"].count(". ") >= 1
-        # body was truncated into the prompt and revenue injected
+        # body content was injected into the prompt and revenue injected
         assert "Dung Quat" in captured["prompt"]
         assert "150,000 billion VND" in captured["prompt"] or "150000" in captured["prompt"]
+        # oversized body (> ARTICLE_BODY_MAX_CHARS) is truncated with a marker in the prompt
+        big = "X" * (controversy.ARTICLE_BODY_MAX_CHARS + 1000)
+        controversy.classify_event(event, fake_provider, today="2026-06-03",
+                                   body=big, revenues={})
+        assert "...[truncated]" in captured["prompt"]
+        assert big not in captured["prompt"]   # full untruncated body must not survive
         # invalid LLM level → None
         controversy.call_llm = lambda prov, prompt, retries=3: {"level": "Nope", "justification": "x."}
         assert controversy.classify_event(event, fake_provider, today="2026-06-03", body="", revenues={}) is None
