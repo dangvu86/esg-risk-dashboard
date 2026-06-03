@@ -40,7 +40,7 @@ def load_revenues(csv_path: Path | str | None = None) -> dict[str, dict[int, flo
     return revenues
 
 
-def get_revenue_for_year(per_year: dict[int, float], year: int):
+def get_revenue_for_year(per_year: dict[int, float], year: int) -> tuple[int, float] | None:
     """Exact-year match; else closest available year (ties → older). (year, rev) or None."""
     if not per_year:
         return None
