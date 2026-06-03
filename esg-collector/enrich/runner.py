@@ -71,9 +71,14 @@ def run(limit: int = DEFAULT_LIMIT, db_path=None) -> int:
         titles = [e["summary"] for e in kept]
         titles_en = translate.translate_titles(titles, provider=provider)
         if len(titles_en) != len(kept):
-            log.error("translate_titles returned %d items for %d inputs — aborting enrich run",
-                      len(titles_en), len(kept))
-            return 0
+            # translate_titles contracts to preserve length; if it ever doesn't,
+            # fall back to the VN titles (same length as `kept`) rather than aborting.
+            # This keeps every kept row progressing to `done` (un-translated) instead
+            # of stranding the whole chunk `pending` and re-burning sentiment quota on
+            # it every run — consistent with the stage's own VN-fallback policy.
+            log.warning("translate_titles returned %d items for %d inputs — using VN titles",
+                        len(titles_en), len(kept))
+            titles_en = titles
 
         # 3. controversy for Cao only; write back per article
         revenues = load_revenues()

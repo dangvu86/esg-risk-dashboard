@@ -209,6 +209,48 @@ def test_runner_end_to_end() -> None:
     print("  runner_end_to_end OK")
 
 
+def test_runner_translate_mismatch_falls_back_to_vn() -> None:
+    """If translate returns a wrong-length list, the runner must NOT strand the
+    chunk pending — it falls back to VN titles and still marks every kept row done."""
+    import tempfile
+    from pathlib import Path
+    from core import storage, alias_matcher
+    from enrich import runner
+    alias_matcher.reload()
+    with tempfile.TemporaryDirectory() as td:
+        db = Path(td) / "rm.db"
+        storage.init_db(db)
+        conn = storage.connect(db)
+        conn.execute("INSERT INTO articles (article_id,url_canonical,title,esg_status,esg_type,severity,body) "
+                     "VALUES ('a::1','u1','Dabaco bi phat vi xa thai','esg','E','Trung bình','b')")
+        conn.execute("INSERT INTO articles (article_id,url_canonical,title,esg_status,esg_type,severity,body) "
+                     "VALUES ('a::2','u2','Dabaco no luong cong nhan','esg','S','Trung bình','b')")
+        conn.close()
+        _orig_filter = runner.sentiment.filter_negative
+        _orig_translate = runner.translate.translate_titles
+        _orig_provider = runner.resolve_provider
+        try:
+            runner.sentiment.filter_negative = lambda evs, provider=None: list(evs)  # keep all
+            # buggy translate: returns FEWER items than inputs (the contract violation)
+            runner.translate.translate_titles = lambda titles, provider=None: ["EN:only_one"]
+            runner.resolve_provider = lambda: {"name": "x", "model": "m", "sleep": 0}
+            n = runner.run(limit=10, db_path=db)
+            conn = storage.connect(db)
+            rows = conn.execute("SELECT article_id, enrich_status, sentiment, summary_en "
+                                "FROM articles ORDER BY article_id").fetchall()
+            # both kept rows marked done (none stranded pending) with VN title as summary_en
+            assert all(r["enrich_status"] == "done" and r["sentiment"] == "risk" for r in rows), [dict(r) for r in rows]
+            assert rows[0]["summary_en"] == "Dabaco bi phat vi xa thai"  # VN fallback, not 'EN:only_one'
+            assert rows[1]["summary_en"] == "Dabaco no luong cong nhan"
+            assert not storage.get_pending_enrich(conn, limit=10)  # fully drained, no re-processing
+            conn.close()
+        finally:
+            runner.sentiment.filter_negative = _orig_filter
+            runner.translate.translate_titles = _orig_translate
+            runner.resolve_provider = _orig_provider
+    print("  runner_translate_mismatch_falls_back_to_vn OK")
+
+
 def test_build_esg_events() -> None:
     import tempfile, json
     from pathlib import Path
@@ -298,6 +340,7 @@ def main() -> None:
     test_translate()
     test_controversy()
     test_runner_end_to_end()
+    test_runner_translate_mismatch_falls_back_to_vn()
     test_build_esg_events()
     test_export_web_upload_skips_ndjson()
     print("ALL OK")
