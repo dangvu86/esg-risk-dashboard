@@ -18,6 +18,7 @@ Upload (requires gsutil + auth on the running host):
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import logging
 import subprocess
@@ -100,7 +101,6 @@ WEB_PREFIX = f"{GCS_BUCKET}/web"
 
 def _company_names() -> dict[str, str]:
     """ticker -> short company name, from config/companies.csv (Mã CK, Tên Công ty)."""
-    import csv
     out: dict[str, str] = {}
     p = settings.COMPANIES_CSV
     if not p.exists():
@@ -113,11 +113,12 @@ def _company_names() -> dict[str, str]:
     return out
 
 
-def build_esg_events(db_path=None, per_ticker_dir: Path | None = None) -> list[dict]:
+def build_esg_events(db_path=None, per_ticker_dir: Path | None = None,
+                     companies: dict | None = None) -> list[dict]:
     """Join per_ticker/*.json with enriched articles columns → web EsgEvent list,
     risk-only, deduped by title_hash (earliest kept), sorted by date desc."""
     per_ticker_dir = per_ticker_dir or settings.PER_TICKER_DIR
-    companies = _company_names()
+    companies = companies if companies is not None else _company_names()
     conn = storage.connect(db_path)
     try:
         # enrich columns keyed by article_id — only fully-enriched rows (bounds memory)
@@ -147,6 +148,8 @@ def build_esg_events(db_path=None, per_ticker_dir: Path | None = None) -> list[d
             if not row or row.get("sentiment") != "risk":
                 continue            # not enriched, dropped, or pending → skip
             th = row.get("title_hash") or a.get("article_id")
+            if not th:
+                continue   # no stable identity → cannot dedup safely, skip
             key = (ticker, th)
             if key in seen:
                 continue            # same incident already emitted (earliest wins)
@@ -175,10 +178,11 @@ def build_esg_events(db_path=None, per_ticker_dir: Path | None = None) -> list[d
 
 def _write_web_files() -> tuple[Path, Path]:
     settings.WEB_DIR.mkdir(parents=True, exist_ok=True)
-    events = build_esg_events()
+    companies = _company_names()
+    events = build_esg_events(companies=companies)
     ev_path = settings.WEB_DIR / "esg_events.json"
     ev_path.write_text(json.dumps(events, ensure_ascii=False), encoding="utf-8")
-    top = [{"ticker": t, "company": c} for t, c in sorted(_company_names().items())]
+    top = [{"ticker": t, "company": c} for t, c in sorted(companies.items())]
     top_path = settings.WEB_DIR / "top100.json"
     top_path.write_text(json.dumps(top, ensure_ascii=False), encoding="utf-8")
     log.info("web export: %d events, %d tickers", len(events), len(top))

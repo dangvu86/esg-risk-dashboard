@@ -231,6 +231,11 @@ def test_build_esg_events() -> None:
         conn.execute("INSERT INTO articles (article_id,url_canonical,title,title_hash,published_at,"
             "esg_status,esg_type,severity,enrich_status,sentiment) VALUES "
             "('a::3','c3','x','H3','2026-05-20T00:00:00Z','esg','S','Trung bình','dropped','not_risk')")
+        # a done+not_risk article: passes the SQL enrich_status='done' filter but
+        # must be excluded by the in-loop sentiment != 'risk' gate
+        conn.execute("INSERT INTO articles (article_id,url_canonical,title,title_hash,published_at,"
+            "esg_status,esg_type,severity,enrich_status,sentiment) VALUES "
+            "('a::4','c4','y','H4','2026-05-19T00:00:00Z','esg','S','Trung bình','done','not_risk')")
         conn.commit(); conn.close()
         pt = Path(td) / "pt"; pt.mkdir()
         (pt / "DBC.json").write_text(json.dumps({"ticker": "DBC", "articles": [
@@ -240,12 +245,17 @@ def test_build_esg_events() -> None:
              "source": "CafeF", "backend": "baomoi", "matched_alias": "Dabaco", "type": "E", "severity": "Cao"},
             {"article_id": "a::3", "url": "c3", "title": "x", "published_at": "2026-05-20T00:00:00Z",
              "source": "s", "backend": "google_rss", "matched_alias": "Dabaco", "type": "S", "severity": "Trung bình"},
+            {"article_id": "a::4", "url": "c4", "title": "y", "published_at": "2026-05-19T00:00:00Z",
+             "source": "s", "backend": "google_rss", "matched_alias": "Dabaco", "type": "S", "severity": "Trung bình"},
         ]}, ensure_ascii=False), encoding="utf-8")
-        events = export.build_esg_events(db_path=db, per_ticker_dir=pt)
-        # one event (a::1 & a::2 collapse by title_hash to earliest; a::3 dropped)
+        events = export.build_esg_events(db_path=db, per_ticker_dir=pt,
+                                         companies={"DBC": "CTCP Tap doan Dabaco Viet Nam"})
+        # one event (a::1 & a::2 collapse by title_hash to earliest; a::3 dropped;
+        # a::4 done+not_risk excluded by the in-loop sentiment gate)
         assert len(events) == 1, events
         e = events[0]
-        assert e["ticker"] == "DBC" and e["company"]   # company resolved
+        assert e["ticker"] == "DBC"
+        assert e["company"] == "CTCP Tap doan Dabaco Viet Nam"   # injected dict resolved
         assert e["date"] == "2026-05-27" and e["created_at"] is not None
         assert e["summary"] == "Dabaco bi phat" and e["summary_en"] == "Dabaco fined"
         assert e["type"] == "E" and e["severity"] == "Cao"
