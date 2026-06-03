@@ -209,6 +209,51 @@ def test_runner_end_to_end() -> None:
     print("  runner_end_to_end OK")
 
 
+def test_build_esg_events() -> None:
+    import tempfile, json
+    from pathlib import Path
+    from core import storage
+    from config import settings
+    from pipeline import export
+    with tempfile.TemporaryDirectory() as td:
+        db = Path(td) / "w.db"; storage.init_db(db); conn = storage.connect(db)
+        # two articles, SAME title_hash (same incident, 2 sources) — one risk one earlier
+        conn.execute("INSERT INTO articles (article_id,url_canonical,url_original,title,title_hash,"
+            "published_at,source,backend,esg_status,esg_type,severity,enrich_status,sentiment,summary_en,"
+            "controversy_level,controversy_justification) VALUES "
+            "('a::1','c1','o1','Dabaco bi phat','H','2026-05-27T00:00:00Z','Lao Dong','google_rss',"
+            "'esg','E','Cao','done','risk','Dabaco fined','Minor','a. b.')")
+        conn.execute("INSERT INTO articles (article_id,url_canonical,url_original,title,title_hash,"
+            "published_at,source,backend,esg_status,esg_type,severity,enrich_status,sentiment,summary_en) VALUES "
+            "('a::2','c2','o2','Dabaco bi phat','H','2026-05-28T00:00:00Z','CafeF','baomoi',"
+            "'esg','E','Cao','done','risk','Dabaco fined')")
+        # a dropped (not_risk) article must be excluded
+        conn.execute("INSERT INTO articles (article_id,url_canonical,title,title_hash,published_at,"
+            "esg_status,esg_type,severity,enrich_status,sentiment) VALUES "
+            "('a::3','c3','x','H3','2026-05-20T00:00:00Z','esg','S','Trung bình','dropped','not_risk')")
+        conn.commit(); conn.close()
+        pt = Path(td) / "pt"; pt.mkdir()
+        (pt / "DBC.json").write_text(json.dumps({"ticker": "DBC", "articles": [
+            {"article_id": "a::1", "url": "c1", "title": "Dabaco bi phat", "published_at": "2026-05-27T00:00:00Z",
+             "source": "Lao Dong", "backend": "google_rss", "matched_alias": "Dabaco", "type": "E", "severity": "Cao"},
+            {"article_id": "a::2", "url": "c2", "title": "Dabaco bi phat", "published_at": "2026-05-28T00:00:00Z",
+             "source": "CafeF", "backend": "baomoi", "matched_alias": "Dabaco", "type": "E", "severity": "Cao"},
+            {"article_id": "a::3", "url": "c3", "title": "x", "published_at": "2026-05-20T00:00:00Z",
+             "source": "s", "backend": "google_rss", "matched_alias": "Dabaco", "type": "S", "severity": "Trung bình"},
+        ]}, ensure_ascii=False), encoding="utf-8")
+        events = export.build_esg_events(db_path=db, per_ticker_dir=pt)
+        # one event (a::1 & a::2 collapse by title_hash to earliest; a::3 dropped)
+        assert len(events) == 1, events
+        e = events[0]
+        assert e["ticker"] == "DBC" and e["company"]   # company resolved
+        assert e["date"] == "2026-05-27" and e["created_at"] is not None
+        assert e["summary"] == "Dabaco bi phat" and e["summary_en"] == "Dabaco fined"
+        assert e["type"] == "E" and e["severity"] == "Cao"
+        assert e["controversy_level"] == "Minor"
+        assert e["source"] == "Lao Dong" and e["url"] == "c1"
+    print("  build_esg_events OK")
+
+
 def main() -> None:
     if sys.platform == "win32":
         try: sys.stdout.reconfigure(encoding="utf-8")
@@ -221,6 +266,7 @@ def main() -> None:
     test_translate()
     test_controversy()
     test_runner_end_to_end()
+    test_build_esg_events()
     print("ALL OK")
 
 
