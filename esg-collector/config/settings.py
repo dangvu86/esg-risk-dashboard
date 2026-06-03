@@ -15,6 +15,7 @@ DATA_DIR = ROOT / "data"
 LOGS_DIR = ROOT / "logs"
 DB_PATH = DATA_DIR / "articles.db"
 PER_TICKER_DIR = DATA_DIR / "per_ticker"
+WEB_DIR = DATA_DIR / "web"
 ALIASES_DIR = ROOT / "config" / "aliases"
 COMPANIES_CSV = ROOT / "config" / "companies.csv"
 
@@ -58,3 +59,4 @@ USER_AGENTS = [
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 LOGS_DIR.mkdir(parents=True, exist_ok=True)
 PER_TICKER_DIR.mkdir(parents=True, exist_ok=True)
+WEB_DIR.mkdir(parents=True, exist_ok=True)

@@ -1,0 +1,12 @@
+[Unit]
+Description=Run esg-collector enrich + web export every 6 hours, offset after match
+
+[Timer]
+# match runs at OnBootSec=10min; enrich starts 40min after boot so it lands well
+# after a match run (which is short relative to the 6h cycle), then every 6h.
+OnBootSec=40min
+OnUnitActiveSec=6h
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -18,6 +18,7 @@ Upload (requires gsutil + auth on the running host):
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import logging
 import subprocess
@@ -95,7 +96,109 @@ def _upload(ndjson: Path) -> None:
         subprocess.run(" ".join(cmd), shell=True, check=True)
 
 
-def run(do_ndjson: bool, do_upload: bool, *, full: bool = False) -> None:
+WEB_PREFIX = f"{GCS_BUCKET}/web"
+
+
+def _company_names() -> dict[str, str]:
+    """ticker -> short company name, from config/companies.csv (Mã CK, Tên Công ty)."""
+    out: dict[str, str] = {}
+    p = settings.COMPANIES_CSV
+    if not p.exists():
+        return out
+    with open(p, "r", encoding="utf-8-sig") as f:
+        for row in csv.DictReader(f):
+            t = (row.get("Mã CK") or "").strip()
+            if t:
+                out[t] = (row.get("Tên Công ty") or "").strip()
+    return out
+
+
+def build_esg_events(db_path=None, per_ticker_dir: Path | None = None,
+                     companies: dict | None = None) -> list[dict]:
+    """Join per_ticker/*.json with enriched articles columns → web EsgEvent list,
+    risk-only, deduped by title_hash (earliest kept), sorted by date desc."""
+    per_ticker_dir = per_ticker_dir or settings.PER_TICKER_DIR
+    companies = companies if companies is not None else _company_names()
+    conn = storage.connect(db_path)
+    try:
+        # enrich columns keyed by article_id — only fully-enriched rows (bounds memory)
+        enr: dict[str, dict] = {}
+        for r in conn.execute(
+            "SELECT article_id, title_hash, sentiment, summary_en, controversy_level, "
+            "controversy_justification, controversy_classified_at, fetched_at "
+            "FROM articles WHERE enrich_status='done'"
+        ):
+            enr[r["article_id"]] = {k: r[k] for k in r.keys()}
+    finally:
+        conn.close()
+
+    seen: set[tuple[str, str]] = set()          # (ticker, title_hash) already emitted
+    events: list[dict] = []
+    for pj in sorted(Path(per_ticker_dir).glob("*.json")):
+        try:
+            doc = json.loads(pj.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        ticker = (doc.get("ticker") or pj.stem).upper()
+        # earliest first so the kept representative is the earliest published
+        arts = sorted(doc.get("articles") or [],
+                      key=lambda a: a.get("published_at") or "")
+        for a in arts:
+            row = enr.get(a.get("article_id"))
+            if not row or row.get("sentiment") != "risk":
+                continue            # not enriched, dropped, or pending → skip
+            th = row.get("title_hash") or a.get("article_id")
+            if not th:
+                continue   # no stable identity → cannot dedup safely, skip
+            key = (ticker, th)
+            if key in seen:
+                continue            # same incident already emitted (earliest wins)
+            seen.add(key)
+            events.append({
+                "ticker": ticker,
+                "company": companies.get(ticker, ""),
+                "type": a.get("type"),
+                "date": (a.get("published_at") or "")[:10],
+                "summary": a.get("title") or "",
+                "summary_en": row.get("summary_en") or "",
+                "severity": a.get("severity"),
+                "source": a.get("source") or "",
+                "url": a.get("url") or "",
+                "controversy_level": row.get("controversy_level") or "",
+                "controversy_justification": row.get("controversy_justification") or "",
+                "controversy_classified_at": row.get("controversy_classified_at") or "",
+                "created_at": row.get("fetched_at"),
+                # optional passthrough (web may surface later; not displayed now):
+                "backend": a.get("backend"),
+                "matched_alias": a.get("matched_alias"),
+            })
+    events.sort(key=lambda e: e["date"], reverse=True)
+    return events
+
+
+def _write_web_files() -> tuple[Path, Path]:
+    settings.WEB_DIR.mkdir(parents=True, exist_ok=True)
+    companies = _company_names()
+    events = build_esg_events(companies=companies)
+    ev_path = settings.WEB_DIR / "esg_events.json"
+    ev_path.write_text(json.dumps(events, ensure_ascii=False), encoding="utf-8")
+    top = [{"ticker": t, "company": c} for t, c in sorted(companies.items())]
+    top_path = settings.WEB_DIR / "top100.json"
+    top_path.write_text(json.dumps(top, ensure_ascii=False), encoding="utf-8")
+    log.info("web export: %d events, %d tickers", len(events), len(top))
+    return ev_path, top_path
+
+
+def _upload_web(ev_path: Path, top_path: Path) -> None:
+    for src in (ev_path, top_path):
+        dst = f"{WEB_PREFIX}/{src.name}"
+        _gsutil_cp(src, dst)
+        # objects are overwritten each run → re-apply public-read ACL each time
+        subprocess.run(["gsutil", "acl", "ch", "-u", "AllUsers:R", dst], check=True)
+
+
+def run(do_ndjson: bool, do_upload: bool, *, full: bool = False,
+        do_web: bool = False) -> None:
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(name)s/%(levelname)s] %(message)s",
@@ -104,7 +207,11 @@ def run(do_ndjson: bool, do_upload: bool, *, full: bool = False) -> None:
     ndjson_path: Path | None = None
     if do_ndjson:
         ndjson_path = _export_ndjson(out_dir, full=full)
-    if do_upload:
+    # NDJSON upload: only on the NDJSON/data path (match unit: --ndjson --upload, or a
+    # bare --upload to re-push the latest existing file). When --web is the action,
+    # --upload targets the web files below, NOT the NDJSON — otherwise an enrich run
+    # (`--web --upload`) would re-push stale NDJSON or SystemExit on a fresh VM.
+    if do_upload and not do_web:
         if ndjson_path is None:
             # find latest export
             candidates = sorted(out_dir.glob("articles_*.ndjson"))
@@ -112,6 +219,10 @@ def run(do_ndjson: bool, do_upload: bool, *, full: bool = False) -> None:
                 raise SystemExit("no NDJSON to upload — pass --ndjson")
             ndjson_path = candidates[-1]
         _upload(ndjson_path)
+    if do_web:
+        ev_path, top_path = _write_web_files()
+        if do_upload:
+            _upload_web(ev_path, top_path)
 
 
 def main() -> None:
@@ -121,10 +232,12 @@ def main() -> None:
     ap.add_argument("--upload", action="store_true", help="gsutil cp to gs://esg-scan-data/")
     ap.add_argument("--full", action="store_true",
                     help="force full snapshot instead of delta-since-last-export")
+    ap.add_argument("--web", action="store_true",
+                    help="build+upload web/esg_events.json")
     args = ap.parse_args()
-    if not (args.ndjson or args.upload):
-        ap.error("pass --ndjson and/or --upload")
-    run(do_ndjson=args.ndjson, do_upload=args.upload, full=args.full)
+    if not (args.ndjson or args.upload or args.web):
+        ap.error("pass --ndjson, --upload and/or --web")
+    run(do_ndjson=args.ndjson, do_upload=args.upload, full=args.full, do_web=args.web)
 
 
 if __name__ == "__main__":
