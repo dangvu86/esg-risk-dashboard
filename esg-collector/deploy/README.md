@@ -89,4 +89,33 @@ esg-collector-brave.service   # systemd: workers.runner --backend brave
 esg-collector-body.service    # systemd: workers.body_fetcher --workers 8
 esg-collector-match.service   # oneshot: pipeline.match && pipeline.export --upload
 esg-collector-match.timer     # mỗi 6h trigger match.service
+esg-collector-enrich.service  # oneshot: enrich.runner --limit 25 && pipeline.export --web --upload
+esg-collector-enrich.timer    # mỗi 6h trigger enrich.service (offset 40min sau match)
 ```
+
+## 6. Enrich unit (sentiment/translate/controversy + web export)
+
+`esg-collector-enrich.service` chạy 3 stage LLM (sentiment, translate,
+controversy) qua `enrich.runner --limit 25` rồi export file web qua
+`pipeline.export --web --upload`. Timer chạy mỗi 6h, lệch 40 phút sau match
+(`OnBootSec=40min`) để match xong trước. Memory cap chặt (`MemoryMax=250M`) —
+nếu leak chỉ unit này bị cgroup-OOM-kill, không wedge VM.
+
+Cần thêm `GROQ_API_KEY` (và tùy chọn `LLM_MODEL`) vào `/etc/esg-collector.env`:
+
+```bash
+sudo nano /etc/esg-collector.env
+# thêm GROQ_API_KEY=...   (và LLM_MODEL=... nếu muốn override default)
+sudo systemctl restart esg-collector-enrich.service   # hoặc đợi timer
+```
+
+**One-time public-read ACL** cho 2 object web (chạy 1 lần sau lần upload đầu):
+
+```bash
+gsutil acl ch -u AllUsers:R gs://esg-scan-data/web/esg_events.json
+gsutil acl ch -u AllUsers:R gs://esg-scan-data/web/top100.json
+```
+
+Bucket phải cho phép fine-grained ACL (KHÔNG bật Uniform Bucket-Level Access).
+Nếu UBLA đang bật, fallback sang một public sub-bucket riêng. Sau mỗi lần upload,
+`pipeline.export --web` tự re-apply ACL nên không cần chạy tay lại.
