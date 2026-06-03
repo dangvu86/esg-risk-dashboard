@@ -107,6 +107,22 @@ def test_sentiment_gate() -> None:
         sentiment.call_llm = _orig
 
 
+def test_translate() -> None:
+    from enrich import translate
+    _orig = translate.call_llm
+    try:
+        fake_provider = {"name": "x", "model": "m", "sleep": 0}
+        translate.call_llm = lambda prov, prompt, retries=3: {"translations": ["Fined for discharge", "EN2"]}
+        out = translate.translate_titles(["Phat vi xa thai", "tin 2"], provider=fake_provider)
+        assert out == ["Fined for discharge", "EN2"]
+        # failure / length mismatch → fall back to VN input
+        translate.call_llm = lambda prov, prompt, retries=3: None
+        assert translate.translate_titles(["a", "b"], provider=fake_provider) == ["a", "b"]
+    finally:
+        translate.call_llm = _orig
+    print("  translate OK")
+
+
 def main() -> None:
     if sys.platform == "win32":
         try: sys.stdout.reconfigure(encoding="utf-8")
@@ -116,6 +132,7 @@ def main() -> None:
     test_llm_resolve_provider()
     test_revenue()
     test_sentiment_gate()
+    test_translate()
     print("ALL OK")
 
 
