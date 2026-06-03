@@ -54,7 +54,13 @@ CREATE TABLE IF NOT EXISTS articles (
   ticker_hint   TEXT,
   esg_status    TEXT DEFAULT 'pending',
   esg_type      TEXT,
-  severity      TEXT
+  severity      TEXT,
+  summary_en                TEXT,
+  sentiment                 TEXT,
+  controversy_level         TEXT,
+  controversy_justification TEXT,
+  controversy_classified_at TEXT,
+  enrich_status             TEXT DEFAULT 'pending'
 );
 CREATE INDEX IF NOT EXISTS idx_articles_match      ON articles(match_status, body_status);
 CREATE INDEX IF NOT EXISTS idx_articles_date       ON articles(published_at);
@@ -127,6 +133,12 @@ def init_db(db_path: Path | str | None = None) -> None:
             ("esg_status",  "ALTER TABLE articles ADD COLUMN esg_status TEXT DEFAULT 'pending'"),
             ("esg_type",    "ALTER TABLE articles ADD COLUMN esg_type TEXT"),
             ("severity",    "ALTER TABLE articles ADD COLUMN severity TEXT"),
+            ("summary_en",                "ALTER TABLE articles ADD COLUMN summary_en TEXT"),
+            ("sentiment",                 "ALTER TABLE articles ADD COLUMN sentiment TEXT"),
+            ("controversy_level",         "ALTER TABLE articles ADD COLUMN controversy_level TEXT"),
+            ("controversy_justification", "ALTER TABLE articles ADD COLUMN controversy_justification TEXT"),
+            ("controversy_classified_at", "ALTER TABLE articles ADD COLUMN controversy_classified_at TEXT"),
+            ("enrich_status",             "ALTER TABLE articles ADD COLUMN enrich_status TEXT DEFAULT 'pending'"),
         ]:
             if col not in cols:
                 conn.execute(ddl)
@@ -147,6 +159,10 @@ def init_db(db_path: Path | str | None = None) -> None:
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_articles_fetched_at "
             "ON articles(fetched_at)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_articles_enrich "
+            "ON articles(esg_status, enrich_status)"
         )
     finally:
         conn.close()
@@ -248,6 +264,38 @@ def mark_esg(conn: sqlite3.Connection, article_id: str, status: str,
     conn.execute(
         "UPDATE articles SET esg_status=?, esg_type=?, severity=? WHERE article_id=?",
         (status, esg_type, severity, article_id),
+    )
+
+
+def get_pending_enrich(conn: sqlite3.Connection, limit: int) -> list[sqlite3.Row]:
+    """Kept-but-not-yet-enriched articles, oldest first, bounded by `limit`."""
+    return conn.execute(
+        "SELECT * FROM articles "
+        "WHERE esg_status='esg' AND enrich_status='pending' "
+        "ORDER BY fetched_at ASC LIMIT ?",
+        (int(limit),),
+    ).fetchall()
+
+
+def mark_enriched(conn: sqlite3.Connection, article_id: str, *, sentiment: str,
+                  summary_en: str | None,
+                  controversy_level: str | None = None,
+                  controversy_justification: str | None = None,
+                  controversy_classified_at: str | None = None) -> None:
+    conn.execute(
+        "UPDATE articles SET enrich_status='done', sentiment=?, summary_en=?, "
+        "controversy_level=?, controversy_justification=?, controversy_classified_at=? "
+        "WHERE article_id=?",
+        (sentiment, summary_en, controversy_level, controversy_justification,
+         controversy_classified_at, article_id),
+    )
+
+
+def mark_dropped(conn: sqlite3.Connection, article_id: str) -> None:
+    """Sentiment said not_risk — exclude from the web export, never re-process."""
+    conn.execute(
+        "UPDATE articles SET enrich_status='dropped', sentiment='not_risk' WHERE article_id=?",
+        (article_id,),
     )
 
 
