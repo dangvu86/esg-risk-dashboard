@@ -163,6 +163,42 @@ def test_controversy() -> None:
     print("  controversy OK")
 
 
+def test_runner_end_to_end() -> None:
+    import tempfile, json
+    from pathlib import Path
+    from core import storage, alias_matcher
+    from enrich import runner, sentiment, translate, controversy
+    alias_matcher.reload()
+    with tempfile.TemporaryDirectory() as td:
+        db = Path(td) / "r.db"
+        storage.init_db(db)
+        conn = storage.connect(db)
+        # one Cao Dabaco E article (kept) + one not_risk article (kept)
+        conn.execute("INSERT INTO articles (article_id,url_canonical,title,esg_status,esg_type,severity,body) "
+                     "VALUES ('a::1','u','Dabaco bi phat vi xa thai','esg','E','Cao','body text')")
+        conn.execute("INSERT INTO articles (article_id,url_canonical,title,esg_status,esg_type,severity) "
+                     "VALUES ('a::2','u','Quy thien tam Dabaco ho tro','esg','S','Trung bình')")
+        conn.close()
+        # monkeypatch stages: sentiment drops a::2; translate echoes EN; controversy → Minor
+        runner.sentiment.filter_negative = lambda evs, provider=None: [e for e in evs if "thien tam" not in e["summary"]]
+        runner.translate.translate_titles = lambda titles, provider=None: ["EN:" + t for t in titles]
+        runner.controversy.classify_event = lambda e, p, today, *, body, revenues=None: {
+            "level": "Minor", "cg_indicator": None, "justification": "a. b.", "confidence": 80}
+        # force a provider so the runner proceeds
+        runner.resolve_provider = lambda: {"name": "x", "model": "m", "sleep": 0}
+        n = runner.run(limit=10, db_path=db)
+        conn = storage.connect(db)
+        r1 = conn.execute("SELECT * FROM articles WHERE article_id='a::1'").fetchone()
+        r2 = conn.execute("SELECT * FROM articles WHERE article_id='a::2'").fetchone()
+        assert r1["enrich_status"] == "done" and r1["sentiment"] == "risk"
+        assert r1["summary_en"] == "EN:Dabaco bi phat vi xa thai"
+        assert r1["controversy_level"] == "Minor" and r1["controversy_classified_at"]
+        assert r2["enrich_status"] == "dropped" and r2["sentiment"] == "not_risk"
+        assert not storage.get_pending_enrich(conn, limit=10)  # all drained
+        conn.close()
+    print("  runner_end_to_end OK")
+
+
 def main() -> None:
     if sys.platform == "win32":
         try: sys.stdout.reconfigure(encoding="utf-8")
@@ -174,6 +210,7 @@ def main() -> None:
     test_sentiment_gate()
     test_translate()
     test_controversy()
+    test_runner_end_to_end()
     print("ALL OK")
 
 
