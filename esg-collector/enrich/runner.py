@@ -7,6 +7,7 @@ rows are processed, `limit` bounds the chunk, and any failure leaves the row
 """
 from __future__ import annotations
 import argparse
+import json
 import logging
 from datetime import datetime, timezone
 
@@ -22,7 +23,6 @@ DEFAULT_LIMIT = 25
 
 def _company_for(ticker: str) -> str:
     """Canonical company name for the prompt — from the alias file, fallback ''."""
-    import json
     p = settings.ALIASES_DIR / f"{ticker}.json"
     try:
         return json.loads(p.read_text(encoding="utf-8")).get("company_name", "") or ""
@@ -47,51 +47,55 @@ def run(limit: int = DEFAULT_LIMIT, db_path=None) -> int:
         log.warning("no LLM provider configured (set GROQ_API_KEY) — skipping enrich")
         return 0
     conn = storage.connect(db_path)
-    rows = storage.get_pending_enrich(conn, limit=limit)
-    if not rows:
-        log.info("no pending articles to enrich")
-        conn.close()
-        return 0
-    log.info("enriching %d articles (provider=%s)", len(rows), provider["name"])
+    try:
+        rows = storage.get_pending_enrich(conn, limit=limit)
+        if not rows:
+            log.info("no pending articles to enrich")
+            return 0
+        log.info("enriching %d articles (provider=%s)", len(rows), provider["name"])
 
-    # 1. sentiment gate (batch). Build minimal event dicts.
-    events = [{"article_id": r["article_id"], "ticker": _primary_ticker(r) or "",
-               "type": r["esg_type"], "severity": r["severity"],
-               "summary": r["title"] or "", "row": r} for r in rows]
-    kept = sentiment.filter_negative(events, provider=provider)
-    kept_ids = {e["article_id"] for e in kept}
-    for e in events:
-        if e["article_id"] not in kept_ids:
-            storage.mark_dropped(conn, e["article_id"])
+        # 1. sentiment gate (batch). Build minimal event dicts.
+        events = [{"article_id": r["article_id"], "ticker": _primary_ticker(r) or "",
+                   "type": r["esg_type"], "severity": r["severity"],
+                   "summary": r["title"] or "", "row": r} for r in rows]
+        kept = sentiment.filter_negative(events, provider=provider)
+        kept_ids = {e["article_id"] for e in kept}
+        for e in events:
+            if e["article_id"] not in kept_ids:
+                storage.mark_dropped(conn, e["article_id"])
 
-    if not kept:
-        conn.close()
+        if not kept:
+            return len(rows)
+
+        # 2. translate titles (batch, order-preserving)
+        titles = [e["summary"] for e in kept]
+        titles_en = translate.translate_titles(titles, provider=provider)
+        if len(titles_en) != len(kept):
+            log.error("translate_titles returned %d items for %d inputs — aborting enrich run",
+                      len(titles_en), len(kept))
+            return 0
+
+        # 3. controversy for Cao only; write back per article
+        revenues = load_revenues()
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        for e, en in zip(kept, titles_en):
+            r = e["row"]
+            level = just = classified_at = None
+            if r["severity"] == "Cao":
+                event = {"ticker": e["ticker"], "company": _company_for(e["ticker"]),
+                         "type": e["type"], "date": (r["published_at"] or "")[:10],
+                         "summary": e["summary"], "summary_en": en, "source": r["source"] or ""}
+                res = controversy.classify_event(event, provider, today,
+                                                 body=r["body"], revenues=revenues)
+                if res:
+                    level, just, classified_at = res["level"], res["justification"], now_iso
+            storage.mark_enriched(conn, e["article_id"], sentiment="risk", summary_en=en,
+                                  controversy_level=level, controversy_justification=just,
+                                  controversy_classified_at=classified_at)
         return len(rows)
-
-    # 2. translate titles (batch, order-preserving)
-    titles = [e["summary"] for e in kept]
-    titles_en = translate.translate_titles(titles, provider=provider)
-
-    # 3. controversy for Cao only; write back per article
-    revenues = load_revenues()
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    for e, en in zip(kept, titles_en):
-        r = e["row"]
-        level = just = classified_at = None
-        if r["severity"] == "Cao":
-            event = {"ticker": e["ticker"], "company": _company_for(e["ticker"]),
-                     "type": e["type"], "date": (r["published_at"] or "")[:10],
-                     "summary": e["summary"], "summary_en": en, "source": r["source"] or ""}
-            res = controversy.classify_event(event, provider, today,
-                                             body=r["body"], revenues=revenues)
-            if res:
-                level, just, classified_at = res["level"], res["justification"], now_iso
-        storage.mark_enriched(conn, e["article_id"], sentiment="risk", summary_en=en,
-                              controversy_level=level, controversy_justification=just,
-                              controversy_classified_at=classified_at)
-    conn.close()
-    return len(rows)
+    finally:
+        conn.close()
 
 
 def main() -> None:
