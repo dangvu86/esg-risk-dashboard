@@ -42,28 +42,35 @@ This spec closes the gap: the missing LLM stages + a web-shaped export.
 ## Architecture & data flow
 
 ```
-match.timer (6h)  →  articles rows: esg_status='matched', type/severity set, enrich_status='pending'
+match.timer (6h)  →  kept articles: esg_status='esg', esg_type/severity set; per_ticker/*.json updated
+                     (NEW column enrich_status defaults 'pending' on these rows)
         │
         ▼
-enrich.timer (NEW, offset from match)  ── drains a bounded chunk of enrich_status='pending'
+enrich.timer (NEW, offset from match)  ── drains a bounded chunk of (esg_status='esg' AND enrich_status='pending')
         │   1. sentiment (LLM, batch 5)   → not_risk ⇒ enrich_status='dropped' (stop)
         │   2. translate title (LLM, 30)  → summary_en          (display title only)
-        │   3. controversy (LLM, Cao only)→ level + justification (body from DB, revenue from Top100.csv)
+        │   3. controversy (LLM, Cao only)→ level + justification (body from articles.body, revenue per matched ticker)
         │   write columns, enrich_status='done'
         ▼
-export.build_esg_events()  → flatten matched+risk+enriched → web EsgEvent shape → dedup
+export.build_esg_events()  → per_ticker/*.json  ⨝(article_id)  articles enrich cols → filter risk → dedup(title_hash) → web shape
         ▼
-gsutil cp → gs://esg-scan-data/web/esg_events.json  (+ web/top100.json)   [public-read prefix]
+gsutil cp → gs://esg-scan-data/web/esg_events.json  (+ web/top100.json)   [objects made public]
         ▼
 web /api/events, /api/tickers  →  repointed to esg-scan-data/web/
 ```
 
+Naming note (verified against `core/storage.py` + `pipeline/match.py`): `match.py` writes
+`esg_status='esg'` for kept articles (via `mark_esg`), NOT `'matched'`. `enrich_status` is a **new**
+column this spec adds — distinct from the existing `esg_status`. The ticker↔article association is
+stored in `per_ticker/*.json` (an article may match several tickers via `for hit in hits`), not as a
+column on `articles`.
+
 Key properties:
-- Enrich **reuses the body already fetched** by the `body` worker and stored in the DB — no extra
-  Jina calls.
+- Enrich **reuses `articles.body`** already fetched by the `body` worker — controversy must read body
+  from the DB and **must NOT re-port the old Jina `fetch_article_body()` / Google-URL-decode path**.
 - Sentiment is a **gate**: dropped articles skip translation and controversy (saves LLM calls).
-- Idempotent: only `enrich_status='pending'` rows are processed; an LLM failure leaves the row
-  `pending` for the next cycle.
+- Idempotent: only `esg_status='esg' AND enrich_status='pending'` rows are processed; an LLM failure
+  leaves the row `pending` for the next cycle.
 
 ## Components / files
 
@@ -75,16 +82,20 @@ owns all I/O and state):
 | `enrich/llm.py` | Provider registry: `resolve_provider`, request build, call, rate-limit sleep | `cloud-function/controversy_classifier.py` |
 | `enrich/sentiment.py` | Risk vs CSR/positive verdict (batch 5, "analyze independently", drop/keep rules) | `cloud-function/sentiment_filter.py` |
 | `enrich/translate.py` | VN→EN of the **title only** (batch 30, transliterate names, strip source suffix) | `cloud-function/translator.py` |
-| `enrich/controversy.py` | Major/Minor/No + justification; E&S vs CG branch; 20% revenue downgrade | `cloud-function/controversy_classifier.py` |
-| `enrich/runner.py` | Read pending chunk → sentiment gate → translate → controversy (Cao) → write back | (new) |
+| `enrich/controversy.py` | Major/Minor/No + justification; E&S vs CG branch; 20% revenue downgrade. Reads `articles.body`; **reimplements** `get_revenue_for_year()` reading `config/Top100.csv` (the old one is entangled with `cloud-function/rss_fetcher.py` — do not import it) | `cloud-function/controversy_classifier.py` |
+| `enrich/runner.py` | Read pending chunk → resolve matched ticker (via `alias_matcher`) → sentiment gate → translate → controversy (Cao) → write back | (new) |
+
+The E&S/CG controversy definitions stay **inline in the controversy prompt** (ported verbatim from
+the old `CLASSIFY_PROMPT`), not separate config files.
 
 Modified existing files:
-- `core/storage.py` — add `articles` columns (below) via guarded `init_db()` ALTERs; add queries
-  `get_pending_enrich(limit)`, `mark_enriched(...)`, `mark_dropped(...)`.
-- `pipeline/export.py` — add `build_esg_events()` producing the web shape + `top100.json`; upload
-  to `gs://esg-scan-data/web/`.
-- `config/` — add `Top100.csv` (revenue per ticker/year for the 20% rule) and the E&S/CG
-  controversy definition text (ported from the old prompts).
+- `core/storage.py` — add `articles` columns (below) via guarded `init_db()` ALTERs (same pattern as
+  the existing `esg_status`/`esg_type` ALTERs); add queries `get_pending_enrich(limit)`,
+  `mark_enriched(...)`, `mark_dropped(...)`.
+- `pipeline/export.py` — add `build_esg_events()` (see Export & dedup) + `top100.json`; upload to
+  `gs://esg-scan-data/web/`.
+- `config/` — add `Top100.csv` (revenue per ticker/year for the 20% rule). Top100.csv already exists
+  at the repo root / cloud-function; copy it into `esg-collector/config/`.
 - `deploy/` — `esg-collector-enrich.{service,timer}` units (run after `match`, with a memory cap).
 
 Web:
@@ -93,20 +104,25 @@ Web:
 
 ## Data model & state machine
 
-New columns on `articles` (all nullable; guarded ALTER in `init_db()`):
-`summary_en`, `sentiment` (`risk`|`not_risk`), `controversy_level` (`Major`|`Minor`|`No`),
-`controversy_justification`, `controversy_classified_at`, `enrich_status`.
+New columns on `articles` (all nullable; guarded ALTER in `init_db()`, same pattern as the existing
+`esg_status`/`esg_type`/`severity` ALTERs): `summary_en`, `sentiment` (`risk`|`not_risk`),
+`controversy_level` (`Major`|`Minor`|`No`), `controversy_justification`,
+`controversy_classified_at`, `enrich_status` (default `'pending'`).
 
 ```
-esg_filter keeps article  →  enrich_status='pending'
+match keeps article (esg_status='esg')  →  enrich_status='pending'
    pending → sentiment: not_risk → 'dropped'  (excluded from export)
    pending → sentiment: risk → translate title → controversy (if severity='Cao') → 'done'
    LLM error at any step → stays 'pending' → retried next cycle
 ```
 
-**Backfill of existing matched rows:** a one-time, idempotent migration sets
-`enrich_status='pending'` on already-matched rows, gated behind a flag in `export_state` so reruns
-are safe. The timer then drains the backlog over many cycles.
+**Backfill of existing kept rows:** a one-time, idempotent migration sets `enrich_status='pending'`
+on rows where `esg_status='esg'`, gated behind a flag in `export_state` so reruns are safe. The
+timer then drains the backlog in bounded chunks over many cycles.
+
+**Field-name caveat:** in the collector, the per_ticker `location` field is the **matched field
+name** (`title`|`description`|`sapo`|`body`), NOT geography. Do not surface it as a place. (The
+mockup's "location = Bắc Ninh" geography does not exist in this data and is out of scope.)
 
 ## OOM safety (e2-micro, 1 GB RAM)
 
@@ -119,8 +135,9 @@ is designed chunked from the start, with a hard cgroup cap so it can never take 
 2. **systemd cap** — the `esg-collector-enrich.service` sets `MemoryMax=250M` and
    `Restart=on-failure`; if it ever exceeds the cap, the cgroup kills only enrich, not other
    workers (no kernel OOM of random processes).
-3. **No concurrency with `match`** — enrich timer is offset from `match.timer`, plus a simple file
-   lock, so their peak memory never adds up.
+3. **No concurrency with `match`** — the enrich timer fires offset from `match.timer` (e.g. enrich
+   ~20 min after each match run), plus a simple file lock (skip the run if the lock is held), so
+   their peak memory never adds up.
 4. **Bounded body** — controversy loads body only for the Cao rows in the current chunk and
    truncates to ~6–8k chars before the LLM call (bounds RAM and tokens).
 5. **Streaming** — cursor `fetchmany` over the chunk, not `fetchall`; process → write → release.
@@ -132,32 +149,48 @@ scheduled off-peak from `match`.
 
 ## Export & dedup
 
-`build_esg_events()` flattens articles that are `esg_status='matched'` AND `sentiment='risk'`
-(i.e. not dropped) into the web `EsgEvent` shape:
+`build_esg_events()` builds one array of web `EsgEvent` objects by reading every `per_ticker/*.json`
+(which carries `ticker`, `type`, `severity`, `title`, `published_at`, `source`, `url`, `backend`,
+`matched_alias`, `article_id`) and **joining the enrich columns from `articles` by `article_id`**
+(`summary_en`, `sentiment`, `controversy_*`). Only entries whose article has `sentiment='risk'`
+(i.e. survived the sentiment gate; dropped/pending excluded) are emitted.
+
+Web `EsgEvent` shape (verified against `web/lib/esg.ts`):
 `{ ticker, company, type, date, summary, summary_en, severity, source, url, controversy_level,
-controversy_justification, controversy_classified_at, created_at }`.
+controversy_justification, controversy_classified_at, created_at }` where:
+- `summary` = the article `title` (VN headline); `summary_en` = enriched EN title.
+- `date` = `published_at[:10]` (truncate ISO timestamp to `YYYY-MM-DD`).
+- `created_at` = `articles.fetched_at` (used only as the web's sort tie-breaker).
+- `company` = canonical name for the ticker (from `config/aliases/<TICKER>.json` / `Top100.csv`).
 
-**Dedup:** the collector already computes `group_key` (clusters the same incident across multiple
-sources) plus `dedup_titles`. The export collapses each `group_key` to a **single representative
-event** — preferring the earliest-dated article that has a body/translation — which is stronger
-than the old exact-normalized-title hash. The resulting array is sorted by date descending, matching
-what the web expects today.
+**Dedup:** use the existing `articles.title_hash` column (already computed; the collector dedups
+cross-backend on `(title_hash, published_at)`). Within each ticker, collapse rows sharing the same
+`title_hash` to a **single representative**, keeping the earliest `published_at`. (NOTE: `group_key`
+is the keyword-search slot like `E_0`/`S_2`, NOT an incident cluster — do not use it for dedup.)
+Sort the final array by `date` descending, matching what the web expects today.
 
-The richer per-article fields (`backend`, `matched_alias`, `location`) are **carried through as
-optional fields** in `esg_events.json` so the web can surface them later (out of scope to display
-now), but they do not change the dedup or the required shape.
+`backend` and `matched_alias` are **optional passthrough fields** for later web use (out of scope to
+display now); they don't affect dedup or the required shape. `cg_indicator` (G-only) is folded into
+`controversy_justification` and is **not** a separate web field.
 
 ## Output bucket access
 
 `gs://esg-scan-data` is currently **private** (anonymous fetch returns 403). The web fetches over
-public HTTPS with no auth, so the two web files must be publicly readable:
+public HTTPS with no auth, so the two web files must be publicly readable. GCS has **no
+prefix-scoped public IAM**; the correct, narrowly-scoped option is a **per-object public ACL** on
+just those two objects (keeps the rest of the bucket private):
 
-- Write `esg_events.json` and `top100.json` under a `web/` prefix.
-- Grant `allUsers:objectViewer` on the `web/` prefix (or on those two objects) so
-  `https://storage.googleapis.com/esg-scan-data/web/esg_events.json` is fetchable.
+```
+gsutil acl ch -u AllUsers:R gs://esg-scan-data/web/esg_events.json
+gsutil acl ch -u AllUsers:R gs://esg-scan-data/web/top100.json
+```
 
-This is a one-time ops step (IAM), documented in the implementation plan. `top100.json` is built
-from the collector's ticker list / `Top100.csv`.
+(Per-object ACLs require the bucket to allow fine-grained ACLs, i.e. not Uniform Bucket-Level
+Access; if UBLA is on, the fallback is a dedicated public sub-bucket or accepting bucket-level
+`allUsers:objectViewer`. The plan must check the bucket's access-control mode first.) The export
+re-applies the ACL after each upload (a fresh object loses prior ACLs). `top100.json` is built from
+the collector's ticker list / `Top100.csv`. Web reads
+`https://storage.googleapis.com/esg-scan-data/web/esg_events.json`.
 
 ## LLM provider
 
@@ -174,6 +207,10 @@ Port the old provider registry verbatim. Active provider is whichever `.env` sel
   the chunk proceed.
 - Controversy with missing body or missing revenue → classify with what's available (old behavior:
   no downgrade when scope/ownership is unknown); never block the row.
+- **Multi-ticker articles** (one article matched to >1 ticker — rare, since aliases are
+  company-specific): enrich computes one controversy verdict per article, using the **primary
+  (first) matched ticker's** revenue for the 20% rule. Documented limitation; acceptable because the
+  old pipeline had no global dedup at all and the case is uncommon.
 
 ## Testing
 
