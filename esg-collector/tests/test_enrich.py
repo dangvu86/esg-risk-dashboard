@@ -126,6 +126,37 @@ def test_translate() -> None:
     print("  translate OK")
 
 
+def test_controversy() -> None:
+    from enrich import controversy
+    _orig = controversy.call_llm
+    try:
+        fake_provider = {"name": "x", "model": "m", "sleep": 0}
+        captured = {}
+        def fake_call(prov, prompt, retries=3):
+            captured["prompt"] = prompt
+            return {"level": "Major", "cg_indicator": None,
+                    "justification": "Worker died at plant. Material consequence, no resolution.",
+                    "confidence": 90}
+        controversy.call_llm = fake_call
+        event = {"ticker": "HPG", "company": "Hoa Phat", "type": "S",
+                 "date": "2026-05-26", "summary": "Cong nhan tu vong", "summary_en": "Worker death",
+                 "source": "Tuoi Tre"}
+        body = "Long article body about a fatal accident at the Dung Quat plant " * 50
+        out = controversy.classify_event(event, fake_provider, today="2026-06-03",
+                                         body=body, revenues={"HPG": {2026: 150000.0}})
+        assert out["level"] == "Major" and out["cg_indicator"] is None
+        assert out["justification"].count(". ") >= 1
+        # body was truncated into the prompt and revenue injected
+        assert "Dung Quat" in captured["prompt"]
+        assert "150,000 billion VND" in captured["prompt"] or "150000" in captured["prompt"]
+        # invalid LLM level → None
+        controversy.call_llm = lambda prov, prompt, retries=3: {"level": "Nope", "justification": "x."}
+        assert controversy.classify_event(event, fake_provider, today="2026-06-03", body="", revenues={}) is None
+    finally:
+        controversy.call_llm = _orig
+    print("  controversy OK")
+
+
 def main() -> None:
     if sys.platform == "win32":
         try: sys.stdout.reconfigure(encoding="utf-8")
@@ -136,6 +167,7 @@ def main() -> None:
     test_revenue()
     test_sentiment_gate()
     test_translate()
+    test_controversy()
     print("ALL OK")
 
 
