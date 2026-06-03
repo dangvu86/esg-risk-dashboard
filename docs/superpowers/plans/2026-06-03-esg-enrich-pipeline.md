@@ -133,9 +133,11 @@ After the index block, add an index on enrich draining:
                      "ON articles(esg_status, enrich_status)")
 ```
 
-Note: `ADD COLUMN enrich_status ... DEFAULT 'pending'` sets every existing row to `'pending'`; the
-`get_pending_enrich` filter (`esg_status='esg'`) restricts draining to kept articles, so this is the
-backfill — no separate migration flag is needed.
+Note: `ADD COLUMN enrich_status ... DEFAULT 'pending'` makes every existing row read back as
+`'pending'` (SQLite stores the constant default in the schema; Python 3.13's bundled SQLite ≥3.38
+handles this — the target VM runs 3.13). The `get_pending_enrich` filter (`esg_status='esg'`)
+restricts draining to kept articles, so this is the backfill — no separate `export_state` flag is
+needed (a deliberate simplification of the spec's gated-migration approach).
 
 - [ ] **Step 4: Add the queries (after `mark_esg`)**
 
@@ -406,7 +408,7 @@ def test_translate() -> None:
 
 - [ ] **Step 3: Implement** — copy `translator.py` into `enrich/translate.py` with:
   - Replace the `from controversy_classifier import resolve_provider` + the local `_build_request`/`_call_llm` with `from enrich.llm import resolve_provider, call_llm`.
-  - Rename `translate_summaries(summaries, api_key=None)` → `translate_titles(titles, provider=None)`; drop the `api_key` param; resolve provider via the passed `provider` or `resolve_provider()`.
+  - Rename `translate_summaries(summaries, api_key=None)` → `translate_titles(titles, provider=None)`; drop the `api_key` param. Inside the function, change the resolution line `provider = resolve_provider()` to **`provider = provider or resolve_provider()`** so the passed-in provider is honored (the test passes one).
   - Replace the call site `parsed = _call_llm(provider, prompt)` with `parsed = call_llm(provider, prompt)`.
   - Keep `BATCH_SIZE = 30`, `TRANSLATE_PROMPT`, `_extract_translations`, and the VN-fallback behavior.
 
@@ -475,7 +477,7 @@ def test_controversy() -> None:
         article_body = "(not available — classify from title/source only)"
     ```
   - Keep `_revenue_display`, the `CLASSIFY_PROMPT.format(...)` call, `parsed = call_llm(provider, prompt)`, and `return _validate(parsed, event.get("type",""))`.
-  - `classify_events` is unused by the runner (runner calls `classify_event` per row); you may keep or drop it. If kept, update its body-fetch removal similarly. (Prefer dropping it to avoid dead Jina-shaped code — YAGNI.)
+  - **Drop `classify_events` entirely** — the runner calls `classify_event` per row, and the old `classify_events` would call `classify_event` without the new required `body=` kwarg (a `TypeError` landmine). Remove it; do not keep a Jina-shaped wrapper.
 
 - [ ] **Step 4: Run test to verify it passes** — PASS.
 
@@ -757,11 +759,12 @@ def build_esg_events(db_path=None, per_ticker_dir: Path | None = None) -> list[d
     companies = _company_names()
     conn = storage.connect(db_path)
     try:
-        # enrich columns keyed by article_id
+        # enrich columns keyed by article_id — only fully-enriched rows (bounds memory)
         enr: dict[str, dict] = {}
         for r in conn.execute(
             "SELECT article_id, title_hash, sentiment, summary_en, controversy_level, "
-            "controversy_justification, controversy_classified_at, fetched_at FROM articles"
+            "controversy_justification, controversy_classified_at, fetched_at "
+            "FROM articles WHERE enrich_status='done'"
         ):
             enr[r["article_id"]] = {k: r[k] for k in r.keys()}
     finally:
@@ -898,9 +901,26 @@ Persistent=true
 WantedBy=timers.target
 ```
 
+**Concurrency note (deviation from spec's "file lock"):** systemd `Type=oneshot` will not start a
+second enrich run while one is in flight, so enrich never overlaps *itself* even if a run is slow.
+Enrich-vs-match overlap is bounded by the independent cgroup caps (`MemoryMax`: enrich 250M, match
+450M, both well under the 1 GB VM), and enrich's real footprint is tens of MB — so a literal shared
+lockfile is unnecessary. `After=esg-collector-match.service` keeps them ordered at boot. Do not add a
+lockfile.
+
 - [ ] **Step 3: Wire into `install.sh`**
 
-Read `deploy/install.sh`; wherever it `systemctl enable --now esg-collector-match.timer` (or copies units), add `esg-collector-enrich.timer` the same way. Match the existing copy/enable pattern exactly — do not invent a new mechanism.
+Read `deploy/install.sh` and follow its existing pattern for the match unit. There are **two** places to add the enrich unit (an implementer who only does the enable will leave the unit file uncopied and the enable will fail on a fresh VM):
+1. Where unit files are copied to `/etc/systemd/system/` (next to the match install line), add both:
+   ```bash
+   install -m 644 "$APP_DIR/deploy/esg-collector-enrich.service" /etc/systemd/system/
+   install -m 644 "$APP_DIR/deploy/esg-collector-enrich.timer"   /etc/systemd/system/
+   ```
+   (Use the exact variable name / install idiom the file already uses — e.g. `cp` vs `install`, and the real path variable — match the match-unit line verbatim.)
+2. Where timers are enabled (next to `systemctl enable --now esg-collector-match.timer`), add:
+   ```bash
+   systemctl enable --now esg-collector-enrich.timer
+   ```
 
 - [ ] **Step 4: Document in `deploy/README.md`**
 
