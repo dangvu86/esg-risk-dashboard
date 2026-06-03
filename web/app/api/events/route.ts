@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-const DATA_URL = "https://storage.googleapis.com/esg-risk-dashboard/esg_events.json";
+const DATA_URL = "https://storage.googleapis.com/esg-scan-data/web/esg_events.json";
 
 export async function GET() {
   const res = await fetch(DATA_URL, { cache: "no-store" });
