@@ -88,6 +88,21 @@ def test_revenue() -> None:
     print("  revenue OK")
 
 
+def test_sentiment_gate() -> None:
+    from enrich import sentiment
+    events = [{"ticker": "DBC", "type": "E", "summary": "Phat vi xa thai"},
+              {"ticker": "DBC", "type": "S", "summary": "Quy thien tam ho tro nan nhan"}]
+    # fake provider + monkeypatch the LLM to label [risk, not_risk]
+    fake_provider = {"name": "x", "model": "m", "sleep": 0}
+    sentiment.call_llm = lambda prov, prompt, retries=3: {"labels": ["risk", "not_risk"]}
+    kept = sentiment.filter_negative(events, provider=fake_provider)
+    assert len(kept) == 1 and kept[0]["type"] == "E"
+    # LLM failure → keep all (fail-open)
+    sentiment.call_llm = lambda prov, prompt, retries=3: None
+    assert len(sentiment.filter_negative(events, provider=fake_provider)) == 2
+    print("  sentiment_gate OK")
+
+
 def main() -> None:
     if sys.platform == "win32":
         try: sys.stdout.reconfigure(encoding="utf-8")
@@ -96,6 +111,7 @@ def main() -> None:
     test_enrich_columns_and_queries()
     test_llm_resolve_provider()
     test_revenue()
+    test_sentiment_gate()
     print("ALL OK")
 
 
