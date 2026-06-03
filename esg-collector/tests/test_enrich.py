@@ -115,8 +115,11 @@ def test_translate() -> None:
         translate.call_llm = lambda prov, prompt, retries=3: {"translations": ["Fined for discharge", "EN2"]}
         out = translate.translate_titles(["Phat vi xa thai", "tin 2"], provider=fake_provider)
         assert out == ["Fined for discharge", "EN2"]
-        # failure / length mismatch → fall back to VN input
+        # LLM failure → fall back to VN input
         translate.call_llm = lambda prov, prompt, retries=3: None
+        assert translate.translate_titles(["a", "b"], provider=fake_provider) == ["a", "b"]
+        # length mismatch (wrong count returned) → also fall back to VN input
+        translate.call_llm = lambda prov, prompt, retries=3: {"translations": ["only_one"]}
         assert translate.translate_titles(["a", "b"], provider=fake_provider) == ["a", "b"]
     finally:
         translate.call_llm = _orig
