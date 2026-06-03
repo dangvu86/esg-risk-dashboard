@@ -74,6 +74,20 @@ def test_llm_resolve_provider(monkeyenv=None) -> None:
     print("  llm_resolve_provider OK")
 
 
+def test_revenue() -> None:
+    from enrich import revenue
+    rev = revenue.load_revenues()          # reads config/companies.csv
+    assert "VIC" in rev and 2024 in rev["VIC"]
+    assert rev["VIC"][2024] > 0
+    # exact-year hit
+    assert revenue.get_revenue_for_year(rev["VIC"], 2024) == (2024, rev["VIC"][2024])
+    # missing year → closest (ties → older)
+    yr, val = revenue.get_revenue_for_year({2020: 100.0, 2024: 200.0}, 2022)
+    assert (yr, val) == (2020, 100.0)
+    assert revenue.get_revenue_for_year({}, 2024) is None
+    print("  revenue OK")
+
+
 def main() -> None:
     if sys.platform == "win32":
         try: sys.stdout.reconfigure(encoding="utf-8")
@@ -81,6 +95,7 @@ def main() -> None:
     print("running enrich tests…")
     test_enrich_columns_and_queries()
     test_llm_resolve_provider()
+    test_revenue()
     print("ALL OK")
 
 
