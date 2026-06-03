@@ -117,8 +117,8 @@ match keeps article (esg_status='esg')  →  enrich_status='pending'
 ```
 
 **Backfill of existing kept rows:** a one-time, idempotent migration sets `enrich_status='pending'`
-on rows where `esg_status='esg'`, gated behind a flag in `export_state` so reruns are safe. The
-timer then drains the backlog in bounded chunks over many cycles.
+on rows where `esg_status='esg'`, gated behind the `export_state` key `enrich_backfill_done` so
+reruns are safe. The timer then drains the backlog in bounded chunks over many cycles.
 
 **Field-name caveat:** in the collector, the per_ticker `location` field is the **matched field
 name** (`title`|`description`|`sapo`|`body`), NOT geography. Do not surface it as a place. (The
@@ -135,9 +135,10 @@ is designed chunked from the start, with a hard cgroup cap so it can never take 
 2. **systemd cap** — the `esg-collector-enrich.service` sets `MemoryMax=250M` and
    `Restart=on-failure`; if it ever exceeds the cap, the cgroup kills only enrich, not other
    workers (no kernel OOM of random processes).
-3. **No concurrency with `match`** — the enrich timer fires offset from `match.timer` (e.g. enrich
-   ~20 min after each match run), plus a simple file lock (skip the run if the lock is held), so
-   their peak memory never adds up.
+3. **No concurrency with `match`** — order the enrich unit after match in systemd
+   (`After=esg-collector-match.service`) rather than a fixed clock offset (match runtime is
+   backlog-dependent), plus a simple file lock (skip the run if the lock is held), so their peak
+   memory never adds up even if a match run is slow.
 4. **Bounded body** — controversy loads body only for the Cao rows in the current chunk and
    truncates to ~6–8k chars before the LLM call (bounds RAM and tokens).
 5. **Streaming** — cursor `fetchmany` over the chunk, not `fetchall`; process → write → release.
@@ -209,14 +210,15 @@ Port the old provider registry verbatim. Active provider is whichever `.env` sel
   no downgrade when scope/ownership is unknown); never block the row.
 - **Multi-ticker articles** (one article matched to >1 ticker — rare, since aliases are
   company-specific): enrich computes one controversy verdict per article, using the **primary
-  (first) matched ticker's** revenue for the 20% rule. Documented limitation; acceptable because the
-  old pipeline had no global dedup at all and the case is uncommon.
+  (first) matched ticker's** revenue for the 20% rule (first = `alias_matcher` hit order, i.e.
+  aliases-file insertion order — deterministic). Documented limitation; acceptable because the old
+  pipeline had no global dedup at all and the case is uncommon.
 
 ## Testing
 
 - Unit tests with the **LLM mocked** (no real API calls): sentiment verdict parsing, title-translate
   parsing/batching, controversy parsing + the 20% downgrade rule, the `build_esg_events()` output
-  shape, and the `group_key` dedup (one event per incident, earliest representative).
+  shape, and the `title_hash` dedup (same-incident rows collapse to one, earliest `published_at` kept).
 - A smoke test that the new `articles` columns and queries exist after `init_db()`.
 
 ## Out of scope (follow-up)
