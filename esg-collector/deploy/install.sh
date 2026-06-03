@@ -90,7 +90,7 @@ echo
 echo "Status:"
 systemctl --no-pager status \
   esg-collector-google esg-collector-baomoi esg-collector-brave \
-  esg-collector-body esg-collector-match.timer || true
+  esg-collector-body esg-collector-match.timer esg-collector-enrich.timer || true
 
 echo
 echo "Tail logs:  journalctl -u esg-collector-google -f"

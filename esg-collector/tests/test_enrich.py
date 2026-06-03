@@ -264,6 +264,28 @@ def test_build_esg_events() -> None:
     print("  build_esg_events OK")
 
 
+def test_export_web_upload_skips_ndjson() -> None:
+    from pipeline import export
+    calls = {"ndjson_upload": 0, "web_files": 0, "web_upload": 0}
+    _orig_upload = export._upload
+    _orig_write = export._write_web_files
+    _orig_uweb = export._upload_web
+    try:
+        export._upload = lambda *a, **k: calls.__setitem__("ndjson_upload", calls["ndjson_upload"] + 1)
+        export._write_web_files = lambda: (calls.__setitem__("web_files", calls["web_files"] + 1) or (Path("ev"), Path("top")))
+        export._upload_web = lambda ev, top: calls.__setitem__("web_upload", calls["web_upload"] + 1)
+        # --web --upload with NO --ndjson must NOT attempt any NDJSON upload (no SystemExit,
+        # no stale re-push), and MUST build + upload the web files.
+        export.run(do_ndjson=False, do_upload=True, do_web=True)
+        assert calls["ndjson_upload"] == 0, calls
+        assert calls["web_files"] == 1 and calls["web_upload"] == 1, calls
+    finally:
+        export._upload = _orig_upload
+        export._write_web_files = _orig_write
+        export._upload_web = _orig_uweb
+    print("  export_web_upload_skips_ndjson OK")
+
+
 def main() -> None:
     if sys.platform == "win32":
         try: sys.stdout.reconfigure(encoding="utf-8")
@@ -277,6 +299,7 @@ def main() -> None:
     test_controversy()
     test_runner_end_to_end()
     test_build_esg_events()
+    test_export_web_upload_skips_ndjson()
     print("ALL OK")
 
 

@@ -207,7 +207,11 @@ def run(do_ndjson: bool, do_upload: bool, *, full: bool = False,
     ndjson_path: Path | None = None
     if do_ndjson:
         ndjson_path = _export_ndjson(out_dir, full=full)
-    if do_upload:
+    # NDJSON upload: only on the NDJSON/data path (match unit: --ndjson --upload, or a
+    # bare --upload to re-push the latest existing file). When --web is the action,
+    # --upload targets the web files below, NOT the NDJSON — otherwise an enrich run
+    # (`--web --upload`) would re-push stale NDJSON or SystemExit on a fresh VM.
+    if do_upload and not do_web:
         if ndjson_path is None:
             # find latest export
             candidates = sorted(out_dir.glob("articles_*.ndjson"))

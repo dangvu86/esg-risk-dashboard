@@ -33,7 +33,7 @@ gcloud compute ssh esg-collector --zone us-central1-a \
 2. tạo user `esg`
 3. git clone `https://github.com/dangvule/esg-scan.git` vào `/opt/esg-collector` *(sửa REPO_URL trong script nếu repo của anh tên khác)*
 4. tạo venv + pip install
-5. copy 6 systemd unit + 1 timer vào `/etc/systemd/system/`
+5. copy 8 systemd unit + 4 timer vào `/etc/systemd/system/`
 6. **tạo `/etc/esg-collector.env`** từ template (cần điền tay 2 key sau lần đầu)
 7. chạy `queue_builder --mode backfill` (flow đầy đủ: alias từng công ty +
    keyword từng-từ, mọi backend) để fill queue lịch sử. **Trước đó** nên chạy

@@ -1,5 +1,6 @@
 [Unit]
 Description=ESG collector — enrich (sentiment/translate/controversy) + web export (oneshot)
+# advisory; real sequencing is the OnBootSec gap in the timer
 After=esg-collector-match.service
 
 [Service]
