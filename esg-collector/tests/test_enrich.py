@@ -23,9 +23,12 @@ def test_enrich_columns_and_queries() -> None:
                 "enrich_status"} <= acols, acols
         # an esg-kept, pending row is returned; a non-esg row is not
         conn.execute("INSERT INTO articles (article_id,url_canonical,title,esg_status) "
-                     "VALUES ('a::1','u','Phat cong ty vi xa thai','esg')")
+                     "VALUES ('a::1','u1','Phat cong ty vi xa thai','esg')")
         conn.execute("INSERT INTO articles (article_id,url_canonical,title,esg_status) "
-                     "VALUES ('a::2','u','khong esg','noise')")
+                     "VALUES ('a::2','u2','khong esg','noise')")
+        # the DEFAULT must backfill enrich_status='pending' on a freshly-inserted row
+        row0 = conn.execute("SELECT enrich_status FROM articles WHERE article_id='a::1'").fetchone()
+        assert row0["enrich_status"] == "pending", f"DEFAULT not applied: {row0['enrich_status']!r}"
         pend = storage.get_pending_enrich(conn, limit=10)
         ids = {r["article_id"] for r in pend}
         assert ids == {"a::1"}, ids
@@ -39,7 +42,7 @@ def test_enrich_columns_and_queries() -> None:
         assert row["sentiment"] == "risk" and row["controversy_level"] == "Minor"
         # mark_dropped path
         conn.execute("INSERT INTO articles (article_id,url_canonical,title,esg_status) "
-                     "VALUES ('a::3','u','t','esg')")
+                     "VALUES ('a::3','u3','t','esg')")
         storage.mark_dropped(conn, "a::3")
         r3 = conn.execute("SELECT enrich_status,sentiment FROM articles WHERE article_id='a::3'").fetchone()
         assert r3["enrich_status"] == "dropped" and r3["sentiment"] == "not_risk"
