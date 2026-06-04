@@ -149,16 +149,18 @@ container's `/tmp`.
 **Why safe:** the lock guarantees exactly one job owns the blob at a time → never two writers
 → no SQLite corruption. This is what lets daily and backfill *coexist without running
 concurrently*: if backfill holds the lock for hours, a daily firing sees the lock and skips
-that day; the 3-day fetch window + next day's run recovers, so no articles are lost.
+that day; the 5-day fetch window + next day's run recovers, so no articles are lost.
 
 **Crash safety:** if a job dies during step 3, the GCS blob is still at generation G (the
 previous good state). The next run re-downloads G and redoes the lost run's work — one wasted
 run, **zero data loss**.
 
-**Stale-lock recovery:** `pipeline.lock` carries a JSON body `{owner, started_at, mode}`. A
-starting job that finds a lock whose `started_at` is older than a TTL (e.g. daily TTL = 2h;
-backfill writes a long/refreshed TTL) treats it as abandoned and takes it over. The lock body
-is refreshed periodically during a long backfill (see below) so it is not falsely reaped.
+**Stale-lock recovery:** `pipeline.lock` carries a JSON body `{owner, started_at, mode,
+ttl_seconds}`. A starting job that finds a lock whose `started_at + ttl_seconds` is in the
+past treats it as abandoned and takes it over. **Both** profiles refresh the lock periodically
+while running (not just backfill), so a long run is never falsely reaped — and the daily TTL
+must be set with margin over the *measured* daily wall-clock (which is provisional, see Daily
+flow note), not a guessed 2h.
 
 **Lock body schema** (`state/pipeline.lock`, JSON):
 ```json
@@ -200,7 +202,7 @@ locked.
 1. ACQUIRE LOCK + DOWNLOAD blob
 2. init_db()
 3. ENQUEUE  queue_builder --mode backfill  → per-company alias + per-keyword passes,
-            weekly chunks over 5 years (the "hybrid per-company pass" coverage-gap fix)
+            weekly chunks over the full history (BACKFILL_START=2020-01-01 → ~5+ years)
 4. DRAIN the FETCH queue in chunks: fetch workers --drain; every ~2h checkpoint-upload the
             blob and refresh the lock TTL → a crash never loses more than the last fetch chunk
             (queue state persists in the blob). NOTE: it is the *fetch/queue* progress that is
@@ -356,7 +358,7 @@ Sources: [Cloud Run pricing](https://cloud.google.com/run/pricing),
 ## Risks & open questions
 
 - **Backfill holds the lock for hours** → daily skips while it runs. Acceptable for an
-  occasional operation (3-day window recovers). Alternative if it becomes a problem: run
+  occasional operation (5-day window recovers). Alternative if it becomes a problem: run
   backfill as repeated short executions that each acquire/drain-a-chunk/release so daily can
   interleave.
 - **Blob size growth** over time (see Future). Monitor; act only if round-trip time bites.
