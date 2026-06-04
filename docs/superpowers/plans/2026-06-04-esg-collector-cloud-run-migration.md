@@ -684,7 +684,7 @@ DATA_DIR = Path(os.environ["ESG_DATA_DIR"]) if os.environ.get("ESG_DATA_DIR") el
 LOGS_DIR = ROOT / "logs"
 ```
 
-(`PER_TICKER_DIR`, `WEB_DIR`, `DB_PATH` already derive from `DATA_DIR`, so they follow automatically. The import-time `mkdir` block at the bottom is unchanged — it now creates the env dir.)
+(`PER_TICKER_DIR`, `WEB_DIR`, `DB_PATH` already derive from `DATA_DIR`, so they follow automatically. The import-time `mkdir` block at the bottom is unchanged — it now creates the env dir. **No other change needed in this file:** `_TODAY` already uses `ZoneInfo("Asia/Ho_Chi_Minh")` so it resolves to VN date in-container regardless of the container's UTC clock, and `BRAVE_API_KEY`/`JINA_API_KEY` are already read from `os.environ` — Secret Manager just injects them. `GROQ_API_KEY` is read inside the enrich module, not here.)
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -1157,7 +1157,9 @@ def test_daily_stage_order_includes_enrich():
     assert any("workers.body_fetcher --drain" in c for c in cmds)
     assert any("pipeline.match" in c for c in cmds)
     assert any("enrich.runner --limit 25" in c for c in cmds)
-    assert any("pipeline.export --ndjson --web --upload" in c for c in cmds)
+    # two export stages so the raw_esg NDJSON actually uploads (see job.py note)
+    assert any("pipeline.export --ndjson --upload" in c for c in cmds)
+    assert any("pipeline.export --web --upload" in c for c in cmds)
     # enrich must come after match and before export
     i_match = next(i for i, c in enumerate(cmds) if "pipeline.match" in c)
     i_enrich = next(i for i, c in enumerate(cmds) if "enrich.runner" in c)
@@ -1234,11 +1236,14 @@ def stage_commands(mode: str, tickers: list[str] | None) -> list[list[str]]:
     if mode == "backfill":
         cmds.append([PY, "-m", "pipeline.match", "--rematch-all"])
         # enrich intentionally skipped in backfill (daily catches up)
-        cmds.append([PY, "-m", "pipeline.export", "--ndjson", "--web", "--upload"])
     else:  # daily
         cmds.append([PY, "-m", "pipeline.match"])
         cmds.append([PY, "-m", "enrich.runner", "--limit", str(ENRICH_LIMIT)])
-        cmds.append([PY, "-m", "pipeline.export", "--ndjson", "--web", "--upload"])
+    # Two export stages: export.run() makes --upload target the WEB files when
+    # --web is present (see export.py:210-213), so a combined --ndjson --web
+    # --upload would silently NOT push the raw_esg NDJSON + per_ticker. Split:
+    cmds.append([PY, "-m", "pipeline.export", "--ndjson", "--upload"])  # raw_esg + per_ticker
+    cmds.append([PY, "-m", "pipeline.export", "--web", "--upload"])     # web/*.json
     return cmds
 
 
@@ -1503,6 +1508,11 @@ jobs:
         with:
           project_id: gen-lang-client-0020762472
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
       - name: Run tests
         working-directory: esg-collector
         run: |
@@ -1535,29 +1545,38 @@ jobs:
             --set-secrets BRAVE_API_KEY=BRAVE_API_KEY:latest,JINA_API_KEY=JINA_API_KEY:latest,GROQ_API_KEY=GROQ_API_KEY:latest \
             --args=--mode,backfill
 
+      # Grant invoker BEFORE creating the schedule, else the first fire 403s.
+      # The runtime SA doubles as the scheduler's OAuth identity (one SA model).
+      - name: Grant scheduler invoker on the daily job
+        run: |
+          gcloud run jobs add-iam-policy-binding esg-daily --region "$REGION" \
+            --member="serviceAccount:${RUNTIME_SA}" --role=roles/run.invoker
+
       - name: Ensure daily schedule exists
         run: |
+          # v2 Jobs API endpoint (host is un-prefixed run.googleapis.com), NOT the
+          # v1 Knative/services namespaces URL — the latter does not run a Job.
           gcloud scheduler jobs create http esg-daily-trigger \
             --location "$REGION" --schedule "0 2 * * *" --time-zone UTC \
-            --uri "https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT}/jobs/esg-daily:run" \
+            --uri "https://run.googleapis.com/v2/projects/${PROJECT}/locations/${REGION}/jobs/esg-daily:run" \
             --http-method POST \
             --oauth-service-account-email "$RUNTIME_SA" \
+            --oauth-token-scope "https://www.googleapis.com/auth/cloud-platform" \
+            --attempt-deadline 180s \
             || echo "scheduler job already exists"
 ```
 
-> Notes: `--task-timeout 3600` (1h) for daily, `86400` (24h) for backfill — both inside the 7-day cap. `--max-retries 0` so a failed run does not silently re-enter and fight the lock. The Scheduler step is create-or-skip (idempotent). The runtime SA needs `roles/run.invoker` on `esg-daily` for the scheduler call — add it in Task 14 setup if the create fails with a permission error.
+> Notes: `--task-timeout 3600` (1h) for daily, `86400` (24h) for backfill — both inside the 7-day cap. `--max-retries 0` so a failed run does not silently re-enter and fight the lock. The Scheduler step is create-or-skip (idempotent). Trigger is fire-and-forget — the job runs async, so the 180s `--attempt-deadline` only bounds the API call that *starts* the job, not the run.
 
-- [ ] **Step 2: Add `roles/run.invoker` for the scheduler** (append to `setup.sh` or run once):
-
-```bash
-gcloud run jobs add-iam-policy-binding esg-daily --region us-central1 \
-  --member="serviceAccount:esg-collector@gen-lang-client-0020762472.iam.gserviceaccount.com" \
-  --role=roles/run.invoker
-```
-
-- [ ] **Step 3: Trigger the workflow** (push to a test branch with `workflow_dispatch`, or merge to main once cutover is ready). Verify the build + both `gcloud run jobs deploy` steps succeed.
+- [ ] **Step 2: Trigger the workflow** (push to a test branch with `workflow_dispatch`, or merge to main once cutover is ready). Verify the build + both `gcloud run jobs deploy` steps succeed.
 
 Expected: GitHub Actions run green; `gcloud run jobs list --region us-central1` shows `esg-daily` and `esg-backfill`.
+
+- [ ] **Step 3: Verify the Scheduler→Job wiring** (the riskiest link) by firing the trigger once by hand.
+
+Run: `gcloud scheduler jobs run esg-daily-trigger --location us-central1`
+Then: `gcloud run jobs executions list --job esg-daily --region us-central1`
+Expected: a new execution appears and reaches `Succeeded`.
 
 - [ ] **Step 4: Commit**
 
@@ -1575,16 +1594,25 @@ git commit -m "ci(cloudrun): build+push image, deploy daily/backfill jobs, sched
 **Files:**
 - Create: `deploy/cloudrun/README.md` (runbook)
 
-- [ ] **Step 1: Write `deploy/cloudrun/README.md`** documenting the cutover sequence (stop VM writers → WAL-checkpoint → seed blob → deploy → verify → decommission), including these exact commands:
+- [ ] **Step 1: Write `deploy/cloudrun/README.md`** documenting the cutover sequence (capture baseline → stop VM writers → WAL-checkpoint → seed blob → deploy → verify → decommission), including these exact commands:
 
 ```bash
+# 0. CAPTURE A PARITY BASELINE *BEFORE* touching the VM (the gate for Chunk 6).
+#    Save the current live outputs so Step 4 has something to diff against.
+mkdir -p /tmp/baseline
+gcloud storage cp gs://esg-scan-data/web/esg_events.json /tmp/baseline/
+gcloud storage cp -r gs://esg-scan-data/per_ticker /tmp/baseline/    # or just record counts
+python -c "import json,glob;print('baseline events:',len(json.load(open('/tmp/baseline/esg_events.json'))))"
+
 # 1. Stop VM writers (so the DB is quiescent during copy)
 gcloud compute ssh esg-collector --zone us-central1-a --tunnel-through-iap --command '
   sudo systemctl stop esg-collector-google esg-collector-baomoi \
     esg-collector-brave esg-collector-body esg-collector-match.timer \
     esg-collector-enrich.timer'
 
-# 2. WAL-checkpoint, then seed the blob from the VM's articles.db
+# 2. WAL-checkpoint, then seed the blob from the VM's articles.db.
+#    Path matches the deploy workflow's $DB=$APP_DIR/data/articles.db
+#    (APP_DIR=/opt/esg-collector/esg-collector) — note the double nesting.
 gcloud compute ssh esg-collector --zone us-central1-a --tunnel-through-iap --command '
   /opt/esg-collector/.venv/bin/python -c "import sqlite3; c=sqlite3.connect(\"/opt/esg-collector/esg-collector/data/articles.db\"); c.execute(\"PRAGMA wal_checkpoint(TRUNCATE)\"); c.close()"
   gsutil cp /opt/esg-collector/esg-collector/data/articles.db gs://esg-scan-data/state/articles.db'
@@ -1597,7 +1625,13 @@ gcloud storage ls -L gs://esg-scan-data/state/articles.db        # generation ad
 gcloud storage ls gs://esg-scan-data/web/                        # esg_events.json fresh
 ```
 
-- [ ] **Step 2: Execute steps 1–2** (stop writers, checkpoint, seed). Verify `gs://esg-scan-data/state/articles.db` exists.
+> **Backfill timeout note (put in the runbook):** `esg-backfill` has a 24h
+> `--task-timeout`. A full 5-year backfill may exceed 24h; it checkpoints the
+> fetch queue to the blob every ~2h, so just re-run `gcloud run jobs execute
+> esg-backfill --region us-central1` — each run resumes from the persisted queue.
+> There is no auto-retry (`--max-retries 0`, manual trigger), so this is operator-driven.
+
+- [ ] **Step 2: Execute step 0 (baseline), then steps 1–2** (stop writers, checkpoint, seed). Verify `gs://esg-scan-data/state/articles.db` exists.
 
 Run: `gcloud storage ls -l gs://esg-scan-data/state/articles.db`
 Expected: one object, size ≈ the VM DB size.
@@ -1606,9 +1640,10 @@ Expected: one object, size ≈ the VM DB size.
 
 Expected: execution `Succeeded`; logs show lock acquired → DB downloaded → stages → blob checked in.
 
-- [ ] **Step 4: Parity check.** Confirm the web reads the same data path it already used (`gs://esg-scan-data/web/esg_events.json`) and the new run refreshed it. Spot-check a few tickers' `per_ticker/*.json` count against the pre-cutover VM output.
+- [ ] **Step 4: Parity check against the Step 0 baseline.** Diff the new `gs://esg-scan-data/web/esg_events.json` event count and a few `per_ticker/*.json` counts against `/tmp/baseline/`.
 
-Expected: `web/esg_events.json` re-uploaded (public), per_ticker counts consistent (≥ pre-cutover, never wiped — daily does not `--rematch-all`).
+Run: `gcloud storage cp gs://esg-scan-data/web/esg_events.json /tmp/after.json && python -c "import json;b=len(json.load(open('/tmp/baseline/esg_events.json')));a=len(json.load(open('/tmp/after.json')));print('baseline',b,'after',a);assert a>=b, 'event count dropped!'"`
+Expected: `after >= baseline` (daily appends and re-enriches; it does not `--rematch-all`, so counts never shrink). `web/esg_events.json` re-uploaded and public.
 
 - [ ] **Step 5: Commit the runbook**
 
@@ -1637,10 +1672,13 @@ gcloud compute instances stop esg-collector --zone us-central1-a
 gcloud compute instances delete esg-collector --zone us-central1-a
 ```
 
-- [ ] **Step 3: Delete the old `esg_scan` Cloud Function** (project `ta-tracking-api`) once confirmed the web no longer reads its output.
+- [ ] **Step 3: Delete the old `esg_scan` Cloud Function** (project `ta-tracking-api`) once confirmed the web no longer reads its output. First locate it (don't assume the region/generation), then delete with the matching `--gen2` flag.
 
 ```bash
-gcloud functions delete esg_scan --region us-central1 --project ta-tracking-api
+# locate it first — confirms project, region, and generation
+gcloud functions list --project ta-tracking-api
+# 2nd-gen function (shows up under Cloud Run) → needs --gen2; adjust --region to the listed one
+gcloud functions delete esg_scan --gen2 --region us-central1 --project ta-tracking-api
 ```
 
 - [ ] **Step 4: Update `esg-collector/CLAUDE.md`** — replace the "Deploy is automated via IAP SSH" section with the Cloud Run model (push → build image → deploy jobs; backfill is `gcloud run jobs execute esg-backfill`; secrets in Secret Manager; no SSH/systemd).
@@ -1657,6 +1695,7 @@ git commit -m "chore(cloudrun): decommission VM + esg_scan; update deploy docs"
 ## Done criteria
 
 - `python -m pytest tests/ -v` green in `esg-collector/`.
+- Cloud Scheduler `esg-daily-trigger` exists and a manual `gcloud scheduler jobs run esg-daily-trigger --location us-central1` produces a `Succeeded` execution (exercises the Scheduler→Job link end-to-end).
 - `esg-daily` runs on schedule, checks the DB blob in/out under the lock, refreshes `web/*.json`.
 - `esg-backfill` runs on manual `gcloud run jobs execute` (with optional `--args=--mode,backfill,--tickers,XXX`), never overlapping daily (lock-guarded).
 - No VM, no systemd, no SSH in the deploy path; `git push` → image → jobs.
