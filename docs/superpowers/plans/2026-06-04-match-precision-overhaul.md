@@ -230,14 +230,52 @@ def reload(aliases_dir: Path = settings.ALIASES_DIR) -> None:
 Run: `python -m tests.test_stoplist`
 Expected: `ALL OK` (all three tests print OK).
 
-- [ ] **Step 5: Verify the real corpus still loads (no regression)**
+- [ ] **Step 5: Update the legacy reference matcher to mirror the stoplist (REQUIRED)**
+
+`tests/test_rematch.py::test_matcher_equivalence` compares the live matcher
+against a frozen legacy matcher that has **no** stoplist. The fixture corpus
+(`tests/fixtures/matcher_corpus.jsonl`) contains rows that match via stoplisted
+surfaces (e.g. "PAN" → PAN, "Apatit" → DGC), so without this edit the live
+matcher (now stoplist-aware) **will** diverge and the test **will** fail. Make
+the legacy reference consult the same stoplist.
+
+In `tests/test_rematch.py`, edit `_legacy_index` (lines 32-49) to load the
+stoplist once and skip those surfaces in the field loop:
+
+```python
+def _legacy_index(aliases_dir: Path):
+    try:
+        stop = {str(s).strip().upper() for s in
+                json.loads(settings.AMBIGUOUS_ALIASES_PATH.read_text(encoding="utf-8"))}
+    except (OSError, json.JSONDecodeError, AttributeError):
+        stop = set()
+    index = {}
+    for p in sorted(Path(aliases_dir).glob("*.json")):
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        ticker = (data.get("ticker") or p.stem).upper()
+        items, seen = [], set()
+        for field, weight in [(f, 1.0) for f in _STRONG_FIELDS] + [(f, 0.3) for f in _WEAK_FIELDS]:
+            for a in data.get(field) or []:
+                a = (a or "").strip()
+                if not a or len(a) < 2 or a.lower() in seen:
+                    continue
+                if a.upper() in stop:        # mirror Fix 1+A
+                    continue
+                seen.add(a.lower())
+                items.append((a, weight, _legacy_compile(a)))
+        index[ticker] = items
+    return index
+```
+
+- [ ] **Step 6: Run the rematch suite to verify no regression**
 
 Run: `python -m tests.test_rematch`
-Expected: `ALL OK` — `test_matcher_equivalence` still passes (the live aliases load; with the real `ambiguous_aliases.json` present, stoplisted surfaces are simply absent — the legacy reference matcher in that test does not consult the stoplist, so confirm equivalence still holds; if it diverges only on stoplisted surfaces, that is expected — see note). 
+Expected: `ALL OK` — `test_matcher_equivalence` passes again (both sides now skip stoplisted surfaces), and `test_fetch_by_ids` / `test_chunked_rematch` are unaffected.
 
-> Note: `test_matcher_equivalence` compares against a legacy matcher that has no stoplist. If the live `ambiguous_aliases.json` causes divergences, they will be exactly the stoplisted surfaces. If the test fails for that reason, update the legacy reference in `tests/test_rematch.py` to also skip `_STOPLIST` (load it the same way) so the equivalence check stays meaningful. Make that change in this step if needed and re-run.
-
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add core/alias_matcher.py tests/test_stoplist.py tests/test_rematch.py
@@ -753,75 +791,65 @@ if str(ROOT) not in sys.path:
 from config import settings  # noqa: E402
 
 
-def _aliases(d: Path):
-    for tk, name in [("AAA", "Alpha Corp"), ("BBB", "Beta Corp"),
-                     ("CCC", "Gamma Corp")]:
-        (d / f"{tk}.json").write_text(json.dumps(
-            {"ticker": tk, "names": [name], "subsidiaries": [],
-             "projects": [], "locations": []}, ensure_ascii=False), encoding="utf-8")
-
-
-def _matched_tickers(conn):
-    return {r["article_id"]: r["match_status"]
-            for r in conn.execute("SELECT article_id, match_status FROM articles")}
+def _in_pt(pt_dir: Path, tk: str, aid: str) -> bool:
+    p = pt_dir / f"{tk}.json"
+    if not p.exists():
+        return False
+    return aid in {a["article_id"] for a in json.loads(p.read_text("utf-8"))["articles"]}
 
 
 def test_roundup_drops_nontitle_keeps_title():
+    # match.run() reloads the REAL alias pool (match.py:164), so we must use real
+    # distinctive names: Vinhomes->VHM, Novaland->NVL, Sacombank->STB. Companies
+    # go in DESCRIPTION (a Stage-1 field the matcher scans, so all enter `hits`);
+    # the ESG keyword goes in the TITLE (esg_filter reads title+sapo+body, NOT
+    # description) so classify().keep is True. body_status='skipped' (terminal,
+    # so an emptied hit list routes to 'unmatched').
     from core import storage, alias_matcher
     from pipeline import match
-    _opt, _obs, _osp = settings.PER_TICKER_DIR, match.BATCH_SIZE, settings.AMBIGUOUS_ALIASES_PATH
+    _opt, _obs = settings.PER_TICKER_DIR, match.BATCH_SIZE
     with tempfile.TemporaryDirectory() as td:
-        ad = Path(td) / "aliases"; ad.mkdir(); _aliases(ad)
-        settings.AMBIGUOUS_ALIASES_PATH = Path(td) / "none.json"  # empty stoplist
-        alias_matcher.reload(ad)
         try:
             settings.PER_TICKER_DIR = Path(td) / "pt"; settings.PER_TICKER_DIR.mkdir()
             match.BATCH_SIZE = 10
             db = Path(td) / "m.db"; storage.init_db(db); conn = storage.connect(db)
-            # (1) roundup: 3 companies, all in BODY, risk keyword present -> all dropped
+            # (1) roundup: 3 companies in description, none in title -> all dropped
             storage.insert_article(conn, {"article_id": "r::1", "url_canonical": "u1",
                 "url_original": "u1", "domain": "d", "title": "Thanh tra phát hiện sai phạm",
+                "description": "Liên quan Vinhomes, Novaland và Sacombank.",
                 "title_hash": "h1", "backend": "google_rss", "group_key": "kw",
-                "sub_query_ix": 0, "body_status": "fetched"})
-            storage.mark_body(conn, "r::1", "fetched",
-                "Thanh tra phát hiện sai phạm tại Alpha Corp, Beta Corp và Gamma Corp.")
-            # (2) 3 companies but one in TITLE -> only the title one kept
+                "sub_query_ix": 0, "body_status": "skipped"})
+            # (2) 3 companies, ONE (Vinhomes) in title -> only the title one kept
             storage.insert_article(conn, {"article_id": "r::2", "url_canonical": "u2",
                 "url_original": "u2", "domain": "d",
-                "title": "Alpha Corp bị xử phạt vì vi phạm", "title_hash": "h2",
-                "backend": "google_rss", "group_key": "kw", "sub_query_ix": 0,
-                "body_status": "fetched"})
-            storage.mark_body(conn, "r::2", "fetched",
-                "Alpha Corp bị xử phạt. Beta Corp và Gamma Corp cũng được nhắc tới.")
+                "title": "Vinhomes bị xử phạt vì vi phạm",
+                "description": "Novaland và Sacombank cũng liên quan.",
+                "title_hash": "h2", "backend": "google_rss", "group_key": "kw",
+                "sub_query_ix": 0, "body_status": "skipped"})
             # (3) only 2 companies -> untouched (both kept)
             storage.insert_article(conn, {"article_id": "r::3", "url_canonical": "u3",
                 "url_original": "u3", "domain": "d", "title": "Xử phạt vi phạm môi trường",
+                "description": "Liên quan Vinhomes và Novaland.",
                 "title_hash": "h3", "backend": "google_rss", "group_key": "kw",
-                "sub_query_ix": 0, "body_status": "fetched"})
-            storage.mark_body(conn, "r::3", "fetched",
-                "Alpha Corp và Beta Corp bị xử phạt vì vi phạm.")
+                "sub_query_ix": 0, "body_status": "skipped"})
             conn.close()
 
             match.run(db_path=db)
+            pt = settings.PER_TICKER_DIR
 
-            conn = storage.connect(db)
-            doc_dir = settings.PER_TICKER_DIR
-            def in_pt(tk, aid):
-                p = doc_dir / f"{tk}.json"
-                if not p.exists():
-                    return False
-                return aid in {a["article_id"] for a in json.loads(p.read_text("utf-8"))["articles"]}
-
-            # (1) roundup, all body -> none attributed
-            assert not in_pt("AAA", "r::1") and not in_pt("BBB", "r::1") and not in_pt("CCC", "r::1")
-            # (2) only the title company kept
-            assert in_pt("AAA", "r::2")
-            assert not in_pt("BBB", "r::2") and not in_pt("CCC", "r::2")
+            # (1) roundup, none in title -> no attribution
+            assert not _in_pt(pt, "VHM", "r::1")
+            assert not _in_pt(pt, "NVL", "r::1")
+            assert not _in_pt(pt, "STB", "r::1")
+            # (2) only the title company kept (gate truly exercised: 3 Stage-1 hits)
+            assert _in_pt(pt, "VHM", "r::2")
+            assert not _in_pt(pt, "NVL", "r::2")
+            assert not _in_pt(pt, "STB", "r::2")
             # (3) 2-company article -> both kept
-            assert in_pt("AAA", "r::3") and in_pt("BBB", "r::3")
-            conn.close()
+            assert _in_pt(pt, "VHM", "r::3")
+            assert _in_pt(pt, "NVL", "r::3")
         finally:
-            settings.PER_TICKER_DIR, match.BATCH_SIZE, settings.AMBIGUOUS_ALIASES_PATH = _opt, _obs, _osp
+            settings.PER_TICKER_DIR, match.BATCH_SIZE = _opt, _obs
             alias_matcher.reload()
     print("  roundup_drops_nontitle_keeps_title OK")
 
@@ -847,7 +875,7 @@ if __name__ == "__main__":
 - [ ] **Step 2: Run the test to verify it fails**
 
 Run: `python -m tests.test_match_roundup`
-Expected: FAIL — without the gate, roundup `r::1` attributes to AAA/BBB/CCC (assert `not in_pt` fails).
+Expected: FAIL — without the gate, roundup `r::1` attributes to VHM/NVL/STB and `r::2` attributes NVL/STB too (the `assert not _in_pt(...)` lines fail). Requires `config/ambiguous_aliases.json` to exist (Task 1.1) since `match.run()` reloads the real stoplist; Vinhomes/Novaland/Sacombank are not stoplisted.
 
 - [ ] **Step 3: Implement the gate**
 
