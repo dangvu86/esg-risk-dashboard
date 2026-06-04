@@ -149,7 +149,8 @@ def _maybe_split(conn, backend_mod, task, n_items: int) -> None:
         )
 
 
-def run(backend_name: str) -> None:
+def run(backend_name: str, *, drain: bool = False,
+        throttle_override: float | None = None) -> None:
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(name)s/%(levelname)s] %(message)s",
@@ -158,7 +159,7 @@ def run(backend_name: str) -> None:
     signal.signal(signal.SIGTERM, _on_signal)
 
     backend_mod = _load_backend(backend_name)
-    throttle = settings.THROTTLE[backend_name]
+    throttle = throttle_override if throttle_override is not None else settings.THROTTLE[backend_name]
     backoff_sched = settings.BACKOFF[backend_name]
 
     storage.init_db()
@@ -169,7 +170,14 @@ def run(backend_name: str) -> None:
     while not _stop:
         task = storage.next_task(conn, backend_name)
         if task is None:
-            log.info("no task ready — sleeping %ds", idle_sleep)
+            if drain:
+                if not storage.has_remaining_tasks(conn, backend_name):
+                    log.info("drain: queue empty for %s — exiting", backend_name)
+                    break
+                # tasks exist but are backing off — wait briefly for next_attempt
+                log.info("drain: only backed-off tasks left — idle %ds", idle_sleep)
+            else:
+                log.info("no task ready — sleeping %ds", idle_sleep)
             for _ in range(idle_sleep):
                 if _stop:
                     break
@@ -222,8 +230,10 @@ def run(backend_name: str) -> None:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--backend", required=True, choices=list(BACKEND_MODULES.keys()))
+    ap.add_argument("--drain", action="store_true",
+                    help="exit when the queue is fully drained instead of polling forever")
     args = ap.parse_args()
-    run(args.backend)
+    run(args.backend, drain=args.drain)
 
 
 if __name__ == "__main__":
