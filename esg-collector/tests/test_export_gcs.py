@@ -1,4 +1,4 @@
-import sys, tempfile
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -14,6 +14,29 @@ def test_upload_ndjson_lands_in_raw_esg(tmp_path):
     nd = tmp_path / "articles_full_20260604.ndjson"; nd.write_text("{}\n")
     export._upload(nd, bucket=bucket)
     assert "raw_esg/articles_full_20260604.ndjson" in bucket._store
+
+
+def test_upload_flattens_per_ticker(tmp_path, monkeypatch):
+    # Set up a per_ticker dir with two JSON files
+    per_ticker_dir = tmp_path / "per_ticker"
+    per_ticker_dir.mkdir()
+    (per_ticker_dir / "DBC.json").write_text('{"ticker":"DBC"}')
+    (per_ticker_dir / "HPG.json").write_text('{"ticker":"HPG"}')
+
+    # Patch PER_TICKER_DIR on the settings object that export references
+    import pipeline.export as _exp
+    monkeypatch.setattr(_exp.settings, "PER_TICKER_DIR", per_ticker_dir)
+
+    # Create a dummy ndjson so the raw_esg upload branch also runs
+    nd = tmp_path / "articles_full_20260604.ndjson"
+    nd.write_text("{}\n")
+
+    bucket = FakeBucket()
+    export._upload(nd, bucket=bucket)
+
+    assert "raw_esg/articles_full_20260604.ndjson" in bucket._store
+    assert "per_ticker/DBC.json" in bucket._store
+    assert "per_ticker/HPG.json" in bucket._store
 
 
 def test_upload_web_sets_public(tmp_path):
