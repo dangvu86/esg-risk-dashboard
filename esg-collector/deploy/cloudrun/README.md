@@ -135,7 +135,11 @@ blob generation advances, and the event count is at least as large as the
 Phase 0 baseline.
 
 ```bash
-# Run the daily job and wait for completion (may take 20-40 minutes)
+# Run the daily job and wait for completion. The 20-40 minute figure is a
+# PROVISIONAL estimate — the first run's fetch wall-clock has not been measured
+# and may run 2-3x higher. Measure it on this first execution. The lock is
+# refreshed every 30 min during the fetch drain, so a long fetch will not trip
+# the lock TTL even when it overruns this estimate.
 gcloud run jobs execute esg-daily --region us-central1 --wait
 
 # Confirm the DB blob generation advanced (metatdata should show a newer
