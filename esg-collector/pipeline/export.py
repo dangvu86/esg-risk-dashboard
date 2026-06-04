@@ -11,7 +11,7 @@ the first run after a schema change.
 Local:
     python -m pipeline.export --ndjson
     python -m pipeline.export --ndjson --full      # full snapshot
-Upload (requires gsutil + auth on the running host):
+Upload (requires google-cloud-storage + ADC on the running host):
     python -m pipeline.export --ndjson --upload
 """
 
@@ -21,17 +21,17 @@ import argparse
 import csv
 import json
 import logging
-import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
 from config import settings
 from core import storage
+from runtime import gcs
 
 
 log = logging.getLogger("export")
 
-GCS_BUCKET = "gs://esg-scan-data"
+GCS_BUCKET_NAME = gcs.GCS_BUCKET_NAME  # "esg-scan-data"
 
 _LAST_EXPORT_KEY = "last_ndjson_export_at"
 
@@ -76,27 +76,15 @@ def _export_ndjson(out_dir: Path, *, full: bool) -> Path:
     return path
 
 
-def _gsutil_cp(src: Path, dst: str) -> None:
-    cmd = ["gsutil", "cp", str(src), dst]
-    log.info("$ %s", " ".join(cmd))
-    subprocess.run(cmd, check=True)
-
-
-def _upload(ndjson: Path) -> None:
-    _gsutil_cp(ndjson, f"{GCS_BUCKET}/raw_esg/{ndjson.name}")
+def _upload(ndjson: Path, *, bucket=None) -> None:
+    bucket = bucket if bucket is not None else gcs.get_bucket()
+    gcs.upload_file(bucket, f"raw_esg/{ndjson.name}", ndjson)
     if settings.PER_TICKER_DIR.exists():
-        # `gsutil cp -r dir gs://...` keeps the dir name; we want flat per_ticker/
-        cmd = [
-            "gsutil", "-m", "cp",
-            str(settings.PER_TICKER_DIR / "*.json"),
-            f"{GCS_BUCKET}/per_ticker/",
-        ]
-        log.info("$ %s", " ".join(cmd))
-        # use shell=True so the glob expands on Windows; on Linux gsutil handles it
-        subprocess.run(" ".join(cmd), shell=True, check=True)
+        for p in sorted(settings.PER_TICKER_DIR.glob("*.json")):
+            gcs.upload_file(bucket, f"per_ticker/{p.name}", p)
 
 
-WEB_PREFIX = f"{GCS_BUCKET}/web"
+WEB_PREFIX = "web"
 
 
 def _company_names() -> dict[str, str]:
@@ -189,12 +177,12 @@ def _write_web_files() -> tuple[Path, Path]:
     return ev_path, top_path
 
 
-def _upload_web(ev_path: Path, top_path: Path) -> None:
+def _upload_web(ev_path: Path, top_path: Path, *, bucket=None) -> None:
+    bucket = bucket if bucket is not None else gcs.get_bucket()
     for src in (ev_path, top_path):
-        dst = f"{WEB_PREFIX}/{src.name}"
-        _gsutil_cp(src, dst)
         # objects are overwritten each run → re-apply public-read ACL each time
-        subprocess.run(["gsutil", "acl", "ch", "-u", "AllUsers:R", dst], check=True)
+        # (requires UBLA OFF on the bucket).
+        gcs.upload_file(bucket, f"{WEB_PREFIX}/{src.name}", src, public=True)
 
 
 def run(do_ndjson: bool, do_upload: bool, *, full: bool = False,
