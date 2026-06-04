@@ -1315,6 +1315,20 @@ if __name__ == "__main__":
 
 > The `stage_commands` split in `run()` re-filters fetch vs non-fetch so the three backends run concurrently while everything else stays sequential. `enqueue` is the first non-fetch command by construction. The lock is refreshed between stages so a long backfill never trips its own TTL.
 
+> **IMPLEMENTED CORRECTION (commits 80f9423 + 604c0b0):** the `run()` above as
+> first written had a lock-handle bug — `gcs_lock.refresh()` re-writes the lock
+> blob and returns a **new** handle with a new generation, so its return MUST be
+> reassigned (`handle = _refresh(...)`), else the next refresh and the final
+> `release` fail their generation preconditions and leak the lock. The shipped
+> version: (a) a `_refresh()` helper that reassigns and raises `LockLost` if
+> refresh returns `None` (the lock was taken over as stale); (b) on `LockLost`,
+> set `owns_lock=False`, skip both the DB check-in and the release, return 1;
+> (c) `finally` releases only when `owns_lock`; (d) a `bucket=None` injection seam
+> + `_run_stage` subprocess seam for tests; (e) `_run_stage` logs non-zero rc
+> (post-fetch stages are intentionally non-fatal — next run catches up). Tests
+> add a lock-lifecycle happy path, a skip-when-held path, and a LockLost abort
+> path. See `runtime/job.py` for the authoritative code.
+
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `python -m pytest tests/test_job_orchestrator.py -v`
