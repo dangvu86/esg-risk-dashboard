@@ -56,6 +56,19 @@ offenders are word/city/currency collisions:
 - `KDC` — 71 (KDC = "khu dân cư", residential area).
 - `VND` — 27 (VND = the đồng currency; 26/27 are amounts like "...tỷ đồng").
 
+> **Important baseline caveat:** `HCM`'s bare ticker has **already been
+> removed** from `config/aliases/HCM.json` by a prior fix (its `names[]` is
+> now `["CTCP Chứng khoán Thành phố Hồ Chí Minh", "Chứng khoán Thành phố Hồ
+> Chí Minh", "Chứng khoán HSC", "HSC"]` — no bare `"HCM"`). The 330 HCM
+> matches above are **stale `per_ticker` data** that predate a rematch; they
+> will be purged by *any* rematch regardless of this change. So HCM is
+> precedent for exactly this approach, but it contributes **0 incremental**
+> drop to this spec. The bare ticker is still present in the live alias JSONs
+> for `GAS`, `KDC`, `VND`, etc. (verified: `GAS.json` names[0]=`"GAS"`,
+> `KDC.json` `"KDC"`, `VND.json` `"VND"`). **This change's incremental impact
+> is ~268 bare matches** (GAS 153 + KDC 71 + VND 27 + PAN/BID/BMP/POW/SIP),
+> dominated by GAS/KDC/VND.
+
 **Sidebar/related-news noise is a weak lever**, contrary to the original
 hypothesis: only **15.8%** of *fetched* bodies contain any related-news
 marker ("Tin liên quan", "Xem thêm", …), and those markers sit **mid-body**
@@ -97,9 +110,11 @@ Eliminate the false positives caused by word/city/currency-collision tickers
 while **keeping recall flat** — in particular without dropping real ESG
 events for companies that are commonly named by their ticker.
 
-Precision ↑ on the ~600 collision-driven bare-ticker matches; recall ≈
-unchanged (real events for collision tickers are independently covered by the
-company name; real events for distinctive tickers keep their bare ticker).
+Precision ↑ on the collision-driven bare-ticker matches this change targets
+(~268 incremental, dominated by GAS/KDC/VND; HCM's 330 are already config-fixed
+and purge on the same rematch); recall ≈ unchanged (real events for collision
+tickers are independently covered by the company name; real events for
+distinctive tickers keep their bare ticker).
 
 ## Non-goals (out of scope — see Follow-ups)
 
@@ -138,12 +153,15 @@ by the company name):**
 
 | Ticker | Collides with | Bare matches | Real events keep via |
 |---|---|---|---|
-| HCM | Ho Chi Minh City | 330 | "HSC", "Chứng khoán HSC" |
+| HCM | Ho Chi Minh City | 330 *(already removed from HCM.json; blocklist entry is belt-and-suspenders, 0 incremental)* | "HSC", "Chứng khoán HSC" |
 | GAS | word "gas" | 153 | "PV Gas", "Tổng Công ty Khí…" |
 | KDC | "khu dân cư" | 71 | "Kido" |
 | VND | đồng currency | 27 | "VNDirect" |
 | PAN | place names ("La Pan Tẩn"), "pan" | 6 | "PAN Group", "Tập đoàn PAN" |
 | BID | "bid"; listicles | 2 | "BIDV" |
+
+Keeping HCM on the blocklist is idempotent (its JSON already lacks the bare
+token, so the guard is a no-op for it) and documents the precedent.
 
 **Drop bare ticker (borderline collisions, low volume; real events covered by
 name):**
@@ -166,24 +184,50 @@ audit process.
 
 ### Mechanism
 
-1. **Central blocklist file** — `esg-collector/config/ambiguous_tickers.json`
-   (a JSON list of ticker strings). One file to audit and maintain; avoids
-   editing ~100 alias files and avoids re-running the Vietstock builder.
+1. **Central blocklist file** — `esg-collector/config/ambiguous_tickers.json`,
+   a JSON array of upper-case ticker strings, e.g.
+   `["GAS","KDC","VND","PAN","BID","BMP","POW","SIP","HCM"]`. One file to
+   audit and maintain; avoids editing ~100 alias files and avoids re-running
+   the Vietstock builder. Add a settings constant following the existing
+   `ROOT / "config" / ...` convention (cf. `COMPANIES_CSV`):
+   `settings.AMBIGUOUS_TICKERS_PATH = ROOT / "config" / "ambiguous_tickers.json"`.
+
 2. **Enforce at alias load** — in
-   [`core/alias_matcher.py` `reload()`](../../../esg-collector/core/alias_matcher.py),
-   when building the per-ticker alias set, drop any `names[]` entry that
-   (case-insensitively) equals the ticker code **iff** the ticker is in the
-   blocklist. All other aliases (full name, brand, subsidiaries, projects)
-   are unaffected. This is data-independent: it works on the existing alias
-   JSONs with no regeneration, and naturally takes effect on the next match
-   run.
-3. **Keep the builder consistent (defense in depth)** — update
-   `alias_builder/fetch_vietstock.py` to consult the same blocklist so that a
-   future `--all` regeneration does not silently re-introduce a dropped bare
-   ticker. (The builder still *writes* the ticker into the JSON for
-   provenance; the loader is the single enforcement point. Decide during
-   implementation whether the builder should also omit it — the load-time
-   guard is authoritative either way.)
+   [`core/alias_matcher.py` `reload()`](../../../esg-collector/core/alias_matcher.py).
+   Note `reload()` does **not** build a per-ticker structure: it iterates
+   alias files and flattens every alias into the global `_OWNERS` map plus the
+   `strong`/`alla` sets (alias_matcher.py:63-82). The owning `ticker` is
+   already in scope at the filter point (`ticker = (data.get("ticker") or
+   p.stem).upper()`, line 68). The hook is therefore: at the top of `reload()`
+   load the blocklist into a module-level `set[str]` (upper-cased), guarded by
+   try/except so a missing/malformed file → empty set + a logged warning (the
+   module auto-calls `reload()` at import, line 135, so fresh checkouts and
+   tests must not crash). Then, inside the per-field loop, **before** the alias
+   is added to `_OWNERS`/`alla`/`strong` (line 77), skip any `names`-field
+   value whose `.strip().upper() == ticker` when `ticker` is in the blocklist.
+   All other aliases (full name, brand, subsidiaries, projects) are
+   unaffected. This is data-independent: it works on the existing alias JSONs
+   with no regeneration, and takes effect on the next match run.
+
+   **`_NESTED` correctness:** the overlapping-substring recovery
+   (alias_matcher.py:84-91) derives each entry's owners from
+   `_OWNERS.get(bl, ())`. Because the bare ticker is removed from `_OWNERS`
+   above, it also contributes nothing to `_NESTED` — so a bare ticker embedded
+   in a longer same-company alias (e.g. "PAN" inside "PAN Farm") is suppressed
+   *as the bare token* while the longer alias "PAN Farm" still matches on its
+   own surface form. No extra code is needed; this invariant is stated so the
+   mechanism's correctness is auditable.
+
+3. **Keep the builder consistent (OPTIONAL — loader is authoritative)** — the
+   loader guard above fully enforces the rule, so the builder change is not
+   required for correctness. If done (to stop a future `--all` regeneration
+   silently re-introducing a dropped bare ticker), the one-line change is to
+   skip `add(ticker.upper())` at
+   [`alias_builder/fetch_vietstock.py:315`](../../../esg-collector/alias_builder/fetch_vietstock.py)
+   when the ticker is in the blocklist. Provenance is unaffected: the ticker
+   is preserved separately as the top-level `"ticker"` JSON key
+   (`build_alias` return, fetch_vietstock.py:340), so omitting it from
+   `names[]` loses nothing.
 
 This keeps a single source of truth (the blocklist) and a single enforcement
 point (the loader), so the rule cannot be partially applied.
@@ -191,11 +235,17 @@ point (the loader), so the rule cannot be partially applied.
 ## Rollout (hard dependency on rematch)
 
 The code/config change is small, but its **visible effect requires a
-rematch**: the ~600 stale bare-ticker matches already written to
+rematch**: the ~600 stale bare-ticker matches (this change's ~268 incremental
+**plus** HCM's already-config-removed ~330) already written to
 `per_ticker/*.json` and `articles.db` are only purged when the matcher
-re-runs over the stored corpus (reading the already-stored body — **no
-re-fetch**). A bare-ticker match that has no other alias support must flip to
-`unmatched`.
+re-runs over the stored corpus (reading the already-stored body from
+`articles.db` — **no re-fetch**). A bare-ticker-only match with no other
+alias support flips to `unmatched` — for rows with a terminal `body_status`
+(`fetched`/`skipped`/`failed`; the `_BODY_TERMINAL` set at match.py:42,
+handled at match.py:140-144). A still-`pending`-body row instead *defers*
+(match.py:146-149) rather than unmatching; this is negligible here because
+previously-matched rows already have a terminal body status (the ~323
+pending-body rows in the corpus table were never matched).
 
 This depends on the **chunked/detached rematch** described in
 [`2026-06-01-esg-collector-rematch-redesign-design.md`](2026-06-01-esg-collector-rematch-redesign-design.md)
@@ -209,6 +259,11 @@ attempt to fix rematch.** The rollout sequence is:
    do not SSH manually).
 2. Once the chunked/detached rematch is confirmed runnable, trigger a full
    rematch (Actions UI → "Deploy esg-collector" → tick `run_rematch_all`).
+   With the detached design the deploy returns immediately and the rematch
+   runs as the background `esg-rematch` unit; progress is observable via the
+   status file the rematch redesign writes (not by waiting on the CI job —
+   the workflow's "slow, ~5–15 min" input hint and 40-min timeout describe
+   the *old inline* behavior and no longer apply).
 3. Re-export `per_ticker/*.json` and the web bucket so the dashboard reflects
    the purge.
 
@@ -218,9 +273,11 @@ Until step 2 runs, **new** articles already get the improved precision; the
 ## Verification & success criteria
 
 - **Before/after on the local snapshot.** Re-run the measurement scripts: for
-  every blocklisted ticker, bare-ticker matches drop to ~0; total matches
-  drop by approximately the blocklisted bare-match count (~600), concentrated
-  in HCM/GAS/KDC/VND.
+  every blocklisted ticker that still has a bare token in its JSON, bare-ticker
+  matches drop to ~0; total matches drop by approximately this change's
+  incremental bare-match count (**~268**, concentrated in **GAS/KDC/VND**).
+  HCM's 330 are excluded from this delta (already config-removed) but will also
+  disappear on the same rematch.
 - **Recall safety check.** Confirm the audited real events for **distinctive**
   tickers still match (ACV pollution fine, BAF waste discharge) — these
   tickers are *not* blocklisted, so they must be unaffected.
@@ -229,12 +286,16 @@ Until step 2 runs, **new** articles already get the improved precision; the
   Kido story still attributes to KDC via "Kido"; a genuine HSC story via
   "HSC").
 - **Unit test** (in the style of
-  [`tests/test_rematch.py`](../../../esg-collector/tests/test_rematch.py)):
-  given a blocklisted ticker, its bare code does **not** produce a match in
-  arbitrary text, while its company-name alias **does**; given a
-  non-blocklisted ticker, its bare code **still** matches. Include a
-  regression case for `KDC` ("khu dân cư" text must not match KDC) and `ACV`
-  ("ACV bị phạt" must still match ACV).
+  [`tests/test_rematch.py`](../../../esg-collector/tests/test_rematch.py),
+  which monkeypatches `settings.PER_TICKER_DIR`). Make `reload()` read the
+  blocklist via `settings.AMBIGUOUS_TICKERS_PATH` so the test can monkeypatch
+  it to a temp file and stay hermetic (independent of the shipped list). With
+  a temp blocklist `["KDC"]` and temp alias files: `KDC`'s bare code does
+  **not** match (e.g. "Rác thải khu dân cư" must not attribute to KDC) while
+  its name alias "Kido" **does**; a non-blocklisted ticker (`ACV`) **still**
+  matches its bare code ("ACV bị phạt" must still attribute to ACV). Use
+  `KDC`/`GAS` as the positive (blocklisted) cases — their JSONs actually
+  contain the bare token — **not** `HCM`, whose bare token is already gone.
 
 ## Risks
 
