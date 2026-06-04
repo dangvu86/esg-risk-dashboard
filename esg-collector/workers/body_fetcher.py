@@ -75,7 +75,8 @@ def _candidate_articles(conn, limit: int) -> list[dict]:
     return [dict(r) for r in rows]
 
 
-def run(workers: int = 8, batch_limit: int = 500, idle_sleep: int = 60) -> None:
+def run(workers: int = 8, batch_limit: int = 500, idle_sleep: int = 60,
+        *, drain: bool = False) -> None:
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(name)s/%(levelname)s] %(message)s",
@@ -90,6 +91,9 @@ def run(workers: int = 8, batch_limit: int = 500, idle_sleep: int = 60) -> None:
     while not _stop:
         candidates = _candidate_articles(conn, batch_limit)
         if not candidates:
+            if drain:
+                log.info("drain: no pending bodies — exiting")
+                break
             log.info("no pending bodies — sleeping %ds", idle_sleep)
             for _ in range(idle_sleep):
                 if _stop:
@@ -147,8 +151,10 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--workers", type=int, default=8)
     ap.add_argument("--batch-limit", type=int, default=500)
+    ap.add_argument("--drain", action="store_true",
+                    help="exit when no pending bodies remain instead of polling forever")
     args = ap.parse_args()
-    run(workers=args.workers, batch_limit=args.batch_limit)
+    run(workers=args.workers, batch_limit=args.batch_limit, drain=args.drain)
 
 
 if __name__ == "__main__":

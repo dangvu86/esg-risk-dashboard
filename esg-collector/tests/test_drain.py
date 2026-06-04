@@ -70,3 +70,16 @@ def test_runner_drain_processes_then_exits(monkeypatch):
         assert storage.has_remaining_tasks(conn, "brave") is False
         conn.close()
     importlib.reload(s); importlib.reload(storage)
+
+
+def test_body_fetcher_drain_exits_when_no_pending(monkeypatch):
+    import tempfile, importlib
+    from workers import body_fetcher
+
+    with tempfile.TemporaryDirectory() as td:
+        monkeypatch.setenv("ESG_DATA_DIR", td)
+        from config import settings as s; importlib.reload(s); importlib.reload(storage)
+        storage.init_db()
+        # no body_status='pending' rows at all → drain must return immediately
+        body_fetcher.run(workers=1, drain=True)
+    importlib.reload(s); importlib.reload(storage)
