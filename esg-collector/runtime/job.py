@@ -77,8 +77,17 @@ class LockLost(Exception):
 
 
 def _run_stage(cmd: list[str], env) -> None:
-    """Run one pipeline stage as a subprocess (seam for tests)."""
-    subprocess.run(cmd, env=env, check=False)
+    """Run one pipeline stage as a subprocess (seam for tests).
+
+    Post-fetch stages (match/enrich/export) are intentionally NON-fatal: a
+    failing stage is logged but does not abort the run. The batch model relies
+    on the next run catching up, and aborting here would skip the DB check-in
+    and lose the fetch/match progress already made. The non-zero rc is logged
+    so a failed export/match is greppable in Cloud Run logs.
+    """
+    rc = subprocess.run(cmd, env=env, check=False).returncode
+    if rc != 0:
+        log.warning("stage exited rc=%d: %s", rc, " ".join(cmd))
 
 
 def _refresh(bucket, handle, *, mode: str, ttl_seconds: int):
@@ -106,6 +115,9 @@ def run(mode: str, tickers: list[str] | None, *, ttl_seconds: int, bucket=None) 
         storage.init_db()  # apply migrations on the downloaded (or fresh) blob
 
         cmds = stage_commands(mode, tickers)
+        # Subprocesses inherit this env, so Secret Manager values (BRAVE/JINA/
+        # GROQ keys) reach each stage only if Cloud Run injects them as env vars
+        # (--set-secrets), not as mounted files.
         env = dict(os.environ)
         fetch_cmds = [c for c in cmds if "workers.runner" in " ".join(c)]
         other_cmds = [c for c in cmds if c not in fetch_cmds]

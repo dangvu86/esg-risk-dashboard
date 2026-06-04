@@ -1,6 +1,6 @@
 FROM python:3.11-slim
 
-# lxml needs libxml2/libxslt at runtime; build from wheels so no compiler needed.
+# lxml installs from a manylinux wheel on slim — no compiler/libxml2-dev needed.
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt

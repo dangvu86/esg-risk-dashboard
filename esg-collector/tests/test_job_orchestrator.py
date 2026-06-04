@@ -93,3 +93,35 @@ def test_run_skips_when_lock_already_held(monkeypatch, tmp_path):
     assert rc == 0
     assert ran == []                            # nothing ran — skipped
     importlib.reload(s); importlib.reload(storage); importlib.reload(job)
+
+
+def test_run_aborts_without_checkin_or_release_when_lock_lost(monkeypatch, tmp_path):
+    import importlib
+    monkeypatch.setenv("ESG_DATA_DIR", str(tmp_path))
+    from config import settings as s; importlib.reload(s)
+    from core import storage; importlib.reload(storage)
+    importlib.reload(job)
+    from tests._fake_gcs import FakeBucket
+    from runtime import gcs_lock, gcs as _gcs
+    bucket = FakeBucket()
+    monkeypatch.setattr(job, "_now", lambda: "2026-06-04T00:00:00Z")
+
+    # After our job acquires the lock, the first stage simulates another job
+    # taking the lock over (overwrites the lock blob → new generation), so our
+    # next _refresh() fails its generation precondition and raises LockLost.
+    state = {"taken": False}
+    def fake_stage(cmd, env):
+        if not state["taken"]:
+            _gcs.upload_text(
+                bucket, gcs_lock.LOCK_BLOB,
+                '{"owner":"other","mode":"daily",'
+                '"started_at":"2026-06-04T00:00:00Z","ttl_seconds":3600}')
+            state["taken"] = True
+    monkeypatch.setattr(job, "_run_stage", fake_stage)
+    monkeypatch.setattr(job, "_run_fetch_concurrently", lambda cmds, env: None)
+
+    rc = job.run("daily", None, ttl_seconds=3600, bucket=bucket)
+    assert rc == 1                                    # aborted on lost lock
+    assert "state/articles.db" not in bucket._store   # DB NOT checked in
+    assert "state/pipeline.lock" in bucket._store      # other owner's lock NOT deleted
+    importlib.reload(s); importlib.reload(storage); importlib.reload(job)
