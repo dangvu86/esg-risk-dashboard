@@ -33,7 +33,7 @@ def _legacy_index(aliases_dir: Path):
     try:
         stop = {str(s).strip().upper() for s in
                 json.loads(settings.AMBIGUOUS_ALIASES_PATH.read_text(encoding="utf-8"))}
-    except (OSError, json.JSONDecodeError, AttributeError):
+    except (OSError, json.JSONDecodeError, TypeError, AttributeError):
         stop = set()
     index = {}
     for p in sorted(Path(aliases_dir).glob("*.json")):
