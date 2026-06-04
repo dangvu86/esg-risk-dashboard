@@ -6,7 +6,9 @@ from __future__ import annotations
 import re
 
 # A markdown list item that is an image/link entry = nav / related-news widget.
-_LINK_LINE = re.compile(r"^[\*\-]\s*\[?!?\[?Image", re.IGNORECASE)
+# `!` (image marker) is mandatory so a prose bullet merely starting with the
+# word "Image" isn't dropped.
+_LINK_LINE = re.compile(r"^[\*\-]\s*\[?!\[?Image", re.IGNORECASE)
 _LINK_LIST = re.compile(r"^[\*\-]\s+\[.*\]\(https?://", re.IGNORECASE)
 
 

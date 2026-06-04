@@ -1,6 +1,6 @@
 """Body-clean tests (Fix C). Run: python -m tests.test_body_clean"""
 from __future__ import annotations
-import sys, tempfile
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
