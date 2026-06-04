@@ -23,6 +23,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict
 
 from body_fetcher import jina, fallback
+from body_fetcher.body_clean import strip_related_blocks
 from core import alias_matcher, storage
 
 
@@ -55,11 +56,12 @@ def _serialize_hits(hits) -> str:
 
 def _fetch_one(url: str) -> tuple[str | None, str]:
     body, status = jina.fetch(url)
-    if status == "fetched":
-        return body, status
-    if status == "ratelimited":
-        time.sleep(2)
-    body, status = fallback.fetch(url)
+    if status != "fetched":
+        if status == "ratelimited":
+            time.sleep(2)
+        body, status = fallback.fetch(url)
+    if status == "fetched" and body:
+        body = strip_related_blocks(body)
     return body, status
 
 
