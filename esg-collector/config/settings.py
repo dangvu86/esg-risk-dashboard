@@ -18,6 +18,7 @@ PER_TICKER_DIR = DATA_DIR / "per_ticker"
 WEB_DIR = DATA_DIR / "web"
 ALIASES_DIR = ROOT / "config" / "aliases"
 COMPANIES_CSV = ROOT / "config" / "companies.csv"
+AMBIGUOUS_ALIASES_PATH = ROOT / "config" / "ambiguous_aliases.json"
 
 # Backfill window
 BACKFILL_START = "2020-01-01"
