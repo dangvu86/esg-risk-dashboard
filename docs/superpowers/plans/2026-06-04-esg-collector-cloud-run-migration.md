@@ -1329,6 +1329,22 @@ if __name__ == "__main__":
 > add a lock-lifecycle happy path, a skip-when-held path, and a LockLost abort
 > path. See `runtime/job.py` for the authoritative code.
 
+> **Two more implemented hardenings (commits 20ffafb, 604c0b0):** (1) the lock is
+> refreshed **during** the fetch drain — `_run_fetch_concurrently` polls the
+> backend subprocesses and re-issues `_refresh` every ~30 min — so a long drain
+> (esp. backfill, which fetches for hours) never trips its own TTL; (2) a
+> defensive `PRAGMA wal_checkpoint(TRUNCATE)` runs before the DB-blob upload.
+> **Known simplification vs the spec's backfill flow:** the orchestrator runs the
+> fetch stage straight-through and checks the DB blob in **once at the end**, not
+> in ~2h chunks. The lock is refreshed mid-fetch (above) but the DB blob is NOT
+> checkpoint-uploaded mid-fetch (uploading a live WAL DB while writers are active
+> would snapshot inconsistently). Consequence: a backfill that crashes mid-fetch
+> loses that run's queue progress and is re-run from scratch — but re-running is
+> idempotent (`INSERT OR IGNORE` on `article_id` + queue `task_id`), so re-fetch
+> only wastes API calls, never corrupts. True mid-fetch resumable checkpointing
+> (pause-writers → checkpoint → upload) is a future enhancement if backfill
+> crash-frequency ever warrants it.
+
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `python -m pytest tests/test_job_orchestrator.py -v`
