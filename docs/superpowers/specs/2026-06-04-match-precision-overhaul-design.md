@@ -120,12 +120,17 @@ all strong aliases for generic surface forms.
    per-field loop, **before** the alias is added to `_OWNERS`/`alla`/`strong`
    (line 77), skip any `names`/`subsidiaries`/`projects` value whose
    `.strip().upper()` is in the stoplist.
-   - **`_NESTED` invariant:** the overlapping-substring recovery
-     (alias_matcher.py:84-91) derives owners from `_OWNERS.get(bl, ())`. Because
-     the stoplisted surface is removed from `_OWNERS`, it also contributes
-     nothing to `_NESTED` (so a stoplisted token embedded in a longer alias is
-     suppressed as the bare token while the longer alias still matches). No
-     extra code needed; stated for auditability.
+   - **`_NESTED` invariant:** the overlapping-substring recovery is built by
+     iterating `alla` (alias_matcher.py:83) and reading `_OWNERS.get(bl, ())`
+     (line 86). Because the stoplisted surface is skipped before it is added to
+     `alla` (and hence absent from `_OWNERS` and from the `_NESTED` build), it
+     contributes nothing to nested recovery — a stoplisted token embedded in a
+     longer alias is suppressed as the bare token while the longer alias still
+     matches. No extra code needed; stated for auditability.
+   - **Global (non-per-ticker) stoplist:** a surface is dropped for **every**
+     company that holds it, not per-ticker. The audit must confirm each
+     stoplisted surface is generic across every company using it. (Today each
+     listed surface lives in a single company's JSON, so this is moot.)
 3. **Builder consistency (OPTIONAL — loader is authoritative)** — optionally
    make `fetch_vietstock.py` consult the same stoplist so a future `--all`
    regeneration does not re-introduce a dropped surface. Provenance for the
@@ -141,17 +146,28 @@ Stop matching (and enriching on) the related-news/sidebar/footer block.
    [`body_fetcher/fallback.py:19-28`](../../../esg-collector/body_fetcher/fallback.py):
    `div.detail-content, div.entry-content, div.fck_detail, …`) and/or
    `X-Remove-Selector` for known related/sidebar/footer containers, so the
-   stored body is the article text only. **Fallback:** if the target-selector
-   response is empty/too short (uncovered site), retry without the selector
-   (current behavior) so coverage does not regress.
-2. **Old bodies — clean in place, no re-fetch.** A one-time pass over stored
-   `body` (`body_status='fetched'`) that strips the markdown image/link-list
-   block: drop lines that are markdown link/image list items
-   (`* […](http…)`, `![Image …]`) and/or cut at the first run of such lines in
-   the trailing region. Re-store the cleaned body. This fixes the ~7k existing
-   noisy bodies without paying Jina/RPM for a re-fetch.
+   stored body is the article text only. **Fallback:** `jina.fetch` today
+   returns `(None,"failed")` on an empty body (jina.py:77-79) with no retry.
+   Add: if the target-selector response is empty or short (`len(body) < 200`,
+   matching `fallback.py:41`), re-issue the request **once** with the selector
+   headers removed and return that result — so coverage does not regress on
+   sites the selectors don't cover.
+2. **Old bodies — clean in place, no re-fetch.** A **one-shot backfill**
+   (standalone script, or a pre-step of the rematch) over stored bodies with
+   `body_status='fetched'`. Delete, **line-by-line over the whole body** (not a
+   positional cut — related blocks also appear mid-body), any line that, after
+   `lstrip`, matches a markdown link/image list item:
+   `^[\*\-]\s*\[?!?\[?Image` **or** `^[\*\-]\s+\[.*\]\(https?://`
+   (covers `* [![Image N: …](url)` and bare `* [text](http…)` items). Re-store
+   via `storage.mark_body(conn, aid, "fetched", cleaned)` (storage.py:242-247).
+   Because this is a **non-idempotent data backfill**, gate it behind an
+   `export_state` flag (`storage.get_meta`/`set_meta`, storage.py:462-474) so a
+   redeploy/re-run does not re-strip — per `esg-collector/CLAUDE.md` ("data
+   backfills … gated behind a metadata flag in `export_state`"). Acceptance
+   bar: ~47% link-line body matches removed, ~30% prose body matches kept.
 3. **Benefit:** a clean stored body improves **both** matching (Fix C target)
-   **and** enrichment (the LLM controversy classifier reads `body[:6000]`;
+   **and** enrichment (the LLM controversy classifier reads `body[:6000]` —
+   [`enrich/controversy.py:27`](../../../esg-collector/enrich/controversy.py);
    today sidebar can eat that budget).
 
 **Coverage & caveats:** Fix C removes the **~47%** of body matches that live in
@@ -161,14 +177,22 @@ selector variance is handled by the empty-response fallback.
 
 ## Fix B — Roundup / aboutness gate (listicle)
 
-In [`pipeline/match.py` `_process_article`](../../../esg-collector/pipeline/match.py),
-after the hit list is computed (it already reflects Fix 1+A at load time and
-Fix C on the body): **if the article matched ≥3 distinct companies, drop any
-hit whose `location != "title"`.**
+In [`pipeline/match.py` `_process_article`](../../../esg-collector/pipeline/match.py):
+**if the article matched ≥3 distinct companies, drop any hit whose
+`location != "title"`.**
 
 - Within one article, `len(hits)` already equals the number of distinct
   companies (match_article returns ≤1 hit per ticker). So the rule is local:
   `if len(hits) >= 3: hits = [h for h in hits if h.location == "title"]`.
+- **Placement:** insert immediately **after** `verdict = esg_filter.classify(...)`
+  (match.py:107) and **before** the `if hits and verdict.keep` test (line 108),
+  so that if the filter empties `hits` the article correctly routes to the
+  `unmatched`/`deferred` branch instead of being a matched row with zero hits.
+- **Works on cached hits too:** `cached_hits` (Stage-1 hits from the body
+  fetcher pre-check) preserve `location` (serialized via `asdict`, rehydrated at
+  match.py:78), so the title-guard applies to them as well. **No guard is
+  needed in `body_fetcher._prefetch_hits`** — pre-check hits flow through
+  `_process_article`; do not duplicate the rule there.
 - Removes ~**774** roundup/donation/ranking false positives (vaccine donor
   lists, bank rankings, "which bank is best?"). Recall risk is low: a real
   single-company ESG event rarely co-names 3+ *other tracked* companies, and a
@@ -176,10 +200,14 @@ hit whose `location != "title"`.**
   in-title matches in ≥3-company articles are kept).
 - **Threshold (≥3) and the not-in-title guard are tunable** — start
   conservative; revisit ≥2 only after checking recall.
-- **Ordering matters:** B counts companies **after** Fix 1+A+C have removed
-  their false matches, so the ≥3 count is on a cleaned hit set (a roundup that
-  was only "multi-company" because of ticker/sidebar noise won't wrongly trip
-  B once those are gone, and vice-versa).
+- **Ordering / what the ≥3 count reflects:** Fix 1+A act at alias load, so the
+  count is always on a ticker/fragment-cleaned hit set. Fix C: for
+  **body-matched** articles the count also reflects the cleaned body; for
+  **cached-hit (pre-check, `skipped`-body)** articles the body was never matched
+  (match.py:96-104 skips Stage-2 when cached hits exist), so Fix C is a no-op
+  there and the ≥3 count comes from already-clean title/desc/sapo hits. Either
+  way the count is on a Fix-1/A-cleaned set — the earlier "reflects Fix C on the
+  body" shorthand only holds for live body-matched articles.
 
 ## Rollout (shared dependency: rematch)
 
@@ -251,3 +279,9 @@ case), `measure_body.py` (body link-line vs prose), `measure_b.py`
 (companies-per-article / roundup signal). Source:
 `gs://esg-scan-data/raw_esg/articles_full_20260528_085453.ndjson` and
 `gs://esg-scan-data/per_ticker/*.json`.
+
+These were **throwaway local scripts** (run under a temp dir, not committed).
+The "re-run the measurement scripts before/after" success criteria mean
+re-pulling the same GCS data and re-running equivalent checks — not invoking a
+committed harness. If reproducibility matters, commit them under
+`esg-collector/scripts/` during implementation.
