@@ -17,6 +17,10 @@ import time
 import requests
 
 from config import settings
+from body_fetcher.fallback import ARTICLE_SELECTORS
+
+_TARGET_SELECTOR = ",".join(ARTICLE_SELECTORS)
+_MIN_BODY = 200  # below this, treat selector result as a miss and retry full-page
 
 
 ENDPOINT = "https://r.jina.ai/"
@@ -53,28 +57,37 @@ def _pace() -> None:
 
 
 def fetch(url: str, timeout: int = 30) -> tuple[str | None, str]:
-    """Return (body_markdown, status).
+    """Return (body_markdown, status). status ∈ {fetched, failed, ratelimited}.
 
-    status ∈ {fetched, failed, ratelimited}.
-    """
+    First tries with X-Target-Selector so Jina returns only the article body
+    (drops nav/sidebar/related). If that yields too little (uncovered site),
+    retry once without the selector (full page)."""
     if not url:
         return None, "failed"
-    headers = {
-        "X-Return-Format": "markdown",
-        "Accept": "text/markdown, text/plain",
-    }
-    if settings.JINA_API_KEY:
-        headers["Authorization"] = f"Bearer {settings.JINA_API_KEY}"
-    _pace()
-    try:
-        r = requests.get(ENDPOINT + url, headers=headers, timeout=timeout)
-    except requests.RequestException:
+
+    def _get(with_selector: bool):
+        headers = {
+            "X-Return-Format": "markdown",
+            "Accept": "text/markdown, text/plain",
+        }
+        if settings.JINA_API_KEY:
+            headers["Authorization"] = f"Bearer {settings.JINA_API_KEY}"
+        if with_selector:
+            headers["X-Target-Selector"] = _TARGET_SELECTOR
+        _pace()
+        try:
+            r = requests.get(ENDPOINT + url, headers=headers, timeout=timeout)
+        except requests.RequestException:
+            return None, "failed"
+        if r.status_code == 429:
+            return None, "ratelimited"
+        if r.status_code >= 400:
+            return None, "failed"
+        return (r.text or "").strip(), "fetched"
+
+    body, status = _get(with_selector=True)
+    if status == "fetched" and (not body or len(body) < _MIN_BODY):
+        body, status = _get(with_selector=False)  # selector missed -> full page
+    if status == "fetched" and not body:
         return None, "failed"
-    if r.status_code == 429:
-        return None, "ratelimited"
-    if r.status_code >= 400:
-        return None, "failed"
-    body = (r.text or "").strip()
-    if not body:
-        return None, "failed"
-    return body, "fetched"
+    return body, status
