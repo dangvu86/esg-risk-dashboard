@@ -217,7 +217,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--ndjson", action="store_true",
                     help="write data/exports/articles_{full|delta}_<ts>.ndjson")
-    ap.add_argument("--upload", action="store_true", help="gsutil cp to gs://esg-scan-data/")
+    ap.add_argument("--upload", action="store_true", help="upload to gs://esg-scan-data/ via google-cloud-storage")
     ap.add_argument("--full", action="store_true",
                     help="force full snapshot instead of delta-since-last-export")
     ap.add_argument("--web", action="store_true",
