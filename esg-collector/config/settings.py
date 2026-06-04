@@ -11,7 +11,8 @@ except Exception:
 _TODAY = (datetime.now(_VN) if _VN else datetime.now(timezone.utc)).date().isoformat()
 
 ROOT = Path(__file__).resolve().parent.parent
-DATA_DIR = ROOT / "data"
+# DATA_DIR is env-overridable so Cloud Run can point it at writable /tmp.
+DATA_DIR = Path(os.environ["ESG_DATA_DIR"]) if os.environ.get("ESG_DATA_DIR") else ROOT / "data"
 LOGS_DIR = ROOT / "logs"
 DB_PATH = DATA_DIR / "articles.db"
 PER_TICKER_DIR = DATA_DIR / "per_ticker"
