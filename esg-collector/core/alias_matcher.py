@@ -15,11 +15,14 @@ Weak  aliases: locations (weight 0.3, filtered out by default).
 from __future__ import annotations
 
 import json
+import logging
 import re
 from dataclasses import dataclass
 from pathlib import Path
 
 from config import settings
+
+log = logging.getLogger("alias_matcher")
 
 
 @dataclass(frozen=True)
@@ -38,6 +41,18 @@ _NESTED: dict[str, list[tuple[str, str, float]]] = {}
 _TICKERS: set[str] = set()
 _PATTERN_STRONG: re.Pattern | None = None
 _PATTERN_ALL: re.Pattern | None = None
+_STOPLIST: set[str] = set()  # upper-cased surface forms never matched (Fix 1+A)
+
+
+def _load_stoplist() -> set[str]:
+    try:
+        data = json.loads(settings.AMBIGUOUS_ALIASES_PATH.read_text(encoding="utf-8"))
+        return {str(s).strip().upper() for s in data if str(s).strip()}
+    except FileNotFoundError:
+        return set()
+    except (OSError, json.JSONDecodeError, TypeError) as e:
+        log.warning("ambiguous_aliases stoplist unreadable (%s) — ignoring", e)
+        return set()
 
 
 def _build_pattern(aliases: set[str]) -> re.Pattern | None:
@@ -54,7 +69,8 @@ def _bounded(needle: str, haystack: str) -> bool:
 
 
 def reload(aliases_dir: Path = settings.ALIASES_DIR) -> None:
-    global _PATTERN_STRONG, _PATTERN_ALL
+    global _PATTERN_STRONG, _PATTERN_ALL, _STOPLIST
+    _STOPLIST = _load_stoplist()
     _OWNERS.clear()
     _NESTED.clear()
     _TICKERS.clear()
@@ -72,6 +88,8 @@ def reload(aliases_dir: Path = settings.ALIASES_DIR) -> None:
             for a in data.get(field) or []:
                 a = (a or "").strip()
                 if not a or len(a) < 2 or a.lower() in seen:
+                    continue
+                if a.upper() in _STOPLIST:      # Fix 1+A: drop collision surface
                     continue
                 seen.add(a.lower())
                 _OWNERS.setdefault(a.lower(), []).append((ticker, a, weight))

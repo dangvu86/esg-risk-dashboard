@@ -30,6 +30,11 @@ def _legacy_compile(alias: str) -> re.Pattern:
 
 
 def _legacy_index(aliases_dir: Path):
+    try:
+        stop = {str(s).strip().upper() for s in
+                json.loads(settings.AMBIGUOUS_ALIASES_PATH.read_text(encoding="utf-8"))}
+    except (OSError, json.JSONDecodeError, AttributeError):
+        stop = set()
     index = {}
     for p in sorted(Path(aliases_dir).glob("*.json")):
         try:
@@ -42,6 +47,8 @@ def _legacy_index(aliases_dir: Path):
             for a in data.get(field) or []:
                 a = (a or "").strip()
                 if not a or len(a) < 2 or a.lower() in seen:
+                    continue
+                if a.upper() in stop:        # mirror Fix 1+A
                     continue
                 seen.add(a.lower())
                 items.append((a, weight, _legacy_compile(a)))
