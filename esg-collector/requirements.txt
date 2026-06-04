@@ -3,5 +3,4 @@ googlenewsdecoder>=0.1.7
 requests>=2.31
 lxml>=5.0
 feedparser>=6.0
-lxml>=5.0
-feedparser>=6.0
+google-cloud-storage>=2.16
