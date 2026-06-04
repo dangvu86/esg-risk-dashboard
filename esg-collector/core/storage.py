@@ -508,3 +508,16 @@ def queue_stats(conn: sqlite3.Connection) -> dict[str, dict[str, int]]:
     for r in rows:
         out.setdefault(r["backend"], {})[r["status"]] = r["c"]
     return out
+
+
+def has_remaining_tasks(conn: sqlite3.Connection, backend: str) -> bool:
+    """True if `backend` still has work to drain — any pending/backoff/in_progress
+    row, regardless of next_attempt. (A backed-off task with a future next_attempt
+    counts: the drain loop must wait for it, not exit.) 'failed' and 'done' do not
+    count, so the loop terminates once retries are exhausted (MAX_ATTEMPTS)."""
+    row = conn.execute(
+        "SELECT 1 FROM search_queue "
+        "WHERE backend=? AND status IN ('pending','backoff','in_progress') LIMIT 1",
+        (backend,),
+    ).fetchone()
+    return row is not None
