@@ -62,7 +62,8 @@ def test_run_acquires_does_stages_checks_in_and_releases(monkeypatch, tmp_path):
     # of wall time (each refresh stays well within the TTL window)
     monkeypatch.setattr(job, "_now", lambda: "2026-06-04T00:00:00Z")
     monkeypatch.setattr(job, "_run_stage", lambda cmd, env: ran.append(cmd))
-    monkeypatch.setattr(job, "_run_fetch_concurrently", lambda cmds, env: ran.append("fetch"))
+    monkeypatch.setattr(job, "_run_fetch_concurrently",
+                        lambda cmds, env, **kw: (ran.append("fetch"), kw["handle"])[1])
 
     rc = job.run("daily", None, ttl_seconds=3600, bucket=bucket)
     assert rc == 0
@@ -88,7 +89,8 @@ def test_run_skips_when_lock_already_held(monkeypatch, tmp_path):
     monkeypatch.setattr(job, "_now", lambda: "2026-06-04T00:10:00Z")
     ran = []
     monkeypatch.setattr(job, "_run_stage", lambda cmd, env: ran.append(cmd))
-    monkeypatch.setattr(job, "_run_fetch_concurrently", lambda cmds, env: ran.append("fetch"))
+    monkeypatch.setattr(job, "_run_fetch_concurrently",
+                        lambda cmds, env, **kw: kw["handle"])
     rc = job.run("daily", None, ttl_seconds=3600, bucket=bucket)
     assert rc == 0
     assert ran == []                            # nothing ran — skipped
@@ -118,10 +120,50 @@ def test_run_aborts_without_checkin_or_release_when_lock_lost(monkeypatch, tmp_p
                 '"started_at":"2026-06-04T00:00:00Z","ttl_seconds":3600}')
             state["taken"] = True
     monkeypatch.setattr(job, "_run_stage", fake_stage)
-    monkeypatch.setattr(job, "_run_fetch_concurrently", lambda cmds, env: None)
+    monkeypatch.setattr(job, "_run_fetch_concurrently",
+                        lambda cmds, env, **kw: kw["handle"])
 
     rc = job.run("daily", None, ttl_seconds=3600, bucket=bucket)
     assert rc == 1                                    # aborted on lost lock
     assert "state/articles.db" not in bucket._store   # DB NOT checked in
     assert "state/pipeline.lock" in bucket._store      # other owner's lock NOT deleted
     importlib.reload(s); importlib.reload(storage); importlib.reload(job)
+
+
+class _FakeProc:
+    """A subprocess.Popen stand-in: .poll() returns None for the first
+    `alive_for` calls (process still running) then 0 (exited), and exposes
+    a .returncode of 0 once done."""
+    def __init__(self, alive_for=2):
+        self._alive_for = alive_for
+        self._calls = 0
+        self.returncode = None
+
+    def poll(self):
+        self._calls += 1
+        if self._calls <= self._alive_for:
+            return None
+        self.returncode = 0
+        return 0
+
+
+def test_fetch_refreshes_lock_during_long_drain(monkeypatch):
+    # Two fake procs that each report "running" for the first 2 poll()s then
+    # exit; the while-loop therefore iterates at least twice before draining.
+    fakes = iter([_FakeProc(alive_for=2), _FakeProc(alive_for=2)])
+    monkeypatch.setattr(job.subprocess, "Popen", lambda cmd, env: next(fakes))
+    monkeypatch.setattr(job.time, "sleep", lambda s: None)  # instant
+
+    calls = {"n": 0}
+    def fake_refresh(bucket, handle, *, mode, ttl_seconds):
+        calls["n"] += 1
+        return handle
+    monkeypatch.setattr(job, "_refresh", fake_refresh)
+
+    out = job._run_fetch_concurrently(
+        [["a"], ["b"]], {}, bucket=object(), handle="H",
+        mode="backfill", ttl_seconds=86400,
+        refresh_every=0, poll_seconds=0)  # refresh_every=0 → refresh every tick
+
+    assert calls["n"] >= 1   # lock was refreshed during the drain
+    assert out == "H"        # latest handle returned

@@ -20,6 +20,7 @@ import logging
 import os
 import subprocess
 import sys
+import time
 from datetime import datetime, timezone
 
 from config import settings
@@ -63,13 +64,24 @@ def _now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def _run_fetch_concurrently(cmds: list[list[str]], env) -> None:
-    """Run the three fetch-backend subprocesses in parallel, wait for all."""
+def _run_fetch_concurrently(cmds, env, *, bucket, handle, mode, ttl_seconds,
+                            refresh_every: int = 1800, poll_seconds: int = 5):
+    """Run the fetch backends concurrently, refreshing the lock every
+    refresh_every seconds so a long drain (esp. backfill) never trips its TTL.
+    Returns the latest lock handle. Propagates LockLost if the lock was taken
+    over (caller aborts without check-in)."""
     procs = [subprocess.Popen(c, env=env) for c in cmds]
+    since_refresh = 0
+    while any(p.poll() is None for p in procs):
+        time.sleep(poll_seconds)
+        since_refresh += poll_seconds
+        if since_refresh >= refresh_every:
+            handle = _refresh(bucket, handle, mode=mode, ttl_seconds=ttl_seconds)
+            since_refresh = 0
     for p in procs:
-        rc = p.wait()
-        if rc != 0:
-            log.warning("fetch subprocess exited rc=%d (continuing)", rc)
+        if p.returncode:
+            log.warning("fetch subprocess exited rc=%d", p.returncode)
+    return handle
 
 
 class LockLost(Exception):
@@ -126,13 +138,19 @@ def run(mode: str, tickers: list[str] | None, *, ttl_seconds: int, bucket=None) 
         _run_stage(enqueue, env)
         handle = _refresh(bucket, handle, mode=mode, ttl_seconds=ttl_seconds)
 
-        _run_fetch_concurrently(fetch_cmds, env)
+        handle = _run_fetch_concurrently(
+            fetch_cmds, env, bucket=bucket, handle=handle,
+            mode=mode, ttl_seconds=ttl_seconds)
         handle = _refresh(bucket, handle, mode=mode, ttl_seconds=ttl_seconds)
 
         for c in post_fetch:  # body -> match -> [enrich] -> export(ndjson) -> export(web)
             _run_stage(c, env)
             handle = _refresh(bucket, handle, mode=mode, ttl_seconds=ttl_seconds)
 
+        # Defensive: all stage subprocesses have exited (connections closed, so
+        # SQLite already auto-checkpointed), but fold any residual WAL into the
+        # main .db before upload so the blob can never miss committed rows.
+        _ck = storage.connect(); _ck.execute("PRAGMA wal_checkpoint(TRUNCATE)"); _ck.close()
         new_gen = 0 if gen is None else gen
         gcs_state.upload_db(bucket, settings.DB_PATH, if_generation=new_gen)
         log.info("checked in DB blob; run complete")
