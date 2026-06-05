@@ -36,10 +36,30 @@ done
 gsutil iam get "gs://${BUCKET}" | grep -A2 "$RUNTIME_SA" || \
   echo "WARN: ${RUNTIME_SA} not found on gs://${BUCKET} — grant roles/storage.objectAdmin"
 
-# 6. Deploy SA roles (swap compute roles for Cloud Run deploy roles)
-for ROLE in roles/run.developer roles/artifactregistry.writer roles/iam.serviceAccountUser; do
+# 6. Deploy SA roles (swap compute roles for Cloud Run deploy roles).
+#    Every role here backs a concrete step in deploy-esg-collector-cloudrun.yml:
+#    - cloudbuild.builds.editor : `gcloud builds submit` (build the image)
+#    - artifactregistry.writer  : `gcloud artifacts docker tags add` (tag :latest)
+#    - run.admin (NOT developer): `gcloud run jobs deploy` AND the
+#        `run jobs add-iam-policy-binding` invoker grant — setIamPolicy is only
+#        in run.admin; run.developer would 403 on the invoker step.
+#    - cloudscheduler.admin     : `gcloud scheduler jobs create http`
+#    - iam.serviceAccountUser   : deploy job/scheduler acting-as the runtime SA
+for ROLE in roles/cloudbuild.builds.editor roles/artifactregistry.writer \
+            roles/run.admin roles/cloudscheduler.admin roles/iam.serviceAccountUser; do
   gcloud projects add-iam-policy-binding "$PROJECT" \
     --member="serviceAccount:${DEPLOY_SA}" --role="$ROLE"
 done
 
-echo "Infra ready. Deploy jobs via the GitHub Actions workflow, then create the schedule (Task 15 step within deploy)."
+# 7. `gcloud builds submit` runs the build under the Cloud Build service agent
+#    (PROJECT_NUMBER@cloudbuild.gserviceaccount.com), NOT the deploy SA. On a
+#    fresh project that agent may lack push/log perms. If the build step fails
+#    on "permission denied" pushing to Artifact Registry or writing logs, grant:
+#      CB_SA=$(gcloud projects describe "$PROJECT" --format='value(projectNumber)')@cloudbuild.gserviceaccount.com
+#      gcloud projects add-iam-policy-binding "$PROJECT" \
+#        --member="serviceAccount:${CB_SA}" --role=roles/artifactregistry.writer
+#      gcloud projects add-iam-policy-binding "$PROJECT" \
+#        --member="serviceAccount:${CB_SA}" --role=roles/logging.logWriter
+
+echo "Infra ready. Deploy jobs via the GitHub Actions workflow (it builds the"
+echo "image, deploys both jobs, grants run.invoker, and creates the schedule)."
