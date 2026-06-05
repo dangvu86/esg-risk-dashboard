@@ -43,6 +43,12 @@ def upload_text(bucket, blob_name: str, text: str, *,
     return _finalize_upload(blob, public)
 
 
+def list_blob_names(bucket, prefix: str) -> list[str]:
+    """Names of every blob under `prefix` (e.g. 'per_ticker/'). Works on the
+    real google bucket (list_blobs yields Blob objects) and the in-memory fake."""
+    return [b.name for b in bucket.list_blobs(prefix=prefix)]
+
+
 def download_file(bucket, blob_name: str, local_path) -> int | None:
     """Download to local_path. Returns the blob generation, or None if absent."""
     blob = bucket.blob(blob_name)

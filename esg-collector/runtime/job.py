@@ -128,6 +128,11 @@ def run(mode: str, tickers: list[str] | None, *, ttl_seconds: int, bucket=None) 
     owns_lock = True
     try:
         gen = gcs_state.download_db(bucket, settings.DB_PATH)
+        # Restore accumulated per-ticker JSONs so the incremental match merges
+        # into the full set; /tmp is empty each Cloud Run run, and without this
+        # the web export would collapse the dashboard to just this run's matches.
+        restored = gcs_state.download_per_ticker(bucket, settings.PER_TICKER_DIR)
+        log.info("restored %d per_ticker files from GCS", restored)
         storage.init_db()  # apply migrations on the downloaded (or fresh) blob
 
         enqueue, fetch_cmds, post_fetch = stage_commands(mode, tickers)

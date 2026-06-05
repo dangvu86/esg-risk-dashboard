@@ -83,3 +83,9 @@ class FakeBucket:
 
     def blob(self, name: str) -> FakeBlob:
         return FakeBlob(self, name)
+
+    def list_blobs(self, prefix: str = ""):
+        """Mirror Bucket.list_blobs(prefix=...): yield blobs whose name starts
+        with `prefix`, name-sorted for deterministic tests."""
+        return [FakeBlob(self, name) for name in sorted(self._store)
+                if name.startswith(prefix)]
