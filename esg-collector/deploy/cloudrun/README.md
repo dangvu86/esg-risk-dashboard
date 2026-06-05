@@ -30,8 +30,11 @@ Before beginning the cutover, confirm all three of the following are true:
    ```
 
 3. **One-time infra complete.** `deploy/cloudrun/setup.sh` has been executed
-   once from Cloud Shell (Artifact Registry repo, Secret Manager secrets,
-   IAM bindings, Cloud Scheduler job all present). The runtime SA
+   once from Cloud Shell (enables APIs + creates the Artifact Registry repo,
+   the 3 Secret Manager secrets, and the IAM bindings). The **Cloud Scheduler
+   job `esg-daily-trigger` is created by the deploy workflow**, not `setup.sh`
+   (the job must exist first, so the workflow grants `run.invoker` and creates
+   the schedule after deploying `esg-daily`). The runtime SA
    `esg-collector@gen-lang-client-0020762472.iam.gserviceaccount.com` has
    `roles/storage.objectAdmin` on `gs://esg-scan-data`.
 
@@ -178,6 +181,26 @@ curl -sf "https://storage.googleapis.com/esg-scan-data/web/esg_events.json" | py
 Scheduler has successfully triggered at least one additional clean daily cycle
 (`esg-daily-trigger` → execution `Succeeded` in logs).**
 
+### First-deploy checklist (things the unit tests cannot catch)
+
+Unit tests use an in-memory fake GCS + stubbed subprocesses, so these
+environment facts must be eyeballed on the first real run:
+
+- [ ] **UBLA is OFF** on `gs://esg-scan-data` — `blob.make_public()` raises
+  `BadRequest: cannot use ACLs` if uniform bucket-level access is enabled. The
+  `curl` public-read check above is the hard gate.
+- [ ] **Runtime SA can write object ACLs** (`make_public` needs
+  `storage.objects.update`) and read secrets (`secretmanager.secretAccessor`).
+- [ ] **Enrich actually ran** — daily logs show `enrich.runner` processing rows,
+  not "no LLM provider configured — skipping" (it auto-picks groq from
+  `GROQ_API_KEY`).
+- [ ] **Fetch wall-clock < the 1h daily `--task-timeout`** — if the drain
+  overruns, `esg-daily` is killed before match/enrich/export. The lock is
+  refreshed during fetch so the next run resumes (`INSERT OR IGNORE`), but the
+  daily never completes. If it overruns, raise `--task-timeout` on `esg-daily`.
+- [ ] **Image is under the 0.5 GB Artifact Registry free tier** (`gcloud
+  artifacts docker images list ...`) — expect ~300 MB, no Cloud SDK.
+
 ---
 
 ## Backfill Note
@@ -210,18 +233,17 @@ gcloud run jobs execute esg-backfill --region us-central1 \
 > **Gate: Phase 4 parity must pass AND the daily schedule must have run
 > cleanly for at least 1 cycle before executing any step in this phase.**
 
-### Step 5a — Disable the old VM deploy workflow
+### Step 5a — Delete the old VM deploy workflow
 
-Rename the old workflow file so that future pushes to `main` no longer
-attempt to SSH-deploy to the VM. Do this in a local checkout and commit the
-change:
+The migration branch already removed the old workflow's `push` trigger (it is
+now `workflow_dispatch`-only), so merging did **not** auto-redeploy the VM.
+Once the VM is gone, delete the file entirely:
 
 ```bash
 # In a local checkout of the repo
-git mv .github/workflows/deploy-esg-collector.yml \
-       .github/workflows/deploy-esg-collector.yml.disabled
+git rm .github/workflows/deploy-esg-collector.yml
 git add .github/workflows/
-git commit -m "chore(cloudrun): disable VM deploy workflow (superseded by Cloud Run)"
+git commit -m "chore(cloudrun): remove VM deploy workflow (VM decommissioned)"
 git push origin main
 ```
 

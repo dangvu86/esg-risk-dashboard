@@ -514,7 +514,11 @@ def has_remaining_tasks(conn: sqlite3.Connection, backend: str) -> bool:
     """True if `backend` still has work to drain — any pending/backoff/in_progress
     row, regardless of next_attempt. (A backed-off task with a future next_attempt
     counts: the drain loop must wait for it, not exit.) 'failed' and 'done' do not
-    count, so the loop terminates once retries are exhausted (MAX_ATTEMPTS)."""
+    count, so the loop terminates once retries are exhausted (MAX_ATTEMPTS).
+
+    Note: a worker SIGKILLed mid-task (e.g. OOM) leaves an 'in_progress' row that
+    next_task only reclaims after _CLAIM_TTL_SECONDS, so a drain can idle-poll up
+    to that TTL before resuming it — bounded, not a hang."""
     row = conn.execute(
         "SELECT 1 FROM search_queue "
         "WHERE backend=? AND status IN ('pending','backoff','in_progress') LIMIT 1",

@@ -23,6 +23,8 @@ import sys
 import time
 from datetime import datetime, timezone
 
+from google.api_core.exceptions import PreconditionFailed
+
 from config import settings
 from core import storage
 from runtime import gcs, gcs_lock, gcs_state
@@ -157,6 +159,12 @@ def run(mode: str, tickers: list[str] | None, *, ttl_seconds: int, bucket=None) 
     except LockLost:
         owns_lock = False  # another job took over — do NOT release or check in
         log.error("lost the pipeline lock mid-run (stale-takeover) — aborting without check-in")
+        return 1
+    except PreconditionFailed:
+        # DB blob generation moved between download and check-in (we still hold
+        # the lock, so release in finally). Should not happen under the lock;
+        # abort without clobbering — the next run re-downloads and redoes the work.
+        log.error("DB blob moved before check-in — aborting without overwrite")
         return 1
     finally:
         if owns_lock:

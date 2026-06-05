@@ -81,13 +81,18 @@ jobs:
 
       - name: Ensure daily schedule exists
         run: |
+          # Create only if absent — describe-or-create so a real creation failure
+          # (bad SA, wrong endpoint) surfaces instead of being masked as "exists".
           # v2 Jobs API endpoint (host is un-prefixed run.googleapis.com), NOT the
           # v1 Knative/services namespaces URL — the latter does not run a Job.
-          gcloud scheduler jobs create http esg-daily-trigger \
-            --location "$REGION" --schedule "0 2 * * *" --time-zone UTC \
-            --uri "https://run.googleapis.com/v2/projects/${PROJECT}/locations/${REGION}/jobs/esg-daily:run" \
-            --http-method POST \
-            --oauth-service-account-email "$RUNTIME_SA" \
-            --oauth-token-scope "https://www.googleapis.com/auth/cloud-platform" \
-            --attempt-deadline 180s \
-            || echo "scheduler job already exists"
+          if gcloud scheduler jobs describe esg-daily-trigger --location "$REGION" >/dev/null 2>&1; then
+            echo "scheduler job esg-daily-trigger already exists — skipping create"
+          else
+            gcloud scheduler jobs create http esg-daily-trigger \
+              --location "$REGION" --schedule "0 2 * * *" --time-zone UTC \
+              --uri "https://run.googleapis.com/v2/projects/${PROJECT}/locations/${REGION}/jobs/esg-daily:run" \
+              --http-method POST \
+              --oauth-service-account-email "$RUNTIME_SA" \
+              --oauth-token-scope "https://www.googleapis.com/auth/cloud-platform" \
+              --attempt-deadline 180s
+          fi
