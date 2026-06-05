@@ -34,30 +34,32 @@ BACKENDS = ("google_rss", "baomoi", "brave")
 ENRICH_LIMIT = 25
 
 
-def stage_commands(mode: str, tickers: list[str] | None) -> list[list[str]]:
-    """Pure: the ordered argv lists for one run. Fetch backends are listed
-    separately but the orchestrator runs the three concurrently (see run())."""
+def stage_commands(mode: str, tickers: list[str] | None):
+    """Pure: the stages for one run, grouped so the caller consumes structure
+    instead of re-parsing argv strings. Returns (enqueue, fetch_cmds, post_fetch):
+    `enqueue` is one argv; `fetch_cmds` are the backend argvs run concurrently;
+    `post_fetch` are the sequential argvs (body → match → [enrich] → export
+    ndjson → export web)."""
     enqueue = [PY, "-m", "core.queue_builder", "--mode", mode]
     if tickers:
         enqueue += ["--tickers", *tickers]
 
-    cmds: list[list[str]] = [enqueue]
-    for b in BACKENDS:
-        cmds.append([PY, "-m", "workers.runner", "--backend", b, "--drain"])
-    cmds.append([PY, "-m", "workers.body_fetcher", "--drain"])
+    fetch_cmds = [[PY, "-m", "workers.runner", "--backend", b, "--drain"]
+                  for b in BACKENDS]
 
+    post_fetch: list[list[str]] = [[PY, "-m", "workers.body_fetcher", "--drain"]]
     if mode == "backfill":
-        cmds.append([PY, "-m", "pipeline.match", "--rematch-all"])
+        post_fetch.append([PY, "-m", "pipeline.match", "--rematch-all"])
         # enrich intentionally skipped in backfill (daily catches up)
     else:  # daily
-        cmds.append([PY, "-m", "pipeline.match"])
-        cmds.append([PY, "-m", "enrich.runner", "--limit", str(ENRICH_LIMIT)])
+        post_fetch.append([PY, "-m", "pipeline.match"])
+        post_fetch.append([PY, "-m", "enrich.runner", "--limit", str(ENRICH_LIMIT)])
     # Two export stages: export.run() makes --upload target the WEB files when
-    # --web is present (see export.py:210-213), so a combined --ndjson --web
-    # --upload would silently NOT push the raw_esg NDJSON + per_ticker. Split:
-    cmds.append([PY, "-m", "pipeline.export", "--ndjson", "--upload"])  # raw_esg + per_ticker
-    cmds.append([PY, "-m", "pipeline.export", "--web", "--upload"])     # web/*.json
-    return cmds
+    # --web is present (see export.py), so a combined --ndjson --web --upload
+    # would silently NOT push the raw_esg NDJSON + per_ticker. Split:
+    post_fetch.append([PY, "-m", "pipeline.export", "--ndjson", "--upload"])  # raw_esg + per_ticker
+    post_fetch.append([PY, "-m", "pipeline.export", "--web", "--upload"])     # web/*.json
+    return enqueue, fetch_cmds, post_fetch
 
 
 def _now() -> str:
@@ -126,14 +128,11 @@ def run(mode: str, tickers: list[str] | None, *, ttl_seconds: int, bucket=None) 
         gen = gcs_state.download_db(bucket, settings.DB_PATH)
         storage.init_db()  # apply migrations on the downloaded (or fresh) blob
 
-        cmds = stage_commands(mode, tickers)
+        enqueue, fetch_cmds, post_fetch = stage_commands(mode, tickers)
         # Subprocesses inherit this env, so Secret Manager values (BRAVE/JINA/
         # GROQ keys) reach each stage only if Cloud Run injects them as env vars
         # (--set-secrets), not as mounted files.
         env = dict(os.environ)
-        fetch_cmds = [c for c in cmds if "workers.runner" in " ".join(c)]
-        other_cmds = [c for c in cmds if c not in fetch_cmds]
-        enqueue, *post_fetch = other_cmds  # enqueue is first non-fetch cmd by construction
 
         _run_stage(enqueue, env)
         handle = _refresh(bucket, handle, mode=mode, ttl_seconds=ttl_seconds)

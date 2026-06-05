@@ -31,8 +31,6 @@ from runtime import gcs
 
 log = logging.getLogger("export")
 
-GCS_BUCKET_NAME = gcs.GCS_BUCKET_NAME  # "esg-scan-data"
-
 _LAST_EXPORT_KEY = "last_ndjson_export_at"
 
 

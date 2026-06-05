@@ -8,8 +8,10 @@ if str(ROOT) not in sys.path:
 from runtime import job
 
 
-def _joined(cmds):
-    return [" ".join(c) for c in cmds]
+def _joined(stages):
+    """Flatten stage_commands' (enqueue, fetch_cmds, post_fetch) to joined strings."""
+    enqueue, fetch_cmds, post_fetch = stages
+    return [" ".join(c) for c in (enqueue, *fetch_cmds, *post_fetch)]
 
 
 def test_daily_stage_order_includes_enrich():

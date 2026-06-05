@@ -20,14 +20,27 @@ def get_bucket(name: str = GCS_BUCKET_NAME):
     return storage.Client().bucket(name)
 
 
-def upload_file(bucket, blob_name: str, local_path, *,
-                if_generation_match=None, public: bool = False) -> int:
-    blob = bucket.blob(blob_name)
-    blob.upload_from_filename(str(local_path), if_generation_match=if_generation_match)
+def _finalize_upload(blob, public: bool) -> int:
+    """Shared post-upload tail: optional public ACL, reload to populate the new
+    generation (the client doesn't return it from the upload), return it."""
     if public:
         blob.make_public()
     blob.reload()
     return blob.generation
+
+
+def upload_file(bucket, blob_name: str, local_path, *,
+                if_generation_match=None, public: bool = False) -> int:
+    blob = bucket.blob(blob_name)
+    blob.upload_from_filename(str(local_path), if_generation_match=if_generation_match)
+    return _finalize_upload(blob, public)
+
+
+def upload_text(bucket, blob_name: str, text: str, *,
+                if_generation_match=None, public: bool = False) -> int:
+    blob = bucket.blob(blob_name)
+    blob.upload_from_string(text, if_generation_match=if_generation_match)
+    return _finalize_upload(blob, public)
 
 
 def download_file(bucket, blob_name: str, local_path) -> int | None:
@@ -39,16 +52,6 @@ def download_file(bucket, blob_name: str, local_path) -> int | None:
         return blob.generation
     except NotFound:
         return None
-
-
-def upload_text(bucket, blob_name: str, text: str, *,
-                if_generation_match=None, public: bool = False) -> int:
-    blob = bucket.blob(blob_name)
-    blob.upload_from_string(text, if_generation_match=if_generation_match)
-    if public:
-        blob.make_public()
-    blob.reload()
-    return blob.generation
 
 
 def read_text(bucket, blob_name: str) -> tuple[str, int] | None:

@@ -77,9 +77,10 @@ def acquire(bucket, *, owner: str, mode: str, now: str,
 
 def refresh(bucket, handle: LockHandle, *, now: str, mode: str = "daily",
             ttl_seconds: int = 3600) -> LockHandle | None:
-    h = _write(bucket, owner=handle.owner, mode=mode, now=now,
-               ttl_seconds=ttl_seconds, if_generation=handle.generation)
-    return h  # None if someone else moved the lock; caller should abort
+    """Re-stamp the lock; returns a new handle, or None if someone else moved
+    the lock (the caller should then abort)."""
+    return _write(bucket, owner=handle.owner, mode=mode, now=now,
+                  ttl_seconds=ttl_seconds, if_generation=handle.generation)
 
 
 def release(bucket, handle: LockHandle) -> None:
