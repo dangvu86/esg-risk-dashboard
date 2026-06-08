@@ -169,3 +169,37 @@ def test_fetch_refreshes_lock_during_long_drain(monkeypatch):
 
     assert calls["n"] >= 1   # lock was refreshed during the drain
     assert out == "H"        # latest handle returned
+
+
+class _ForeverProc:
+    """Popen stand-in that never exits on its own; records terminate()."""
+    def __init__(self):
+        self.returncode = None
+        self.terminated = False
+
+    def poll(self):
+        return 0 if self.terminated else None
+
+    def terminate(self):
+        self.terminated = True
+        self.returncode = 0
+
+    def wait(self, timeout=None):
+        return 0
+
+
+def test_fetch_stops_at_budget_and_terminates_backends(monkeypatch):
+    # Backends that would run forever; the wall-clock budget must stop them so
+    # the pipeline can still reach match/enrich/export.
+    procs = [_ForeverProc(), _ForeverProc()]
+    it = iter(procs)
+    monkeypatch.setattr(job.subprocess, "Popen", lambda cmd, env: next(it))
+    monkeypatch.setattr(job.time, "sleep", lambda s: None)  # instant ticks
+
+    out = job._run_fetch_concurrently(
+        [["a"], ["b"]], {}, bucket=object(), handle="H",
+        mode="daily", ttl_seconds=3600,
+        refresh_every=10_000, poll_seconds=1, max_seconds=3)
+
+    assert all(p.terminated for p in procs)  # budget elapsed → both SIGTERM'd
+    assert out == "H"

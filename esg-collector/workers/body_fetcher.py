@@ -81,7 +81,7 @@ def _candidate_articles(conn, limit: int) -> list[dict]:
 
 
 def run(workers: int = 8, batch_limit: int = 500, idle_sleep: int = 60,
-        *, drain: bool = False) -> None:
+        *, drain: bool = False, max_seconds: int | None = None) -> None:
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(name)s/%(levelname)s] %(message)s",
@@ -92,8 +92,14 @@ def run(workers: int = 8, batch_limit: int = 500, idle_sleep: int = 60,
     storage.init_db()
     conn = storage.connect()
     log.info("body_fetcher started: workers=%d", workers)
+    start = time.monotonic()
 
     while not _stop:
+        # Cloud Run budget: stop fetching bodies once elapsed so match/enrich/
+        # export still run this cycle; remaining 'pending' bodies resume next run.
+        if max_seconds is not None and (time.monotonic() - start) >= max_seconds:
+            log.info("body budget %ds reached — exiting", max_seconds)
+            break
         candidates = _candidate_articles(conn, batch_limit)
         if not candidates:
             if drain:
@@ -158,8 +164,12 @@ def main() -> None:
     ap.add_argument("--batch-limit", type=int, default=500)
     ap.add_argument("--drain", action="store_true",
                     help="exit when no pending bodies remain instead of polling forever")
+    ap.add_argument("--max-seconds", type=int, default=None,
+                    help="stop after this many seconds (Cloud Run time budget); "
+                         "un-fetched bodies stay 'pending' and resume next run")
     args = ap.parse_args()
-    run(workers=args.workers, batch_limit=args.batch_limit, drain=args.drain)
+    run(workers=args.workers, batch_limit=args.batch_limit, drain=args.drain,
+        max_seconds=args.max_seconds)
 
 
 if __name__ == "__main__":

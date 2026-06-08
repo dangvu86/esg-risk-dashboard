@@ -35,6 +35,15 @@ PY = sys.executable
 BACKENDS = ("google_rss", "baomoi", "brave")
 ENRICH_LIMIT = 25
 
+# Cloud Run jobs are time-boxed (unlike the old 24/7 VM), so the unbounded
+# fetch/body stages get wall-clock budgets: when a backend rate-limits or
+# wedges, the stage stops, the pipeline still reaches match/enrich/export, and
+# the DB checks in. Un-drained tasks stay queued (INSERT OR IGNORE) and resume
+# next run — the batch catch-up model. Env-overridable so esg-backfill can run
+# with much larger budgets than esg-daily.
+FETCH_MAX_SECONDS = int(os.environ.get("FETCH_MAX_SECONDS", "1800"))
+BODY_MAX_SECONDS = int(os.environ.get("BODY_MAX_SECONDS", "1200"))
+
 
 def stage_commands(mode: str, tickers: list[str] | None):
     """Pure: the stages for one run, grouped so the caller consumes structure
@@ -49,7 +58,8 @@ def stage_commands(mode: str, tickers: list[str] | None):
     fetch_cmds = [[PY, "-m", "workers.runner", "--backend", b, "--drain"]
                   for b in BACKENDS]
 
-    post_fetch: list[list[str]] = [[PY, "-m", "workers.body_fetcher", "--drain"]]
+    post_fetch: list[list[str]] = [[PY, "-m", "workers.body_fetcher", "--drain",
+                                    "--max-seconds", str(BODY_MAX_SECONDS)]]
     if mode == "backfill":
         post_fetch.append([PY, "-m", "pipeline.match", "--rematch-all"])
         # enrich intentionally skipped in backfill (daily catches up)
@@ -69,19 +79,44 @@ def _now() -> str:
 
 
 def _run_fetch_concurrently(cmds, env, *, bucket, handle, mode, ttl_seconds,
-                            refresh_every: int = 1800, poll_seconds: int = 5):
+                            refresh_every: int = 1800, poll_seconds: int = 5,
+                            max_seconds: int | None = None):
     """Run the fetch backends concurrently, refreshing the lock every
     refresh_every seconds so a long drain (esp. backfill) never trips its TTL.
-    Returns the latest lock handle. Propagates LockLost if the lock was taken
-    over (caller aborts without check-in)."""
+
+    If max_seconds is set, stop fetching once the budget elapses: SIGTERM each
+    still-running backend (the runner finishes its current task then exits) and
+    return so the caller proceeds to body/match/enrich/export. Un-drained tasks
+    stay queued and resume next run. Returns the latest lock handle. Propagates
+    LockLost if the lock was taken over (caller aborts without check-in)."""
     procs = [subprocess.Popen(c, env=env) for c in cmds]
     since_refresh = 0
+    elapsed = 0
+    timed_out = False
     while any(p.poll() is None for p in procs):
         time.sleep(poll_seconds)
         since_refresh += poll_seconds
+        elapsed += poll_seconds
+        if max_seconds is not None and elapsed >= max_seconds:
+            log.warning("fetch budget %ds reached — stopping backends; "
+                        "un-drained tasks resume next run", max_seconds)
+            timed_out = True
+            break
         if since_refresh >= refresh_every:
             handle = _refresh(bucket, handle, mode=mode, ttl_seconds=ttl_seconds)
             since_refresh = 0
+    if timed_out:
+        for p in procs:
+            if p.poll() is None:
+                p.terminate()  # SIGTERM → runner stops after its current task
+        for p in procs:
+            try:
+                p.wait(timeout=120)
+            except Exception:
+                try:
+                    p.kill()
+                except Exception:
+                    pass
     for p in procs:
         if p.returncode:
             log.warning("fetch subprocess exited rc=%d", p.returncode)
@@ -146,7 +181,7 @@ def run(mode: str, tickers: list[str] | None, *, ttl_seconds: int, bucket=None) 
 
         handle = _run_fetch_concurrently(
             fetch_cmds, env, bucket=bucket, handle=handle,
-            mode=mode, ttl_seconds=ttl_seconds)
+            mode=mode, ttl_seconds=ttl_seconds, max_seconds=FETCH_MAX_SECONDS)
         handle = _refresh(bucket, handle, mode=mode, ttl_seconds=ttl_seconds)
 
         for c in post_fetch:  # body -> match -> [enrich] -> export(ndjson) -> export(web)
