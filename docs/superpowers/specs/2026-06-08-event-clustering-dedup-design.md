@@ -18,8 +18,10 @@ dashboard therefore lists the *same event* 25–50 times.
 **Measured (2026-06-08, `C:/Users/dangvu/AppData/Local/Temp/esg-cleanup/articles.db`):**
 - 93 web-visible events (`match_status='matched' AND enrich_status='done' AND
   sentiment='risk'`) carry **93 distinct `title_hash`es** — i.e. the existing
-  dedup collapses *nothing*.
-- The next applied batch (`verdicts_149`, indices 149–247, 96 kept) is
+  dedup collapses *nothing*. (This was the count *before* this session applied
+  `verdicts_149`; after that batch the risk-kept total is **189** — the same
+  population the Goals/Rollout sections refer to.)
+- The just-applied batch (`verdicts_149`, indices 149–247, 96 kept) is
   essentially **three events**: ACV (~25 articles), DGC (~50), Vinaconex/VCG
   (~10).
 
@@ -83,7 +85,10 @@ Two matched articles belong to the same event iff **all** of:
 
 Clustering is the **connected components** (union-find) of the pairwise
 "same-event" graph within each ticker. The **representative** of a cluster is
-the **earliest-published** article.
+the **earliest-published** article. Because membership is transitive (connected
+components), a chain of articles each ≤10 days from the next can span a total
+window longer than 10 days — this is **intended**: a long-running saga (arrest
+→ prosecution → trial coverage of the same matter) is one event.
 
 Thresholds (`window_days=10`, `jaccard_min=0.5`) are the design defaults and
 will be **empirically tuned against the live DB** during implementation:
@@ -120,6 +125,9 @@ Used to label members of a cluster with their representative.
 - After gathering the **matched** articles per ticker from `per_ticker/*.json`
   (regardless of enrich status — needed so `sources_count` reflects all
   outlets, not only the enriched ones), run `cluster_events` per ticker.
+  **Note:** `ticker` is a doc-level key in each `per_ticker/*.json`, not a
+  field on each article dict — export must inject `ticker` into each article
+  dict before calling `cluster_events` (whose input contract requires it).
 - For each cluster that contains **≥ 1 enriched `sentiment='risk'`** member,
   emit **one** event:
   - representative = earliest **risk** member (falls back to earliest member
@@ -141,6 +149,12 @@ Used to label members of a cluster with their representative.
   done **without an LLM call**.
 - Otherwise judge normally; this article becomes the cluster representative and
   its verdict is what later members inherit.
+- **Insertion point:** the cluster-skip happens **before** the existing
+  `sentiment.filter_negative` batch (which groups ~5 events/call and is
+  fail-open). Representatives are selected out of the pending pool first, so
+  non-representative members never enter the `events` list that
+  `runner.run` builds for `filter_negative` — they are marked done by
+  inheritance, not by an LLM batch.
 - Net effect: both the nightly daily and the manual backlog spend one LLM call
   per event instead of per article.
 
