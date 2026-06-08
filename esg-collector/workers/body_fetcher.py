@@ -22,8 +22,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict
 
-from body_fetcher import jina, fallback
-from body_fetcher.body_clean import strip_related_blocks
+from body_fetcher import jina, fallback, extract
 from core import alias_matcher, storage
 
 
@@ -55,14 +54,20 @@ def _serialize_hits(hits) -> str:
 
 
 def _fetch_one(url: str) -> tuple[str | None, str]:
-    body, status = jina.fetch(url)
+    # Direct HTML first (free, no rate limit, fetches most VN sites); fall back
+    # to Jina for blocked sites / undecoded Google links. Then isolate the
+    # article body with trafilatura so the matcher never sees nav/ads/related.
+    html, status = fallback.fetch(url)
     if status != "fetched":
+        html, status = jina.fetch(url)
         if status == "ratelimited":
             time.sleep(2)
-        body, status = fallback.fetch(url)
-    if status == "fetched" and body:
-        body = strip_related_blocks(body)
-    return body, status
+    if status != "fetched" or not html:
+        return None, status if status in ("failed", "ratelimited") else "failed"
+    text = extract.extract_main(html)
+    if not text:
+        return None, "failed"
+    return text, "fetched"
 
 
 def _candidate_articles(conn, limit: int) -> list[dict]:
