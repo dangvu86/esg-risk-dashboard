@@ -21,17 +21,21 @@ def test_enrich_columns_and_queries() -> None:
         assert {"summary_en", "sentiment", "controversy_level",
                 "controversy_justification", "controversy_classified_at",
                 "enrich_status"} <= acols, acols
-        # an esg-kept, pending row is returned; a non-esg row is not
-        conn.execute("INSERT INTO articles (article_id,url_canonical,title,esg_status) "
-                     "VALUES ('a::1','u1','Phat cong ty vi xa thai','esg')")
+        # a MATCHED esg-kept, pending row is returned; a non-esg row is not
+        conn.execute("INSERT INTO articles (article_id,url_canonical,title,esg_status,match_status) "
+                     "VALUES ('a::1','u1','Phat cong ty vi xa thai','esg','matched')")
         conn.execute("INSERT INTO articles (article_id,url_canonical,title,esg_status) "
                      "VALUES ('a::2','u2','khong esg','noise')")
+        # an esg-TOPIC but UNMATCHED row (no company) must NOT be enriched — it can
+        # never reach the per-company web export and would only burn LLM quota
+        conn.execute("INSERT INTO articles (article_id,url_canonical,title,esg_status,match_status) "
+                     "VALUES ('a::4','u4','o nhiem chung chung khong gan cong ty','esg','unmatched')")
         # the DEFAULT must backfill enrich_status='pending' on a freshly-inserted row
         row0 = conn.execute("SELECT enrich_status FROM articles WHERE article_id='a::1'").fetchone()
         assert row0["enrich_status"] == "pending", f"DEFAULT not applied: {row0['enrich_status']!r}"
         pend = storage.get_pending_enrich(conn, limit=10)
         ids = {r["article_id"] for r in pend}
-        assert ids == {"a::1"}, ids
+        assert ids == {"a::1"}, ids   # a::2 non-esg, a::4 unmatched → both excluded
         # mark_enriched moves it out of pending and stores fields
         storage.mark_enriched(conn, "a::1", sentiment="risk", summary_en="EN",
                               controversy_level="Minor", controversy_justification="x. y.",
@@ -174,10 +178,11 @@ def test_runner_end_to_end() -> None:
         storage.init_db(db)
         conn = storage.connect(db)
         # one Cao Dabaco E article (kept) + one article dropped by the sentiment gate
-        conn.execute("INSERT INTO articles (article_id,url_canonical,title,esg_status,esg_type,severity,body) "
-                     "VALUES ('a::1','u1','Dabaco bi phat vi xa thai','esg','E','Cao','body text')")
-        conn.execute("INSERT INTO articles (article_id,url_canonical,title,esg_status,esg_type,severity) "
-                     "VALUES ('a::2','u2','Quy thien tam Dabaco ho tro','esg','S','Trung bình')")
+        # (both MATCHED — enrich only targets matched articles)
+        conn.execute("INSERT INTO articles (article_id,url_canonical,title,esg_status,esg_type,severity,body,match_status) "
+                     "VALUES ('a::1','u1','Dabaco bi phat vi xa thai','esg','E','Cao','body text','matched')")
+        conn.execute("INSERT INTO articles (article_id,url_canonical,title,esg_status,esg_type,severity,match_status) "
+                     "VALUES ('a::2','u2','Quy thien tam Dabaco ho tro','esg','S','Trung bình','matched')")
         conn.close()
         _orig_filter = runner.sentiment.filter_negative
         _orig_translate = runner.translate.translate_titles
@@ -221,10 +226,10 @@ def test_runner_translate_mismatch_falls_back_to_vn() -> None:
         db = Path(td) / "rm.db"
         storage.init_db(db)
         conn = storage.connect(db)
-        conn.execute("INSERT INTO articles (article_id,url_canonical,title,esg_status,esg_type,severity,body) "
-                     "VALUES ('a::1','u1','Dabaco bi phat vi xa thai','esg','E','Trung bình','b')")
-        conn.execute("INSERT INTO articles (article_id,url_canonical,title,esg_status,esg_type,severity,body) "
-                     "VALUES ('a::2','u2','Dabaco no luong cong nhan','esg','S','Trung bình','b')")
+        conn.execute("INSERT INTO articles (article_id,url_canonical,title,esg_status,esg_type,severity,body,match_status) "
+                     "VALUES ('a::1','u1','Dabaco bi phat vi xa thai','esg','E','Trung bình','b','matched')")
+        conn.execute("INSERT INTO articles (article_id,url_canonical,title,esg_status,esg_type,severity,body,match_status) "
+                     "VALUES ('a::2','u2','Dabaco no luong cong nhan','esg','S','Trung bình','b','matched')")
         conn.close()
         _orig_filter = runner.sentiment.filter_negative
         _orig_translate = runner.translate.translate_titles
