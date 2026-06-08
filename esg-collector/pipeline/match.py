@@ -175,9 +175,14 @@ def run(
     if rematch_all:
         n = conn.execute(
             "UPDATE articles SET match_status='pending', matched_at=NULL, "
-            "esg_status='pending', esg_type=NULL, severity=NULL"
+            "esg_status='pending', esg_type=NULL, severity=NULL, "
+            # Clear the body_fetcher pre-check cache too: it was computed under
+            # the OLD alias pool, so trusting it would silently bypass alias /
+            # stoplist edits (the whole point of a rematch). Forcing it NULL
+            # makes _process_article re-run alias_matcher live on every article.
+            "cached_hits=NULL"
         ).rowcount
-        log.info("rematch_all: reset %d articles to pending", n)
+        log.info("rematch_all: reset %d articles to pending (cleared cached_hits)", n)
         # Per-ticker JSONs are also stale — wipe so they rebuild cleanly.
         for p in settings.PER_TICKER_DIR.glob("*.json"):
             p.unlink()
