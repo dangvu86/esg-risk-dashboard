@@ -128,9 +128,9 @@ def build_alias_tasks(
     """Enqueue L2 per-company alias tasks. Return inserted count per backend.
 
     Routing (backfill, window=None):
-    - BaoMoi: names + subsidiaries, one deep pass each over its full settings
-      window as a single task — BaoMoi ignores date params and paginates
-      client-side (early-stopping at the window start), so chunking is wasteful.
+    - BaoMoi: NAMES ONLY, one deep pass each over its full settings window as a
+      single task — BaoMoi ignores date params and paginates client-side
+      (early-stopping at the window start), so chunking is wasteful.
     - Google RSS / Brave: NAMES ONLY, monthly chunks. Tail is 2020-01-01 to
       2021-12-31 for Google (the pre-BaoMoi gap) and settings.BRAVE_WINDOW_*.
 
@@ -138,8 +138,12 @@ def build_alias_tasks(
     including BaoMoi — the flow is identical, only the time window shrinks.
     BaoMoi's early-stop keeps a 4–5 day daily pass to ~1–2 pages per alias.
 
-    Subsidiaries are searched ONLY on BaoMoi; they remain alias-match targets
-    downstream (match.py) regardless of which backend found the article.
+    Subsidiaries are NOT searched on any backend. The per-company subsidiary
+    list from Vietstock exploded BaoMoi's queue (e.g. ~125 SPVs for NVL → 125
+    extra tasks/window/company), busting the daily batch's time budget. They
+    remain alias-match TARGETS downstream (match.py): an article found via the
+    company name or the keyword net that mentions a subsidiary is still
+    attributed — we just don't actively search each subsidiary name.
 
     Args:
         tickers: List of ticker symbols. Defaults to all tickers in COMPANIES_CSV.
@@ -177,15 +181,13 @@ def build_alias_tasks(
             if not (settings.ALIASES_DIR / f"{tk}.json").exists():
                 log.warning("no alias file for %s — skipping (run fetch_vietstock --all)", tk)
                 continue
-            names, subs = _load_alias_lists(tk)
+            names, _subs = _load_alias_lists(tk)  # subsidiaries: match-only, not searched
 
-            # BaoMoi: names + subsidiaries, one task per alias spanning the
-            # whole BaoMoi window (no chunking — BaoMoi paginates client-side).
-            # NOTE: sub_query_ix here indexes `names + subs`, whereas the
-            # Google/Brave loop below indexes `names` only — so the same ix
-            # is NOT a stable cross-backend alias identifier. Uniqueness is
-            # fine because the task_id also keys on backend.
-            for ix, alias in enumerate(names + subs):
+            # BaoMoi: NAMES ONLY, one task per name spanning the whole BaoMoi
+            # window (no chunking — BaoMoi paginates client-side). Subsidiaries
+            # are intentionally excluded here (see docstring): searching ~125
+            # SPVs/company blew the daily batch budget; they stay match targets.
+            for ix, alias in enumerate(names):
                 if storage.enqueue_task(
                     conn,
                     backend="baomoi",

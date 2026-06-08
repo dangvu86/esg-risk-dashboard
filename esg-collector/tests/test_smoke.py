@@ -292,6 +292,7 @@ def test_l2_alias_tasks() -> None:
     names, subs = _load_alias_lists("DBC")   # reads config/aliases/DBC.json (must exist)
     assert names and subs, "DBC.json must have names + subsidiaries"
     a_sub = subs[0]
+    a_name = names[0]
     with tempfile.TemporaryDirectory() as td:
         db = Path(td) / "l2.db"
         n = qb.build_alias_tasks(tickers=["DBC"], db_path=db)
@@ -302,8 +303,12 @@ def test_l2_alias_tasks() -> None:
             "SELECT query FROM search_queue WHERE backend='baomoi' AND kind='alias'")}
         google_q = {r["query"] for r in conn.execute(
             "SELECT query FROM search_queue WHERE backend='google_rss' AND kind='alias'")}
-        assert a_sub in baomoi_q, "subsidiary not searched on baomoi"
+        # Subsidiaries are match-only now (Vietstock SPV explosion busted the
+        # daily budget) — they must NOT be searched on ANY backend. Names are.
+        assert a_name in baomoi_q, "company name must still be searched on baomoi"
+        assert a_sub not in baomoi_q, "subsidiary must NOT be searched on baomoi anymore"
         assert a_sub not in google_q, "subsidiary must NOT be searched on google"
+        assert baomoi_q == set(names), "baomoi alias queries must be exactly the names"
         afters = {r["after"] for r in conn.execute(
             "SELECT after FROM search_queue WHERE backend='baomoi' AND kind='alias'")}
         assert afters == {settings.BAOMOI_WINDOW_START}, afters
