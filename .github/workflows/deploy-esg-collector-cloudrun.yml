@@ -54,21 +54,28 @@ jobs:
 
       - name: Deploy daily job
         run: |
+          # task-timeout 4h: fetch is budgeted (FETCH_MAX_SECONDS) so the daily
+          # drains baomoi fully + most of google at their safe throttles, then
+          # body/match/enrich/export still run and the DB checks in. Un-drained
+          # tasks resume next run. LOCK_TTL must exceed the timeout.
           gcloud run jobs deploy esg-daily \
             --image "$IMAGE:${{ github.sha }}" --region "$REGION" \
             --service-account "$RUNTIME_SA" \
-            --memory 2Gi --cpu 1 --task-timeout 3600 --max-retries 0 \
-            --set-env-vars ESG_DATA_DIR=/tmp/esg-data,LOCK_TTL_SECONDS=7200 \
+            --memory 2Gi --cpu 1 --task-timeout 14400 --max-retries 0 \
+            --set-env-vars ESG_DATA_DIR=/tmp/esg-data,LOCK_TTL_SECONDS=18000,FETCH_MAX_SECONDS=10800,BODY_MAX_SECONDS=1800 \
             --set-secrets BRAVE_API_KEY=BRAVE_API_KEY:latest,JINA_API_KEY=JINA_API_KEY:latest,GROQ_API_KEY=GROQ_API_KEY:latest \
             --args=--mode,daily
 
       - name: Deploy backfill job
         run: |
+          # 24h job: large fetch/body budgets so it chews through history then
+          # still rematches + exports + checks in before the deadline. Un-drained
+          # tasks resume on the next manual backfill run.
           gcloud run jobs deploy esg-backfill \
             --image "$IMAGE:${{ github.sha }}" --region "$REGION" \
             --service-account "$RUNTIME_SA" \
             --memory 4Gi --cpu 1 --task-timeout 86400 --max-retries 0 \
-            --set-env-vars ESG_DATA_DIR=/tmp/esg-data,LOCK_TTL_SECONDS=86400 \
+            --set-env-vars ESG_DATA_DIR=/tmp/esg-data,LOCK_TTL_SECONDS=86400,FETCH_MAX_SECONDS=72000,BODY_MAX_SECONDS=10800 \
             --set-secrets BRAVE_API_KEY=BRAVE_API_KEY:latest,JINA_API_KEY=JINA_API_KEY:latest,GROQ_API_KEY=GROQ_API_KEY:latest \
             --args=--mode,backfill
 
