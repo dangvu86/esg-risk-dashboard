@@ -33,7 +33,9 @@ log = logging.getLogger("runtime.job")
 
 PY = sys.executable
 BACKENDS = ("google_rss", "baomoi", "brave")
-ENRICH_LIMIT = 25
+# Per-run enrich chunk. Env-overridable so an enrich-only run (`--mode enrich`)
+# can drain a large matched backlog in bigger bites than the nightly daily.
+ENRICH_LIMIT = int(os.environ.get("ENRICH_LIMIT", "25"))
 
 # Cloud Run jobs are time-boxed (unlike the old 24/7 VM), so the unbounded
 # fetch/body stages get wall-clock budgets: when a backend rate-limits or
@@ -48,9 +50,18 @@ BODY_MAX_SECONDS = int(os.environ.get("BODY_MAX_SECONDS", "1200"))
 def stage_commands(mode: str, tickers: list[str] | None):
     """Pure: the stages for one run, grouped so the caller consumes structure
     instead of re-parsing argv strings. Returns (enqueue, fetch_cmds, post_fetch):
-    `enqueue` is one argv; `fetch_cmds` are the backend argvs run concurrently;
-    `post_fetch` are the sequential argvs (body → match → [enrich] → export
-    ndjson → export web)."""
+    `enqueue` is one argv (or None to skip); `fetch_cmds` are the backend argvs
+    run concurrently (empty to skip); `post_fetch` are the sequential argvs
+    (body → match → [enrich] → export ndjson → export web)."""
+    if mode == "enrich":
+        # Enrich-only: no search/fetch/match. Just LLM-enrich the already-matched
+        # backlog (recent-first) and re-export the web. Used to populate the
+        # dashboard fast without paying the multi-hour fetch each run; safe to
+        # re-run (idempotent — only esg+matched+pending rows are touched).
+        return None, [], [
+            [PY, "-m", "enrich.runner", "--limit", str(ENRICH_LIMIT)],
+            [PY, "-m", "pipeline.export", "--web", "--upload"],
+        ]
     enqueue = [PY, "-m", "core.queue_builder", "--mode", mode]
     if tickers:
         enqueue += ["--tickers", *tickers]
@@ -176,13 +187,15 @@ def run(mode: str, tickers: list[str] | None, *, ttl_seconds: int, bucket=None) 
         # (--set-secrets), not as mounted files.
         env = dict(os.environ)
 
-        _run_stage(enqueue, env)
-        handle = _refresh(bucket, handle, mode=mode, ttl_seconds=ttl_seconds)
+        if enqueue:  # None for enrich-only mode
+            _run_stage(enqueue, env)
+            handle = _refresh(bucket, handle, mode=mode, ttl_seconds=ttl_seconds)
 
-        handle = _run_fetch_concurrently(
-            fetch_cmds, env, bucket=bucket, handle=handle,
-            mode=mode, ttl_seconds=ttl_seconds, max_seconds=FETCH_MAX_SECONDS)
-        handle = _refresh(bucket, handle, mode=mode, ttl_seconds=ttl_seconds)
+        if fetch_cmds:  # empty for enrich-only mode
+            handle = _run_fetch_concurrently(
+                fetch_cmds, env, bucket=bucket, handle=handle,
+                mode=mode, ttl_seconds=ttl_seconds, max_seconds=FETCH_MAX_SECONDS)
+            handle = _refresh(bucket, handle, mode=mode, ttl_seconds=ttl_seconds)
 
         for c in post_fetch:  # body -> match -> [enrich] -> export(ndjson) -> export(web)
             _run_stage(c, env)
@@ -213,7 +226,7 @@ def run(mode: str, tickers: list[str] | None, *, ttl_seconds: int, bucket=None) 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--mode", choices=("daily", "backfill"), required=True)
+    ap.add_argument("--mode", choices=("daily", "backfill", "enrich"), required=True)
     ap.add_argument("--tickers", nargs="+", default=None)
     ap.add_argument("--lock-ttl", type=int, default=int(os.environ.get("LOCK_TTL_SECONDS", "7200")))
     args = ap.parse_args()

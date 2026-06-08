@@ -33,6 +33,18 @@ def test_daily_stage_order_includes_enrich():
     assert i_match < i_enrich < i_export
 
 
+def test_enrich_mode_is_enrich_plus_web_only():
+    enqueue, fetch_cmds, post_fetch = job.stage_commands("enrich", tickers=None)
+    assert enqueue is None          # no search enqueue
+    assert fetch_cmds == []         # no fetch backends
+    joined = [" ".join(c) for c in post_fetch]
+    assert any("enrich.runner --limit" in c for c in joined)
+    assert any("pipeline.export --web --upload" in c for c in joined)
+    # must NOT fetch, match, or export the raw ndjson
+    assert not any("workers.runner" in c or "body_fetcher" in c or
+                   "pipeline.match" in c or "--ndjson" in c for c in joined)
+
+
 def test_backfill_skips_enrich_and_uses_rematch():
     cmds = _joined(job.stage_commands("backfill", tickers=None))
     assert not any("enrich.runner" in c for c in cmds)
