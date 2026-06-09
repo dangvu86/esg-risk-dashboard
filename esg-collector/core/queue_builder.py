@@ -73,23 +73,39 @@ def build_keyword_tasks(
     """Enqueue L1 single-term keyword tasks: one per (backend × term × chunk).
 
     Args:
-        backends: List of backend names. Defaults to ["google_rss", "brave"].
+        backends: List of backend names. Defaults to
+            ["google_rss", "baomoi", "brave"].
         window: (start, end) date strings override default backend windows.
         db_path: Path to the SQLite database. Pass a temp path for hermetic tests.
 
     Returns:
         Dict mapping each backend name to the number of newly inserted tasks.
+
+    BaoMoi note: like the alias net, BaoMoi ignores date params and paginates
+    client-side (early-stopping at `after`), so weekly chunking is wasteful —
+    each chunk would re-crawl the same pages. It gets ONE span over its whole
+    window (settings.BAOMOI_WINDOW_* on backfill, the passed window on daily);
+    Google RSS / Brave keep the weekly chunks.
     """
     from config.keywords import search_terms
-    backends = backends or ["google_rss", "brave"]
+    backends = backends or ["google_rss", "baomoi", "brave"]
     terms = search_terms()
     storage.init_db(db_path)
     conn = storage.connect(db_path)
     inserted: dict[str, int] = {b: 0 for b in backends}
     try:
         for backend in backends:
-            start, end = window if window is not None else (settings.BACKFILL_START, settings.BACKFILL_END)
-            for after, before in date_chunks(start, end, settings.CHUNK_MONTHS):
+            if backend == "baomoi":
+                # One deep pass over the whole window — NO weekly chunking
+                # (BaoMoi re-crawls the same pages per chunk; see note above).
+                start, end = window if window is not None else (
+                    settings.BAOMOI_WINDOW_START, settings.BAOMOI_WINDOW_END)
+                chunks = [(start, end)]
+            else:
+                start, end = window if window is not None else (
+                    settings.BACKFILL_START, settings.BACKFILL_END)
+                chunks = date_chunks(start, end, settings.CHUNK_MONTHS)
+            for after, before in chunks:
                 for ix, term in enumerate(terms):
                     if storage.enqueue_task(
                         conn,

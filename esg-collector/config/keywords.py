@@ -76,6 +76,32 @@ ESG_KEYWORDS: list[tuple[str, str]] = [
     ("gia đình trị", "G"),
     ("bố làm chủ tịch", "G"),
     ("quặng lậu", "G"),  # also G when related to illegal business
+    # --- Appended 2026-06-08: residential / real-estate fire coverage ---
+    # APPEND-ONLY past this point — see search_terms() docstring: a term's index
+    # is its sub_query_ix; inserting mid-list shifts already-enqueued task_ids.
+    # Added because the industrial fire terms above ("cháy nhà máy/xưởng/lớn")
+    # missed the Safira Khang Điền (KDH) apartment fire on 2026-05-19.
+    ("hỏa hoạn", "S"),
+    ("cháy chung cư", "S"),
+    ("cháy căn hộ", "S"),
+    ("cháy tòa nhà", "S"),
+    # --- Appended 2026-06-08: single-path coverage gaps (still append-only) ---
+    # Raw-stream audit showed these event types reach the DB almost ONLY via the
+    # per-company alias search (low overlap with existing keyword terms), so they
+    # currently have a single point of capture. Adding them as keyword terms
+    # gives an independent second path. % = share already caught by an existing
+    # ESG keyword (lower = bigger gap):  hủy niêm yết 18%, sa thải 19%,
+    # đình chỉ giao dịch 25%, cưỡng chế 48%, thao túng 68%.
+    ("hủy niêm yết", "G"),
+    ("đình chỉ giao dịch", "G"),
+    ("cưỡng chế", "G"),
+    ("thao túng", "G"),
+    ("sa thải", "S"),
+    ("cắt giảm nhân sự", "S"),
+    # Real-estate disputes / handover failures — no existing term covers them;
+    # relevant for property names (KDH, NLG, DXG, VHM…). Reasoned, not measured.
+    ("tranh chấp", "S"),
+    ("chậm bàn giao", "S"),
 ]
 
 # Noise keywords — topics that are NOT ESG risk events
