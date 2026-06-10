@@ -12,6 +12,7 @@ import logging
 from datetime import datetime, timezone
 
 from core import storage, alias_matcher
+from core.events import cluster_events
 from config import settings
 from enrich import sentiment, translate, controversy
 from enrich.llm import resolve_provider
@@ -39,6 +40,78 @@ def _primary_ticker(row) -> str | None:
     return hits[0].ticker if hits else (row["ticker_hint"] or None)
 
 
+def _inherit_from_clusters(conn, events) -> tuple[int, list[dict]]:
+    """Cluster-skip (event-clustering spec, Component 3): a pending article in
+    the same event cluster as an already-judged member inherits that verdict
+    without an LLM call. Returns (inherited_count, remaining_events).
+
+    Cluster pool per ticker = the ticker's per_ticker/*.json articles (all
+    matched, any enrich state) — written by pipeline.match, which always runs
+    before enrich in the job pipeline."""
+    by_ticker: dict[str, list[dict]] = {}
+    remaining: list[dict] = []
+    for e in events:
+        if e.get("ticker"):
+            by_ticker.setdefault(e["ticker"].upper(), []).append(e)
+        else:
+            remaining.append(e)        # no ticker → cannot cluster, judge normally
+
+    inherited = 0
+    for ticker, evs in by_ticker.items():
+        pool: list[dict] = []
+        seen_ids: set[str] = set()
+        try:
+            doc = json.loads((settings.PER_TICKER_DIR / f"{ticker}.json")
+                             .read_text(encoding="utf-8"))
+            for a in doc.get("articles") or []:
+                if a.get("article_id") in seen_ids:
+                    continue
+                seen_ids.add(a.get("article_id"))
+                pool.append({"article_id": a.get("article_id"), "ticker": ticker,
+                             "title": a.get("title"),
+                             "published_at": a.get("published_at")})
+        except (OSError, json.JSONDecodeError):
+            pass
+        for e in evs:                  # pending rows missing from the doc still cluster
+            if e["article_id"] not in seen_ids:
+                seen_ids.add(e["article_id"])
+                pool.append({"article_id": e["article_id"], "ticker": ticker,
+                             "title": e["row"]["title"],
+                             "published_at": e["row"]["published_at"]})
+
+        verdicts: dict[str, dict] = {}     # judged members of this ticker
+        ids = sorted(seen_ids)
+        for i in range(0, len(ids), 500):
+            chunk = ids[i:i + 500]
+            for r in conn.execute(
+                "SELECT article_id, enrich_status, sentiment, summary_en FROM articles "
+                f"WHERE article_id IN ({','.join('?' * len(chunk))}) "
+                "AND enrich_status IN ('done','dropped')", chunk):
+                verdicts[r["article_id"]] = {k: r[k] for k in r.keys()}
+
+        pending = {e["article_id"]: e for e in evs}
+        for cluster in cluster_events(pool):
+            judged = [verdicts[m["article_id"]] for m in cluster
+                      if m["article_id"] in verdicts]
+            if not judged:
+                for m in cluster:
+                    if m["article_id"] in pending:
+                        remaining.append(pending[m["article_id"]])
+                continue
+            src = judged[0]            # earliest judged member (cluster earliest-first)
+            for m in cluster:
+                e = pending.get(m["article_id"])
+                if e is None:
+                    continue
+                if src["sentiment"] == "risk":
+                    storage.mark_enriched(conn, e["article_id"], sentiment="risk",
+                                          summary_en=src["summary_en"])
+                else:
+                    storage.mark_dropped(conn, e["article_id"])
+                inherited += 1
+    return inherited, remaining
+
+
 def run(limit: int = DEFAULT_LIMIT, db_path=None) -> int:
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s [%(name)s/%(levelname)s] %(message)s")
@@ -58,6 +131,13 @@ def run(limit: int = DEFAULT_LIMIT, db_path=None) -> int:
         events = [{"article_id": r["article_id"], "ticker": _primary_ticker(r) or "",
                    "type": r["esg_type"], "severity": r["severity"],
                    "summary": r["title"] or "", "row": r} for r in rows]
+        # Cluster-skip BEFORE the LLM gate: same-event members inherit the
+        # already-judged verdict, so each event costs one LLM call total.
+        inherited, events = _inherit_from_clusters(conn, events)
+        if inherited:
+            log.info("inherited %d verdicts from same-event clusters (no LLM)", inherited)
+        if not events:
+            return len(rows)
         kept = sentiment.filter_negative(events, provider=provider)
         kept_ids = {e["article_id"] for e in kept}
         for e in events:
