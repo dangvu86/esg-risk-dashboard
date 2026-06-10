@@ -45,6 +45,21 @@ def test_enrich_mode_is_enrich_plus_web_only():
                    "pipeline.match" in c or "--ndjson" in c for c in joined)
 
 
+def test_rematch_mode_is_rematch_plus_exports_only():
+    # classifier/alias changes need a corpus-wide re-verdict WITHOUT paying
+    # the multi-hour backfill fetch — no enqueue, no backends, no enrich.
+    enqueue, fetch_cmds, post_fetch = job.stage_commands("rematch", tickers=None)
+    assert enqueue is None
+    assert fetch_cmds == []
+    joined = [" ".join(c) for c in post_fetch]
+    assert any("pipeline.match --rematch-all" in c for c in joined)
+    # both export stages so per_ticker/raw NDJSON AND web/*.json refresh
+    assert any("pipeline.export --ndjson --upload" in c for c in joined)
+    assert any("pipeline.export --web --upload" in c for c in joined)
+    assert not any("workers.runner" in c or "body_fetcher" in c or
+                   "enrich.runner" in c or "queue_builder" in c for c in joined)
+
+
 def test_backfill_skips_enrich_and_uses_rematch():
     cmds = _joined(job.stage_commands("backfill", tickers=None))
     assert not any("enrich.runner" in c for c in cmds)

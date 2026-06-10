@@ -2,6 +2,8 @@
 
   python -m runtime.job --mode daily
   python -m runtime.job --mode backfill [--tickers DBC HPG]
+  python -m runtime.job --mode enrich    # LLM-enrich backlog + web export only
+  python -m runtime.job --mode rematch   # corpus-wide re-verdict + exports only
 
 Lifecycle: acquire lock → download DB blob → init_db → run stages (each a
 subprocess on the shared ESG_DATA_DIR SQLite) → upload blob (generation-match)
@@ -60,6 +62,15 @@ def stage_commands(mode: str, tickers: list[str] | None):
         # re-run (idempotent — only esg+matched+pending rows are touched).
         return None, [], [
             [PY, "-m", "enrich.runner", "--limit", str(ENRICH_LIMIT)],
+            [PY, "-m", "pipeline.export", "--web", "--upload"],
+        ]
+    if mode == "rematch":
+        # Corpus-wide re-verdict after classifier/alias changes: no search, no
+        # fetch, no enrich (the next daily catches the enrich backlog). Both
+        # export stages run so per_ticker + web pick up the new verdicts.
+        return None, [], [
+            [PY, "-m", "pipeline.match", "--rematch-all"],
+            [PY, "-m", "pipeline.export", "--ndjson", "--upload"],
             [PY, "-m", "pipeline.export", "--web", "--upload"],
         ]
     enqueue = [PY, "-m", "core.queue_builder", "--mode", mode]
@@ -226,7 +237,8 @@ def run(mode: str, tickers: list[str] | None, *, ttl_seconds: int, bucket=None) 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--mode", choices=("daily", "backfill", "enrich"), required=True)
+    ap.add_argument("--mode", choices=("daily", "backfill", "enrich", "rematch"),
+                    required=True)
     ap.add_argument("--tickers", nargs="+", default=None)
     ap.add_argument("--lock-ttl", type=int, default=int(os.environ.get("LOCK_TTL_SECONDS", "7200")))
     args = ap.parse_args()
