@@ -104,6 +104,82 @@ ESG_KEYWORDS: list[tuple[str, str]] = [
     ("chậm bàn giao", "S"),
 ]
 
+# ---------------------------------------------------------------------------
+# V2 classifier tiers (2026-06-10) — CLASSIFIER-ONLY vocabulary.
+# Not part of ESG_KEYWORDS on purpose: search_terms() reads ESG_KEYWORDS, so
+# nothing below creates new search-queue tasks or shifts sub_query_ix.
+# Source: full-DB false-negative audit — the production filter suppressed
+# ~350-540 real violation articles (noise-override + vocab gap). Every list
+# was simulated on the full DB and checked against hand-labeled samples
+# (recall 30/35 real events, junk resurrection ~14%) before deployment.
+# ---------------------------------------------------------------------------
+
+# Strong negative-event terms: override the noise blacklist the same way
+# HIGH_SEVERITY_KEYWORDS do. Scanned in title+sapo ONLY — body text is too
+# often polluted by sidebar/related-news fragments to be trusted here.
+STRONG_EVENT_KEYWORDS: list[tuple[str, str]] = [
+    ("xử phạt", "G"),
+    ("bị phạt", "G"),
+    ("tuyên phạt", "G"),
+    ("phạt tù", "G"),
+    ("án tù", "G"),
+    ("phạt hành chính", "G"),
+    ("thao túng", "G"),
+    ("thất thoát", "G"),
+    ("chiếm đoạt", "G"),
+    ("bị điều tra", "G"),
+    ("hủy niêm yết bắt buộc", "G"),
+    ("gian lận", "G"),
+    ("trục lợi", "G"),
+    ("buôn lậu", "G"),
+    ("hàng giả", "G"),
+    ("vi phạm PCCC", "S"),
+    ("chống bán phá giá", "G"),
+    ("tấn công mạng", "S"),
+    ("rò rỉ dữ liệu", "S"),
+    ("lộ thông tin", "S"),
+    ("thua kiện", "G"),
+    ("bị kiện", "G"),
+    ("khởi kiện", "G"),
+    ("bị thu hồi", "G"),
+    ("thu hồi đất", "G"),
+    ("thu hồi dự án", "G"),
+    ("bị kiểm soát", "G"),
+    ("cháy cửa hàng", "S"),
+    ("cháy kho", "S"),
+    ("bị cháy", "S"),
+]
+
+# Violation-adjacent words too ambiguous for the full text: count as ESG
+# evidence only when they appear in the TITLE, and never override noise.
+WEAK_TITLE_KEYWORDS: list[tuple[str, str]] = [
+    ("vi phạm", "G"),
+    ("sự cố", "S"),
+    ("điều tra", "G"),
+    ("tố cáo", "G"),
+    ("vụ cháy", "S"),
+    ("nợ thuế", "G"),
+    ("nợ lương", "S"),
+    ("nợ bảo hiểm", "S"),
+    ("âm vốn", "G"),
+]
+
+# Negated-noise pairs / product-quality phrases (title+sapo). These exist
+# mostly so the overlap guard neutralizes their embedded noise substring:
+# "KHÔNG đạt chuẩn" must not die to noise term "đạt chuẩn".
+QUALITY_KEYWORDS: list[tuple[str, str]] = [
+    ("không đạt chuẩn", "G"),
+    ("chưa đạt chuẩn", "G"),
+    ("không đảm bảo an toàn", "S"),
+    ("kém chất lượng", "S"),
+]
+
+# A strong term preceded (≤25 chars) by one of these is GOOD news for the
+# company and must not fire: "KHÔNG BỊ … áp thuế chống bán phá giá".
+POSITIVE_GUARDS: list[str] = [
+    "không bị", "ngoại trừ", "dỡ bỏ", "miễn ", "thoát ", "không áp",
+]
+
 # Noise keywords — topics that are NOT ESG risk events
 # Ported verbatim from cloud-function/keyword_classifier.py
 NOISE_KEYWORDS: list[str] = [
@@ -176,6 +252,26 @@ def search_terms() -> list[str]:
 def esg_terms() -> list[tuple[str, str]]:
     """Return full ESG_KEYWORDS list as (term, tag) tuples."""
     return list(ESG_KEYWORDS)
+
+
+def strong_event_terms() -> list[tuple[str, str]]:
+    """Strong negative-event terms (override noise; title+sapo scope)."""
+    return list(STRONG_EVENT_KEYWORDS)
+
+
+def weak_title_terms() -> list[tuple[str, str]]:
+    """Title-only violation terms (never override noise)."""
+    return list(WEAK_TITLE_KEYWORDS)
+
+
+def quality_terms() -> list[tuple[str, str]]:
+    """Negated-noise / quality terms (title+sapo; never override noise)."""
+    return list(QUALITY_KEYWORDS)
+
+
+def positive_guards() -> list[str]:
+    """Prefixes that disarm a strong term (good-news direction)."""
+    return list(POSITIVE_GUARDS)
 
 
 def noise_terms() -> list[str]:
