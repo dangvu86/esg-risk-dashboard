@@ -84,7 +84,9 @@ def _inherit_from_clusters(conn, events) -> tuple[int, list[dict]]:
         for i in range(0, len(ids), 500):
             chunk = ids[i:i + 500]
             for r in conn.execute(
-                "SELECT article_id, enrich_status, sentiment, summary_en FROM articles "
+                "SELECT article_id, enrich_status, sentiment, summary_en, "
+                "controversy_level, controversy_justification, "
+                "controversy_classified_at FROM articles "
                 f"WHERE article_id IN ({','.join('?' * len(chunk))}) "
                 "AND enrich_status IN ('done','dropped')", chunk):
                 verdicts[r["article_id"]] = {k: r[k] for k in r.keys()}
@@ -99,13 +101,27 @@ def _inherit_from_clusters(conn, events) -> tuple[int, list[dict]]:
                         remaining.append(pending[m["article_id"]])
                 continue
             src = judged[0]            # earliest judged member (cluster earliest-first)
+            # controversy source: any judged member carrying the fields (the
+            # earliest may predate the controversy stage / be Trung bình)
+            ctrl = next((j for j in judged if j.get("controversy_level")), None)
             for m in cluster:
                 e = pending.get(m["article_id"])
                 if e is None:
                     continue
                 if src["sentiment"] == "risk":
-                    storage.mark_enriched(conn, e["article_id"], sentiment="risk",
-                                          summary_en=src["summary_en"])
+                    if e["row"]["severity"] == "Cao" and ctrl is None:
+                        # No cluster member has controversy: inheriting would
+                        # freeze this Cao row at empty forever (the web export
+                        # reads controversy off the rep's enrich row). Send it
+                        # through the normal LLM path below instead.
+                        remaining.append(e)
+                        continue
+                    storage.mark_enriched(
+                        conn, e["article_id"], sentiment="risk",
+                        summary_en=src["summary_en"],
+                        controversy_level=(ctrl or {}).get("controversy_level"),
+                        controversy_justification=(ctrl or {}).get("controversy_justification"),
+                        controversy_classified_at=(ctrl or {}).get("controversy_classified_at"))
                 else:
                     storage.mark_dropped(conn, e["article_id"])
                 inherited += 1
@@ -175,6 +191,14 @@ def run(limit: int = DEFAULT_LIMIT, db_path=None) -> int:
                                                  body=r["body"], revenues=revenues)
                 if res:
                     level, just, classified_at = res["level"], res["justification"], now_iso
+                else:
+                    # classify failed (LLM error / invalid output). Marking the
+                    # row done here would freeze controversy at empty forever —
+                    # leave it pending so the next run retries (costs one extra
+                    # sentiment+translate pass for this row, acceptable).
+                    log.warning("controversy classify failed for %s — left pending for retry",
+                                e["article_id"])
+                    continue
             storage.mark_enriched(conn, e["article_id"], sentiment="risk", summary_en=en,
                                   controversy_level=level, controversy_justification=just,
                                   controversy_classified_at=classified_at)

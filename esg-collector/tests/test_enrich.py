@@ -256,6 +256,45 @@ def test_runner_translate_mismatch_falls_back_to_vn() -> None:
     print("  runner_translate_mismatch_falls_back_to_vn OK")
 
 
+def test_runner_classify_fail_leaves_pending() -> None:
+    """A Cao row whose controversy classify returns None must stay PENDING
+    (retried next run) — not be marked done with controversy frozen empty."""
+    import tempfile
+    from pathlib import Path
+    from core import storage, alias_matcher
+    from enrich import runner
+    alias_matcher.reload()
+    with tempfile.TemporaryDirectory() as td:
+        db = Path(td) / "cf.db"
+        storage.init_db(db)
+        conn = storage.connect(db)
+        conn.execute("INSERT INTO articles (article_id,url_canonical,title,esg_status,esg_type,severity,body,match_status) "
+                     "VALUES ('a::1','u1','Dabaco bi phat vi xa thai','esg','E','Cao','body','matched')")
+        conn.close()
+        _orig_filter = runner.sentiment.filter_negative
+        _orig_translate = runner.translate.translate_titles
+        _orig_classify = runner.controversy.classify_event
+        _orig_provider = runner.resolve_provider
+        try:
+            runner.sentiment.filter_negative = lambda evs, provider=None: list(evs)
+            runner.translate.translate_titles = lambda titles, provider=None: ["EN:" + t for t in titles]
+            runner.controversy.classify_event = lambda e, p, today, *, body, revenues=None: None
+            runner.resolve_provider = lambda: {"name": "x", "model": "m", "sleep": 0}
+            runner.run(limit=10, db_path=db)
+            conn = storage.connect(db)
+            r = conn.execute("SELECT enrich_status, controversy_level FROM articles "
+                             "WHERE article_id='a::1'").fetchone()
+            assert r["enrich_status"] == "pending", dict(r)
+            assert not r["controversy_level"]
+            conn.close()
+        finally:
+            runner.sentiment.filter_negative = _orig_filter
+            runner.translate.translate_titles = _orig_translate
+            runner.controversy.classify_event = _orig_classify
+            runner.resolve_provider = _orig_provider
+    print("  runner_classify_fail_leaves_pending OK")
+
+
 def test_build_esg_events() -> None:
     import tempfile, json
     from pathlib import Path
@@ -346,6 +385,7 @@ def main() -> None:
     test_controversy()
     test_runner_end_to_end()
     test_runner_translate_mismatch_falls_back_to_vn()
+    test_runner_classify_fail_leaves_pending()
     test_build_esg_events()
     test_export_web_upload_skips_ndjson()
     print("ALL OK")
