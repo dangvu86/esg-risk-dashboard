@@ -1,0 +1,233 @@
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from runtime import job
+
+
+def _joined(stages):
+    """Flatten stage_commands' (enqueue, fetch_cmds, post_fetch) to joined strings."""
+    enqueue, fetch_cmds, post_fetch = stages
+    return [" ".join(c) for c in (enqueue, *fetch_cmds, *post_fetch)]
+
+
+def test_daily_stage_order_includes_enrich():
+    cmds = _joined(job.stage_commands("daily", tickers=None))
+    # fetch (2 backends, drained) → body → match → enrich → export
+    assert any("workers.runner --backend google_rss --drain" in c for c in cmds)
+    assert any("workers.runner --backend baomoi --drain" in c for c in cmds)
+    # brave disabled 2026-06-11 (quota exhausted) — must NOT be spawned
+    assert not any("--backend brave" in c for c in cmds)
+    assert any("workers.body_fetcher --drain" in c for c in cmds)
+    assert any("pipeline.match" in c for c in cmds)
+    assert any("enrich.runner --limit 25" in c for c in cmds)
+    # two export stages so the raw_esg NDJSON actually uploads (see job.py note)
+    assert any("pipeline.export --ndjson --upload" in c for c in cmds)
+    assert any("pipeline.export --web --upload" in c for c in cmds)
+    # enrich must come after match and before export
+    i_match = next(i for i, c in enumerate(cmds) if "pipeline.match" in c)
+    i_enrich = next(i for i, c in enumerate(cmds) if "enrich.runner" in c)
+    i_export = next(i for i, c in enumerate(cmds) if "pipeline.export" in c)
+    assert i_match < i_enrich < i_export
+
+
+def test_enrich_mode_is_enrich_plus_web_only():
+    enqueue, fetch_cmds, post_fetch = job.stage_commands("enrich", tickers=None)
+    assert enqueue is None          # no search enqueue
+    assert fetch_cmds == []         # no fetch backends
+    joined = [" ".join(c) for c in post_fetch]
+    assert any("enrich.runner --limit" in c for c in joined)
+    assert any("pipeline.export --web --upload" in c for c in joined)
+    # must NOT fetch, match, or export the raw ndjson
+    assert not any("workers.runner" in c or "body_fetcher" in c or
+                   "pipeline.match" in c or "--ndjson" in c for c in joined)
+
+
+def test_rematch_mode_is_rematch_plus_exports_only():
+    # classifier/alias changes need a corpus-wide re-verdict WITHOUT paying
+    # the multi-hour backfill fetch — no enqueue, no backends, no enrich.
+    enqueue, fetch_cmds, post_fetch = job.stage_commands("rematch", tickers=None)
+    assert enqueue is None
+    assert fetch_cmds == []
+    joined = [" ".join(c) for c in post_fetch]
+    assert any("pipeline.match --rematch-all" in c for c in joined)
+    # both export stages so per_ticker/raw NDJSON AND web/*.json refresh
+    assert any("pipeline.export --ndjson --upload" in c for c in joined)
+    assert any("pipeline.export --web --upload" in c for c in joined)
+    assert not any("workers.runner" in c or "body_fetcher" in c or
+                   "enrich.runner" in c or "queue_builder" in c for c in joined)
+
+
+def test_backfill_skips_enrich_and_uses_rematch():
+    cmds = _joined(job.stage_commands("backfill", tickers=None))
+    assert not any("enrich.runner" in c for c in cmds)
+    assert any("queue_builder --mode backfill" in c for c in cmds)
+    assert any("pipeline.match --rematch-all" in c for c in cmds)
+
+
+def test_backfill_with_tickers_scopes_enqueue():
+    cmds = _joined(job.stage_commands("backfill", tickers=["DBC", "HPG"]))
+    assert any("queue_builder --mode backfill --tickers DBC HPG" in c for c in cmds)
+
+
+def test_daily_enqueue_is_daily_mode():
+    cmds = _joined(job.stage_commands("daily", tickers=None))
+    assert any("queue_builder --mode daily" in c for c in cmds)
+
+
+def test_run_acquires_does_stages_checks_in_and_releases(monkeypatch, tmp_path):
+    import importlib
+    monkeypatch.setenv("ESG_DATA_DIR", str(tmp_path))
+    from config import settings as s; importlib.reload(s)
+    from core import storage; importlib.reload(storage)
+    importlib.reload(job)  # rebind job.settings/job.storage to the reloaded modules
+
+    from tests._fake_gcs import FakeBucket
+    bucket = FakeBucket()
+    ran = []
+    # pin the clock so lock acquire/refresh/release are deterministic regardless
+    # of wall time (each refresh stays well within the TTL window)
+    monkeypatch.setattr(job, "_now", lambda: "2026-06-04T00:00:00Z")
+    monkeypatch.setattr(job, "_run_stage", lambda cmd, env: ran.append(cmd))
+    monkeypatch.setattr(job, "_run_fetch_concurrently",
+                        lambda cmds, env, **kw: (ran.append("fetch"), kw["handle"])[1])
+
+    rc = job.run("daily", None, ttl_seconds=3600, bucket=bucket)
+    assert rc == 0
+    assert "fetch" in ran                      # fetch stage ran
+    assert "state/articles.db" in bucket._store  # DB checked in
+    assert "state/pipeline.lock" not in bucket._store  # lock released
+    importlib.reload(s); importlib.reload(storage); importlib.reload(job)
+
+
+def test_run_skips_when_lock_already_held(monkeypatch, tmp_path):
+    import importlib
+    monkeypatch.setenv("ESG_DATA_DIR", str(tmp_path))
+    from config import settings as s; importlib.reload(s)
+    from core import storage; importlib.reload(storage)
+    importlib.reload(job)
+    from tests._fake_gcs import FakeBucket
+    from runtime import gcs_lock
+    bucket = FakeBucket()
+    gcs_lock.acquire(bucket, owner="other", mode="daily",
+                     now="2026-06-04T00:00:00Z", ttl_seconds=3600)  # fresh lock held
+    # pin the clock inside the held lock's TTL window so our acquire sees it as
+    # live (not stale) regardless of wall time → run must skip
+    monkeypatch.setattr(job, "_now", lambda: "2026-06-04T00:10:00Z")
+    ran = []
+    monkeypatch.setattr(job, "_run_stage", lambda cmd, env: ran.append(cmd))
+    monkeypatch.setattr(job, "_run_fetch_concurrently",
+                        lambda cmds, env, **kw: kw["handle"])
+    rc = job.run("daily", None, ttl_seconds=3600, bucket=bucket)
+    assert rc == 0
+    assert ran == []                            # nothing ran — skipped
+    importlib.reload(s); importlib.reload(storage); importlib.reload(job)
+
+
+def test_run_aborts_without_checkin_or_release_when_lock_lost(monkeypatch, tmp_path):
+    import importlib
+    monkeypatch.setenv("ESG_DATA_DIR", str(tmp_path))
+    from config import settings as s; importlib.reload(s)
+    from core import storage; importlib.reload(storage)
+    importlib.reload(job)
+    from tests._fake_gcs import FakeBucket
+    from runtime import gcs_lock, gcs as _gcs
+    bucket = FakeBucket()
+    monkeypatch.setattr(job, "_now", lambda: "2026-06-04T00:00:00Z")
+
+    # After our job acquires the lock, the first stage simulates another job
+    # taking the lock over (overwrites the lock blob → new generation), so our
+    # next _refresh() fails its generation precondition and raises LockLost.
+    state = {"taken": False}
+    def fake_stage(cmd, env):
+        if not state["taken"]:
+            _gcs.upload_text(
+                bucket, gcs_lock.LOCK_BLOB,
+                '{"owner":"other","mode":"daily",'
+                '"started_at":"2026-06-04T00:00:00Z","ttl_seconds":3600}')
+            state["taken"] = True
+    monkeypatch.setattr(job, "_run_stage", fake_stage)
+    monkeypatch.setattr(job, "_run_fetch_concurrently",
+                        lambda cmds, env, **kw: kw["handle"])
+
+    rc = job.run("daily", None, ttl_seconds=3600, bucket=bucket)
+    assert rc == 1                                    # aborted on lost lock
+    assert "state/articles.db" not in bucket._store   # DB NOT checked in
+    assert "state/pipeline.lock" in bucket._store      # other owner's lock NOT deleted
+    importlib.reload(s); importlib.reload(storage); importlib.reload(job)
+
+
+class _FakeProc:
+    """A subprocess.Popen stand-in: .poll() returns None for the first
+    `alive_for` calls (process still running) then 0 (exited), and exposes
+    a .returncode of 0 once done."""
+    def __init__(self, alive_for=2):
+        self._alive_for = alive_for
+        self._calls = 0
+        self.returncode = None
+
+    def poll(self):
+        self._calls += 1
+        if self._calls <= self._alive_for:
+            return None
+        self.returncode = 0
+        return 0
+
+
+def test_fetch_refreshes_lock_during_long_drain(monkeypatch):
+    # Two fake procs that each report "running" for the first 2 poll()s then
+    # exit; the while-loop therefore iterates at least twice before draining.
+    fakes = iter([_FakeProc(alive_for=2), _FakeProc(alive_for=2)])
+    monkeypatch.setattr(job.subprocess, "Popen", lambda cmd, env: next(fakes))
+    monkeypatch.setattr(job.time, "sleep", lambda s: None)  # instant
+
+    calls = {"n": 0}
+    def fake_refresh(bucket, handle, *, mode, ttl_seconds):
+        calls["n"] += 1
+        return handle
+    monkeypatch.setattr(job, "_refresh", fake_refresh)
+
+    out = job._run_fetch_concurrently(
+        [["a"], ["b"]], {}, bucket=object(), handle="H",
+        mode="backfill", ttl_seconds=86400,
+        refresh_every=0, poll_seconds=0)  # refresh_every=0 → refresh every tick
+
+    assert calls["n"] >= 1   # lock was refreshed during the drain
+    assert out == "H"        # latest handle returned
+
+
+class _ForeverProc:
+    """Popen stand-in that never exits on its own; records terminate()."""
+    def __init__(self):
+        self.returncode = None
+        self.terminated = False
+
+    def poll(self):
+        return 0 if self.terminated else None
+
+    def terminate(self):
+        self.terminated = True
+        self.returncode = 0
+
+    def wait(self, timeout=None):
+        return 0
+
+
+def test_fetch_stops_at_budget_and_terminates_backends(monkeypatch):
+    # Backends that would run forever; the wall-clock budget must stop them so
+    # the pipeline can still reach match/enrich/export.
+    procs = [_ForeverProc(), _ForeverProc()]
+    it = iter(procs)
+    monkeypatch.setattr(job.subprocess, "Popen", lambda cmd, env: next(it))
+    monkeypatch.setattr(job.time, "sleep", lambda s: None)  # instant ticks
+
+    out = job._run_fetch_concurrently(
+        [["a"], ["b"]], {}, bucket=object(), handle="H",
+        mode="daily", ttl_seconds=3600,
+        refresh_every=10_000, poll_seconds=1, max_seconds=3)
+
+    assert all(p.terminated for p in procs)  # budget elapsed → both SIGTERM'd
+    assert out == "H"

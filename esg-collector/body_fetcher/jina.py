@@ -1,14 +1,15 @@
-"""Body fetcher via Jina Reader (https://r.jina.ai/<url>).
+"""Jina Reader HTML fetcher (FALLBACK).
 
-One HTTP call replaces googlenewsdecoder + bs4: Jina follows redirects
-(including Google News encoded links) and returns clean markdown.
+Used when the direct `fallback` fetch is blocked (anti-bot) or the URL is still
+a Google-encoded redirect — Jina (https://r.jina.ai/<url>) follows redirects
+and bypasses simple bot walls. We ask it for raw HTML (`X-Return-Format: html`)
+so `body_fetcher.extract` (trafilatura) can isolate the article, instead of the
+old full-page markdown that buried the article in nav/ads.
 
-Free tier ~20 RPM; with JINA_API_KEY 200 RPM. The rate limit is enforced
-here via a process-wide token bucket so multiple worker threads share one
-budget — the body_fetcher thread pool would otherwise burst N concurrent
-calls past the cap.
+Free tier ~20 RPM; with JINA_API_KEY ~200 RPM. A process-wide token bucket
+shares one budget across the worker thread pool so concurrent threads don't
+burst past the cap.
 """
-
 from __future__ import annotations
 
 import threading
@@ -21,10 +22,9 @@ from config import settings
 
 ENDPOINT = "https://r.jina.ai/"
 
-# Free tier is ~20 RPM; authenticated key raises to ~200 RPM. Keep a small
-# safety margin under the documented cap so brief bursts don't trip 429.
-_FREE_RPM = 18
-_AUTH_RPM = 180
+_FREE_RPM = 18    # small margin under the documented ~20 RPM free cap
+_AUTH_RPM = 180   # margin under ~200 RPM with an API key
+_MIN_HTML = 2000  # shorter than this is an error/stub, not a real page
 
 
 def _rpm() -> int:
@@ -37,11 +37,7 @@ _next_allowed_at: float = 0.0
 
 
 def _pace() -> None:
-    """Block the calling thread until it owns a fresh slot.
-
-    Single global token: under N concurrent worker threads the (N-1)
-    losers wait their turn instead of all firing simultaneously.
-    """
+    """Block until this thread owns a fresh rate-limit slot (single token)."""
     global _next_allowed_at
     with _lock:
         now = time.monotonic()
@@ -52,16 +48,13 @@ def _pace() -> None:
         _next_allowed_at = max(now, _next_allowed_at) + _min_gap_s
 
 
-def fetch(url: str, timeout: int = 30) -> tuple[str | None, str]:
-    """Return (body_markdown, status).
-
-    status ∈ {fetched, failed, ratelimited}.
-    """
+def fetch(url: str, timeout: int = 45) -> tuple[str | None, str]:
+    """Return (html, status). status in {fetched, failed, ratelimited}."""
     if not url:
         return None, "failed"
     headers = {
-        "X-Return-Format": "markdown",
-        "Accept": "text/markdown, text/plain",
+        "X-Return-Format": "html",
+        "Accept": "text/html",
     }
     if settings.JINA_API_KEY:
         headers["Authorization"] = f"Bearer {settings.JINA_API_KEY}"
@@ -72,9 +65,6 @@ def fetch(url: str, timeout: int = 30) -> tuple[str | None, str]:
         return None, "failed"
     if r.status_code == 429:
         return None, "ratelimited"
-    if r.status_code >= 400:
+    if r.status_code >= 400 or not r.text or len(r.text) < _MIN_HTML:
         return None, "failed"
-    body = (r.text or "").strip()
-    if not body:
-        return None, "failed"
-    return body, "fetched"
+    return r.text, "fetched"

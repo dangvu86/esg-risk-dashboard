@@ -10,7 +10,9 @@
     "KDH",
     "CTCP Đầu tư và Kinh doanh Nhà Khang Điền",
     "KHADIHOUSE JSC",
-    "Đầu tư và Kinh doanh Nhà Khang Điền"
+    "Đầu tư và Kinh doanh Nhà Khang Điền",
+    "Nhà Khang Điền",
+    "Khang Điền"
   ],
   "subsidiaries": [
     "Công ty TNHH Bất động sản Bình Trưng Mới",
@@ -40,10 +42,20 @@
     "Saphire",
     "Đầu tư Thành Phúc",
     "Đô thị Mê Ga",
-    "Hào Khang",
-    "Tư vấn Quốc tế",
-    "Vi La"
+    "Hào Khang"
   ],
-  "projects": [],
+  "projects": [
+    "Safira",
+    "Safira Khang Điền",
+    "Jamila",
+    "Lovera Vista",
+    "Lovera Park",
+    "Verosa Park",
+    "The Privia",
+    "Clarita",
+    "The Emeria",
+    "The Solina",
+    "Armena"
+  ],
   "locations": []
 }

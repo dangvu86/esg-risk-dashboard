@@ -1,11 +1,12 @@
-name: Deploy esg-collector
+name: Deploy esg-collector (VM — DEPRECATED)
 
+# SUPERSEDED by deploy-esg-collector-cloudrun.yml. The push trigger is removed
+# so merging the Cloud Run migration does NOT also redeploy the VM (which would
+# keep the VM producing competing per_ticker/web outputs into the same bucket).
+# Kept as workflow_dispatch-only for emergency manual VM redeploys until the VM
+# is decommissioned (see esg-collector/deploy/cloudrun/README.md Phase 5), then
+# delete this file.
 on:
-  push:
-    branches: [main]
-    paths:
-      - "esg-collector/**"
-      - ".github/workflows/deploy-esg-collector.yml"
   workflow_dispatch:
     inputs:
       run_rematch_all:

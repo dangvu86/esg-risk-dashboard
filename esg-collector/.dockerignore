@@ -1,0 +1,11 @@
+# Keep the Cloud Run image slim and never bake local state into it.
+data/
+logs/
+tests/
+**/__pycache__/
+*.pyc
+*.db
+*.db-wal
+*.db-shm
+.pytest_cache/
+.git/

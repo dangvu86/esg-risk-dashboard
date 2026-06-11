@@ -22,7 +22,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict
 
-from body_fetcher import jina, fallback
+from body_fetcher import jina, fallback, extract
 from core import alias_matcher, storage
 
 
@@ -54,13 +54,20 @@ def _serialize_hits(hits) -> str:
 
 
 def _fetch_one(url: str) -> tuple[str | None, str]:
-    body, status = jina.fetch(url)
-    if status == "fetched":
-        return body, status
-    if status == "ratelimited":
-        time.sleep(2)
-    body, status = fallback.fetch(url)
-    return body, status
+    # Direct HTML first (free, no rate limit, fetches most VN sites); fall back
+    # to Jina for blocked sites / undecoded Google links. Then isolate the
+    # article body with trafilatura so the matcher never sees nav/ads/related.
+    html, status = fallback.fetch(url)
+    if status != "fetched":
+        html, status = jina.fetch(url)
+        if status == "ratelimited":
+            time.sleep(2)
+    if status != "fetched" or not html:
+        return None, status if status in ("failed", "ratelimited") else "failed"
+    text = extract.extract_main(html)
+    if not text:
+        return None, "failed"
+    return text, "fetched"
 
 
 def _candidate_articles(conn, limit: int) -> list[dict]:
@@ -73,7 +80,8 @@ def _candidate_articles(conn, limit: int) -> list[dict]:
     return [dict(r) for r in rows]
 
 
-def run(workers: int = 8, batch_limit: int = 500, idle_sleep: int = 60) -> None:
+def run(workers: int = 8, batch_limit: int = 500, idle_sleep: int = 60,
+        *, drain: bool = False, max_seconds: int | None = None) -> None:
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(name)s/%(levelname)s] %(message)s",
@@ -84,10 +92,19 @@ def run(workers: int = 8, batch_limit: int = 500, idle_sleep: int = 60) -> None:
     storage.init_db()
     conn = storage.connect()
     log.info("body_fetcher started: workers=%d", workers)
+    start = time.monotonic()
 
     while not _stop:
+        # Cloud Run budget: stop fetching bodies once elapsed so match/enrich/
+        # export still run this cycle; remaining 'pending' bodies resume next run.
+        if max_seconds is not None and (time.monotonic() - start) >= max_seconds:
+            log.info("body budget %ds reached — exiting", max_seconds)
+            break
         candidates = _candidate_articles(conn, batch_limit)
         if not candidates:
+            if drain:
+                log.info("drain: no pending bodies — exiting")
+                break
             log.info("no pending bodies — sleeping %ds", idle_sleep)
             for _ in range(idle_sleep):
                 if _stop:
@@ -145,8 +162,14 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--workers", type=int, default=8)
     ap.add_argument("--batch-limit", type=int, default=500)
+    ap.add_argument("--drain", action="store_true",
+                    help="exit when no pending bodies remain instead of polling forever")
+    ap.add_argument("--max-seconds", type=int, default=None,
+                    help="stop after this many seconds (Cloud Run time budget); "
+                         "un-fetched bodies stay 'pending' and resume next run")
     args = ap.parse_args()
-    run(workers=args.workers, batch_limit=args.batch_limit)
+    run(workers=args.workers, batch_limit=args.batch_limit, drain=args.drain,
+        max_seconds=args.max_seconds)
 
 
 if __name__ == "__main__":

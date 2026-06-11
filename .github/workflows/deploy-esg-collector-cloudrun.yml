@@ -1,0 +1,105 @@
+name: Deploy esg-collector (Cloud Run)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "esg-collector/**"
+      - ".github/workflows/deploy-esg-collector-cloudrun.yml"
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-esg-collector-cloudrun
+  cancel-in-progress: false
+
+env:
+  PROJECT: gen-lang-client-0020762472
+  REGION: us-central1
+  IMAGE: us-central1-docker.pkg.dev/gen-lang-client-0020762472/esg/esg-collector
+  RUNTIME_SA: esg-collector@gen-lang-client-0020762472.iam.gserviceaccount.com
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: gen-lang-client-0020762472
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run tests
+        working-directory: esg-collector
+        run: |
+          python -m pip install -r requirements.txt pytest
+          python -m pytest tests/ -q
+
+      - name: Build & push image (Cloud Build)
+        run: |
+          gcloud builds submit esg-collector \
+            --tag "$IMAGE:${{ github.sha }}"
+          gcloud artifacts docker tags add "$IMAGE:${{ github.sha }}" "$IMAGE:latest"
+
+      - name: Deploy daily job
+        run: |
+          # task-timeout 4h: fetch is budgeted (FETCH_MAX_SECONDS) so the daily
+          # drains baomoi fully + most of google at their safe throttles, then
+          # body/match/enrich/export still run and the DB checks in. Un-drained
+          # tasks resume next run. LOCK_TTL must exceed the timeout.
+          gcloud run jobs deploy esg-daily \
+            --image "$IMAGE:${{ github.sha }}" --region "$REGION" \
+            --service-account "$RUNTIME_SA" \
+            --memory 2Gi --cpu 1 --task-timeout 14400 --max-retries 0 \
+            --set-env-vars ESG_DATA_DIR=/tmp/esg-data,LOCK_TTL_SECONDS=18000,FETCH_MAX_SECONDS=10800,BODY_MAX_SECONDS=1800 \
+            --set-secrets BRAVE_API_KEY=BRAVE_API_KEY:latest,JINA_API_KEY=JINA_API_KEY:latest,GROQ_API_KEY=GROQ_API_KEY:latest \
+            --args=--mode,daily
+
+      - name: Deploy backfill job
+        run: |
+          # 24h job: large fetch/body budgets so it chews through history then
+          # still rematches + exports + checks in before the deadline. Un-drained
+          # tasks resume on the next manual backfill run.
+          gcloud run jobs deploy esg-backfill \
+            --image "$IMAGE:${{ github.sha }}" --region "$REGION" \
+            --service-account "$RUNTIME_SA" \
+            --memory 4Gi --cpu 1 --task-timeout 86400 --max-retries 0 \
+            --set-env-vars ESG_DATA_DIR=/tmp/esg-data,LOCK_TTL_SECONDS=86400,FETCH_MAX_SECONDS=72000,BODY_MAX_SECONDS=10800 \
+            --set-secrets BRAVE_API_KEY=BRAVE_API_KEY:latest,JINA_API_KEY=JINA_API_KEY:latest,GROQ_API_KEY=GROQ_API_KEY:latest \
+            --args=--mode,backfill
+
+      # Grant invoker BEFORE creating the schedule, else the first fire 403s.
+      # The runtime SA doubles as the scheduler's OAuth identity (one SA model).
+      - name: Grant scheduler invoker on the daily job
+        run: |
+          gcloud run jobs add-iam-policy-binding esg-daily --region "$REGION" \
+            --member="serviceAccount:${RUNTIME_SA}" --role=roles/run.invoker
+
+      - name: Ensure daily schedule exists
+        run: |
+          # Create only if absent — describe-or-create so a real creation failure
+          # (bad SA, wrong endpoint) surfaces instead of being masked as "exists".
+          # v2 Jobs API endpoint (host is un-prefixed run.googleapis.com), NOT the
+          # v1 Knative/services namespaces URL — the latter does not run a Job.
+          if gcloud scheduler jobs describe esg-daily-trigger --location "$REGION" >/dev/null 2>&1; then
+            echo "scheduler job esg-daily-trigger already exists — skipping create"
+          else
+            gcloud scheduler jobs create http esg-daily-trigger \
+              --location "$REGION" --schedule "0 2 * * *" --time-zone UTC \
+              --uri "https://run.googleapis.com/v2/projects/${PROJECT}/locations/${REGION}/jobs/esg-daily:run" \
+              --http-method POST \
+              --oauth-service-account-email "$RUNTIME_SA" \
+              --oauth-token-scope "https://www.googleapis.com/auth/cloud-platform" \
+              --attempt-deadline 180s
+          fi

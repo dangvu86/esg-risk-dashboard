@@ -268,11 +268,20 @@ def mark_esg(conn: sqlite3.Connection, article_id: str, status: str,
 
 
 def get_pending_enrich(conn: sqlite3.Connection, limit: int) -> list[sqlite3.Row]:
-    """Kept-but-not-yet-enriched articles, oldest first, bounded by `limit`."""
+    """Matched, kept-but-not-yet-enriched articles, most-recently-published
+    first, bounded by `limit`.
+
+    The `match_status='matched'` filter is essential: an article can be
+    `esg_status='esg'` without matching any tracked company (generic ESG-topic
+    news — pollution/accidents not about the 100 tickers). Those vastly
+    outnumber real matches and can NEVER reach the per-company web export, so
+    enriching them only burns LLM quota and starves the real events. Ordering by
+    published_at DESC surfaces the most recent controversies first.
+    """
     return conn.execute(
         "SELECT * FROM articles "
-        "WHERE esg_status='esg' AND enrich_status='pending' "
-        "ORDER BY fetched_at ASC LIMIT ?",
+        "WHERE match_status='matched' AND esg_status='esg' AND enrich_status='pending' "
+        "ORDER BY published_at DESC LIMIT ?",
         (int(limit),),
     ).fetchall()
 
@@ -508,3 +517,20 @@ def queue_stats(conn: sqlite3.Connection) -> dict[str, dict[str, int]]:
     for r in rows:
         out.setdefault(r["backend"], {})[r["status"]] = r["c"]
     return out
+
+
+def has_remaining_tasks(conn: sqlite3.Connection, backend: str) -> bool:
+    """True if `backend` still has work to drain — any pending/backoff/in_progress
+    row, regardless of next_attempt. (A backed-off task with a future next_attempt
+    counts: the drain loop must wait for it, not exit.) 'failed' and 'done' do not
+    count, so the loop terminates once retries are exhausted (MAX_ATTEMPTS).
+
+    Note: a worker SIGKILLed mid-task (e.g. OOM) leaves an 'in_progress' row that
+    next_task only reclaims after _CLAIM_TTL_SECONDS, so a drain can idle-poll up
+    to that TTL before resuming it — bounded, not a hang."""
+    row = conn.execute(
+        "SELECT 1 FROM search_queue "
+        "WHERE backend=? AND status IN ('pending','backoff','in_progress') LIMIT 1",
+        (backend,),
+    ).fetchone()
+    return row is not None

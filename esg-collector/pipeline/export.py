@@ -11,7 +11,7 @@ the first run after a schema change.
 Local:
     python -m pipeline.export --ndjson
     python -m pipeline.export --ndjson --full      # full snapshot
-Upload (requires gsutil + auth on the running host):
+Upload (requires google-cloud-storage + ADC on the running host):
     python -m pipeline.export --ndjson --upload
 """
 
@@ -21,17 +21,16 @@ import argparse
 import csv
 import json
 import logging
-import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
 from config import settings
 from core import storage
+from core.events import cluster_events
+from runtime import gcs
 
 
 log = logging.getLogger("export")
-
-GCS_BUCKET = "gs://esg-scan-data"
 
 _LAST_EXPORT_KEY = "last_ndjson_export_at"
 
@@ -76,27 +75,15 @@ def _export_ndjson(out_dir: Path, *, full: bool) -> Path:
     return path
 
 
-def _gsutil_cp(src: Path, dst: str) -> None:
-    cmd = ["gsutil", "cp", str(src), dst]
-    log.info("$ %s", " ".join(cmd))
-    subprocess.run(cmd, check=True)
-
-
-def _upload(ndjson: Path) -> None:
-    _gsutil_cp(ndjson, f"{GCS_BUCKET}/raw_esg/{ndjson.name}")
+def _upload(ndjson: Path, *, bucket=None) -> None:
+    bucket = bucket if bucket is not None else gcs.get_bucket()
+    gcs.upload_file(bucket, f"raw_esg/{ndjson.name}", ndjson)
     if settings.PER_TICKER_DIR.exists():
-        # `gsutil cp -r dir gs://...` keeps the dir name; we want flat per_ticker/
-        cmd = [
-            "gsutil", "-m", "cp",
-            str(settings.PER_TICKER_DIR / "*.json"),
-            f"{GCS_BUCKET}/per_ticker/",
-        ]
-        log.info("$ %s", " ".join(cmd))
-        # use shell=True so the glob expands on Windows; on Linux gsutil handles it
-        subprocess.run(" ".join(cmd), shell=True, check=True)
+        for p in sorted(settings.PER_TICKER_DIR.glob("*.json")):
+            gcs.upload_file(bucket, f"per_ticker/{p.name}", p)
 
 
-WEB_PREFIX = f"{GCS_BUCKET}/web"
+WEB_PREFIX = "web"
 
 
 def _company_names() -> dict[str, str]:
@@ -115,8 +102,12 @@ def _company_names() -> dict[str, str]:
 
 def build_esg_events(db_path=None, per_ticker_dir: Path | None = None,
                      companies: dict | None = None) -> list[dict]:
-    """Join per_ticker/*.json with enriched articles columns → web EsgEvent list,
-    risk-only, deduped by title_hash (earliest kept), sorted by date desc."""
+    """Join per_ticker/*.json with enriched article columns → web EsgEvent list:
+    ONE event per same-event article cluster (core/events.py), risk-only,
+    sorted by date desc. Each event carries sources_count + sources for every
+    matched member outlet (enriched or not), so the UI can render '[+N nguồn]'.
+    Clustering supersedes the old (ticker, title_hash) dedup — verbatim
+    republications land in the same cluster anyway."""
     per_ticker_dir = per_ticker_dir or settings.PER_TICKER_DIR
     companies = companies if companies is not None else _company_names()
     conn = storage.connect(db_path)
@@ -132,48 +123,48 @@ def build_esg_events(db_path=None, per_ticker_dir: Path | None = None,
     finally:
         conn.close()
 
-    seen: set[tuple[str, str]] = set()          # (ticker, title_hash) already emitted
-    events: list[dict] = []
+    out: list[dict] = []
     for pj in sorted(Path(per_ticker_dir).glob("*.json")):
         try:
             doc = json.loads(pj.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             continue
         ticker = (doc.get("ticker") or pj.stem).upper()
-        # earliest first so the kept representative is the earliest published
-        arts = sorted(doc.get("articles") or [],
-                      key=lambda a: a.get("published_at") or "")
-        for a in arts:
-            row = enr.get(a.get("article_id"))
-            if not row or row.get("sentiment") != "risk":
-                continue            # not enriched, dropped, or pending → skip
-            th = row.get("title_hash") or a.get("article_id")
-            if not th:
-                continue   # no stable identity → cannot dedup safely, skip
-            key = (ticker, th)
-            if key in seen:
-                continue            # same incident already emitted (earliest wins)
-            seen.add(key)
-            events.append({
+        # ticker is a doc-level key — inject it per article: cluster_events
+        # requires it on each dict (its hard clustering boundary).
+        arts = [{**a, "ticker": ticker} for a in (doc.get("articles") or [])]
+        for cluster in cluster_events(arts):
+            risk = [m for m in cluster
+                    if (enr.get(m.get("article_id")) or {}).get("sentiment") == "risk"]
+            if not risk:
+                continue            # nothing enriched-risk → no card (unchanged)
+            rep = risk[0]           # earliest risk member (cluster is earliest-first)
+            row = enr[rep["article_id"]]
+            out.append({
                 "ticker": ticker,
                 "company": companies.get(ticker, ""),
-                "type": a.get("type"),
-                "date": (a.get("published_at") or "")[:10],
-                "summary": a.get("title") or "",
+                "type": rep.get("type"),
+                # event date = first report in the cluster (event start), even
+                # if that earliest member is not yet enriched
+                "date": (cluster[0].get("published_at") or "")[:10],
+                "summary": rep.get("title") or "",
                 "summary_en": row.get("summary_en") or "",
-                "severity": a.get("severity"),
-                "source": a.get("source") or "",
-                "url": a.get("url") or "",
+                "severity": rep.get("severity"),
+                "source": rep.get("source") or "",
+                "url": rep.get("url") or "",
                 "controversy_level": row.get("controversy_level") or "",
                 "controversy_justification": row.get("controversy_justification") or "",
                 "controversy_classified_at": row.get("controversy_classified_at") or "",
                 "created_at": row.get("fetched_at"),
-                # optional passthrough (web may surface later; not displayed now):
-                "backend": a.get("backend"),
-                "matched_alias": a.get("matched_alias"),
+                "backend": rep.get("backend"),
+                "matched_alias": rep.get("matched_alias"),
+                "sources_count": len(cluster),
+                "sources": [{"date": (m.get("published_at") or "")[:10],
+                             "source": m.get("source") or "",
+                             "url": m.get("url") or ""} for m in cluster],
             })
-    events.sort(key=lambda e: e["date"], reverse=True)
-    return events
+    out.sort(key=lambda e: e["date"], reverse=True)
+    return out
 
 
 def _write_web_files() -> tuple[Path, Path]:
@@ -189,12 +180,12 @@ def _write_web_files() -> tuple[Path, Path]:
     return ev_path, top_path
 
 
-def _upload_web(ev_path: Path, top_path: Path) -> None:
+def _upload_web(ev_path: Path, top_path: Path, *, bucket=None) -> None:
+    bucket = bucket if bucket is not None else gcs.get_bucket()
     for src in (ev_path, top_path):
-        dst = f"{WEB_PREFIX}/{src.name}"
-        _gsutil_cp(src, dst)
         # objects are overwritten each run → re-apply public-read ACL each time
-        subprocess.run(["gsutil", "acl", "ch", "-u", "AllUsers:R", dst], check=True)
+        # (requires UBLA OFF on the bucket).
+        gcs.upload_file(bucket, f"{WEB_PREFIX}/{src.name}", src, public=True)
 
 
 def run(do_ndjson: bool, do_upload: bool, *, full: bool = False,
@@ -229,7 +220,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--ndjson", action="store_true",
                     help="write data/exports/articles_{full|delta}_<ts>.ndjson")
-    ap.add_argument("--upload", action="store_true", help="gsutil cp to gs://esg-scan-data/")
+    ap.add_argument("--upload", action="store_true", help="upload to gs://esg-scan-data/ via google-cloud-storage")
     ap.add_argument("--full", action="store_true",
                     help="force full snapshot instead of delta-since-last-export")
     ap.add_argument("--web", action="store_true",

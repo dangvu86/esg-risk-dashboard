@@ -105,6 +105,13 @@ def _process_article(conn, art, per_ticker, counts):
     # ESG verdict layered on top of alias attribution, using the same
     # title/desc/sapo/body dict the matcher saw.
     verdict = esg_filter.classify(art_d)
+    # Fix B: roundup/aboutness gate. An article naming >=3 distinct tracked
+    # companies is almost always a listicle/roundup (donation lists,
+    # rankings, "which bank is best"); keep only title attributions. Emptying
+    # `hits` here correctly routes the article to the unmatched/deferred
+    # branch below.
+    if len(hits) >= 3:
+        hits = [h for h in hits if h.location == "title"]
     if hits and verdict.keep:
         storage.mark_match(conn, art["article_id"], "matched")
         storage.mark_esg(conn, art["article_id"], "esg",
@@ -168,9 +175,14 @@ def run(
     if rematch_all:
         n = conn.execute(
             "UPDATE articles SET match_status='pending', matched_at=NULL, "
-            "esg_status='pending', esg_type=NULL, severity=NULL"
+            "esg_status='pending', esg_type=NULL, severity=NULL, "
+            # Clear the body_fetcher pre-check cache too: it was computed under
+            # the OLD alias pool, so trusting it would silently bypass alias /
+            # stoplist edits (the whole point of a rematch). Forcing it NULL
+            # makes _process_article re-run alias_matcher live on every article.
+            "cached_hits=NULL"
         ).rowcount
-        log.info("rematch_all: reset %d articles to pending", n)
+        log.info("rematch_all: reset %d articles to pending (cleared cached_hits)", n)
         # Per-ticker JSONs are also stale — wipe so they rebuild cleanly.
         for p in settings.PER_TICKER_DIR.glob("*.json"):
             p.unlink()
