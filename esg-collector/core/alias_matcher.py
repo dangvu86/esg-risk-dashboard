@@ -134,7 +134,8 @@ def loaded_tickers() -> list[str]:
     return sorted(_TICKERS)
 
 
-def match_text(text: str, *, include_weak: bool = False) -> list[AliasHit]:
+def match_text(text: str, *, include_weak: bool = False,
+               allow_bare_ticker: bool = True) -> list[AliasHit]:
     if not text:
         return []
     pattern = _PATTERN_ALL if include_weak else _PATTERN_STRONG
@@ -150,6 +151,12 @@ def match_text(text: str, *, include_weak: bool = False) -> list[AliasHit]:
         key = m.group().lower()
         for ticker, alias, weight in (*_OWNERS.get(key, ()), *_NESTED.get(key, ())):
             if not include_weak and weight < 1.0:
+                continue
+            if not allow_bare_ticker and alias.upper() == ticker:
+                # Bare ticker codes are too weak as BODY evidence: incidental
+                # mentions ("tài khoản ngân hàng của Thân (MB, VCB, VIB)")
+                # attribute fraud stories to the banks. Title/desc/sapo keep
+                # them (a bare ticker in a headline is usually aboutness).
                 continue
             if ticker not in found:
                 found[ticker] = AliasHit(ticker, alias, "", weight)
@@ -168,7 +175,8 @@ def match_article(
         text = article.get(field) or ""
         if not text:
             continue
-        for hit in match_text(text, include_weak=include_weak):
+        for hit in match_text(text, include_weak=include_weak,
+                              allow_bare_ticker=(field != "body")):
             if hit.ticker in final:
                 continue
             final[hit.ticker] = AliasHit(hit.ticker, hit.alias, field, hit.weight)

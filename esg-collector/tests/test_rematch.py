@@ -68,6 +68,8 @@ def _legacy_match_article(index, article, include_weak=False):
             for alias, weight, rx in aliases:
                 if not include_weak and weight < 1.0:
                     continue
+                if field == "body" and alias.upper() == ticker:
+                    continue   # mirror the matcher's bare-ticker-in-body block
                 if rx.search(text):
                     final[ticker] = (ticker, field)
                     break

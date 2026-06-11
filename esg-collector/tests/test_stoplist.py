@@ -104,6 +104,36 @@ def test_blocked_context_swallows_hit():
     print("  blocked_context_swallows_hit OK")
 
 
+def test_bare_ticker_blocked_in_body():
+    """A bare ticker code must not attribute via BODY text (incidental
+    mentions like bank-account lists), but stays valid in title/desc/sapo,
+    and the full company name still matches anywhere including body."""
+    from core import alias_matcher
+    _orig = settings.AMBIGUOUS_ALIASES_PATH
+    with tempfile.TemporaryDirectory() as td:
+        ad = Path(td) / "aliases"; ad.mkdir()
+        (ad / "VCB.json").write_text(json.dumps(
+            {"ticker": "VCB", "names": ["VCB", "Vietcombank"],
+             "subsidiaries": [], "projects": [], "locations": []},
+            ensure_ascii=False), encoding="utf-8")
+        try:
+            settings.AMBIGUOUS_ALIASES_PATH = Path(td) / "nostop.json"
+            alias_matcher.reload(ad)
+            art = {"title": "Ông chủ Triệu nụ cười lừa đảo: khởi tố thêm 3 bị can",
+                   "description": "", "sapo": "",
+                   "body": "tiền chuyển đến các tài khoản ngân hàng của Thân (MB, VCB, VIB)."}
+            assert not alias_matcher.match_article(art)        # bare VCB in body → no hit
+            art2 = dict(art, title="VCB bị xử phạt vì vi phạm công bố thông tin")
+            hits = alias_matcher.match_article(art2)
+            assert any(h.ticker == "VCB" and h.location == "title" for h in hits)
+            art3 = dict(art, body="Vietcombank bị thanh tra kết luận sai phạm tín dụng.")
+            hits = alias_matcher.match_article(art3)
+            assert any(h.ticker == "VCB" and h.location == "body" for h in hits)
+        finally:
+            settings.AMBIGUOUS_ALIASES_PATH = _orig; alias_matcher.reload()
+    print("  bare_ticker_blocked_in_body OK")
+
+
 def main():
     if sys.platform == "win32":
         try: sys.stdout.reconfigure(encoding="utf-8")
@@ -113,6 +143,7 @@ def main():
     test_nonstoplisted_ticker_kept()
     test_missing_stoplist_ok()
     test_blocked_context_swallows_hit()
+    test_bare_ticker_blocked_in_body()
     print("ALL OK")
 
 
