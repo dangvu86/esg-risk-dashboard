@@ -41,6 +41,7 @@ _NESTED: dict[str, list[tuple[str, str, float]]] = {}
 _TICKERS: set[str] = set()
 _PATTERN_STRONG: re.Pattern | None = None
 _PATTERN_ALL: re.Pattern | None = None
+_PATTERN_BLOCKED: re.Pattern | None = None  # context spans that swallow alias hits
 _STOPLIST: set[str] = set()  # upper-cased surface forms never matched (Fix 1+A)
 
 
@@ -52,6 +53,25 @@ def _load_stoplist() -> set[str]:
         return set()
     except (OSError, json.JSONDecodeError, TypeError) as e:
         log.warning("ambiguous_aliases stoplist unreadable (%s) — ignoring", e)
+        return set()
+
+
+def _load_blocked_contexts() -> set[str]:
+    """Phrases whose span suppresses any alias match fully inside it.
+
+    The stoplist can't express these: dropping the alias kills it everywhere,
+    but e.g. "Hòa Phát" (HPG's main short name) is only wrong inside
+    "Khánh Hòa phát hiện/phát động/..." — a province + verb phrase boundary."""
+    try:
+        path = getattr(settings, "BLOCKED_CONTEXTS_PATH", None)
+        if path is None:
+            return set()
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+        return {str(s).strip() for s in data if str(s).strip()}
+    except FileNotFoundError:
+        return set()
+    except (OSError, json.JSONDecodeError, TypeError) as e:
+        log.warning("blocked_contexts unreadable (%s) — ignoring", e)
         return set()
 
 
@@ -69,8 +89,9 @@ def _bounded(needle: str, haystack: str) -> bool:
 
 
 def reload(aliases_dir: Path = settings.ALIASES_DIR) -> None:
-    global _PATTERN_STRONG, _PATTERN_ALL, _STOPLIST
+    global _PATTERN_STRONG, _PATTERN_ALL, _PATTERN_BLOCKED, _STOPLIST
     _STOPLIST = _load_stoplist()
+    _PATTERN_BLOCKED = _build_pattern(_load_blocked_contexts())
     _OWNERS.clear()
     _NESTED.clear()
     _TICKERS.clear()
@@ -119,8 +140,13 @@ def match_text(text: str, *, include_weak: bool = False) -> list[AliasHit]:
     pattern = _PATTERN_ALL if include_weak else _PATTERN_STRONG
     if pattern is None:
         return []
+    blocked: list[tuple[int, int]] = (
+        [(b.start(), b.end()) for b in _PATTERN_BLOCKED.finditer(text)]
+        if _PATTERN_BLOCKED else [])
     found: dict[str, AliasHit] = {}
     for m in pattern.finditer(text):
+        if any(s <= m.start() and m.end() <= e for s, e in blocked):
+            continue   # hit lives inside a blocked context span
         key = m.group().lower()
         for ticker, alias, weight in (*_OWNERS.get(key, ()), *_NESTED.get(key, ())):
             if not include_weak and weight < 1.0:

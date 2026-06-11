@@ -20,6 +20,9 @@ WEB_DIR = DATA_DIR / "web"
 ALIASES_DIR = ROOT / "config" / "aliases"
 COMPANIES_CSV = ROOT / "config" / "companies.csv"
 AMBIGUOUS_ALIASES_PATH = ROOT / "config" / "ambiguous_aliases.json"
+# Phrases that swallow alias matches: any alias hit fully inside one of these
+# spans is suppressed ("Khánh Hòa phát hiện" must not match HPG's "Hòa Phát").
+BLOCKED_CONTEXTS_PATH = ROOT / "config" / "blocked_contexts.json"
 
 # Backfill window
 BACKFILL_START = "2020-01-01"
