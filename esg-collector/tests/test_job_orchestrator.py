@@ -16,10 +16,11 @@ def _joined(stages):
 
 def test_daily_stage_order_includes_enrich():
     cmds = _joined(job.stage_commands("daily", tickers=None))
-    # fetch (3 backends, drained) → body → match → enrich → export
+    # fetch (2 backends, drained) → body → match → enrich → export
     assert any("workers.runner --backend google_rss --drain" in c for c in cmds)
     assert any("workers.runner --backend baomoi --drain" in c for c in cmds)
-    assert any("workers.runner --backend brave --drain" in c for c in cmds)
+    # brave disabled 2026-06-11 (quota exhausted) — must NOT be spawned
+    assert not any("--backend brave" in c for c in cmds)
     assert any("workers.body_fetcher --drain" in c for c in cmds)
     assert any("pipeline.match" in c for c in cmds)
     assert any("enrich.runner --limit 25" in c for c in cmds)

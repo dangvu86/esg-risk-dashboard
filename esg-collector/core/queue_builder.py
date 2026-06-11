@@ -88,7 +88,9 @@ def build_keyword_tasks(
     Google RSS / Brave keep the weekly chunks.
     """
     from config.keywords import search_terms
-    backends = backends or ["google_rss", "baomoi", "brave"]
+    # "brave" dropped from the default net 2026-06-11 (quota exhausted — see
+    # runtime/job.py BACKENDS). Callers can still pass it explicitly.
+    backends = backends or ["google_rss", "baomoi"]
     terms = search_terms()
     storage.init_db(db_path)
     conn = storage.connect(db_path)
@@ -217,8 +219,9 @@ def build_alias_tasks(
                 ):
                     inserted["baomoi"] += 1
 
-            # Google RSS + Brave: NAMES ONLY, monthly chunks over the tail.
-            for backend in ("google_rss", "brave"):
+            # Google RSS: NAMES ONLY, monthly chunks over the tail. ("brave"
+            # dropped 2026-06-11 — quota exhausted; see runtime/job.py.)
+            for backend in ("google_rss",):
                 start, end = backend_windows[backend]
                 for after, before in date_chunks(start, end, settings.CHUNK_MONTHS):
                     for ix, alias in enumerate(names):

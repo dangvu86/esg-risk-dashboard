@@ -34,7 +34,10 @@ from runtime import gcs, gcs_lock, gcs_state
 log = logging.getLogger("runtime.job")
 
 PY = sys.executable
-BACKENDS = ("google_rss", "baomoi", "brave")
+# "brave" removed 2026-06-11: API quota exhausted ($5 cap) — every run burned
+# fetch budget on HTTP 402 + 1800s retry loops. Re-add here AND in
+# core/queue_builder.py defaults once the key has credit again.
+BACKENDS = ("google_rss", "baomoi")
 # Per-run enrich chunk. Env-overridable so an enrich-only run (`--mode enrich`)
 # can drain a large matched backlog in bigger bites than the nightly daily.
 ENRICH_LIMIT = int(os.environ.get("ENRICH_LIMIT", "25"))

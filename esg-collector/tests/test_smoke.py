@@ -296,7 +296,8 @@ def test_l2_alias_tasks() -> None:
     with tempfile.TemporaryDirectory() as td:
         db = Path(td) / "l2.db"
         n = qb.build_alias_tasks(tickers=["DBC"], db_path=db)
-        assert n["baomoi"] > 0 and n["google_rss"] > 0 and n["brave"] > 0, n
+        # brave disabled 2026-06-11 (quota exhausted) — no tasks enqueued for it
+        assert n["baomoi"] > 0 and n["google_rss"] > 0 and n["brave"] == 0, n
         from core import storage
         conn = storage.connect(db)
         baomoi_q = {r["query"] for r in conn.execute(
