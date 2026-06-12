@@ -16,10 +16,12 @@ image `:<sha>` → deploy both jobs → ensure the scheduler exists. 5–8 min.
 (`deploy-esg-collector.yml` is the dead VM workflow — workflow_dispatch only,
 do not use.)
 
-CI identity: `github-actions-deploy@…iam.gserviceaccount.com` (roles:
-cloudbuild.builds.editor, artifactregistry.writer, run.admin,
-cloudscheduler.admin, iam.serviceAccountUser — granted 2026-06-12). If the
-build step 403s, check these roles first.
+CI identity: `github-actions-deploy@…iam.gserviceaccount.com` (granted
+2026-06-12: cloudbuild.builds.editor, artifactregistry.writer, run.admin,
+cloudscheduler.admin, serviceusage.serviceUsageConsumer +
+iam.serviceAccountUser, and storage.admin scoped to the
+`…_cloudbuild` staging bucket — `gcloud builds submit` uploads source
+there first). If the build step 403s, check these roles first.
 
 ## Manual operations
 
