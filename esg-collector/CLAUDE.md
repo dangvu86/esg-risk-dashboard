@@ -1,52 +1,57 @@
-# esg-collector — deploy notes
+# esg-collector — deploy notes (Cloud Run era)
 
-## Deploy is automated. Do not SSH manually.
+The old GCE VM is GONE (deleted 2026-06-08). Everything runs as two Cloud
+Run Jobs in **us-central1**, project `gen-lang-client-0020762472`:
 
-Push to `main` touching `esg-collector/**` (or the workflow file)
-triggers `.github/workflows/deploy-esg-collector.yml`. The workflow SSHs
-to the GCE VM `esg-collector` (us-central1-a, project
-`gen-lang-client-0020762472`) via IAP and runs:
+| Job | Trigger | Mode |
+|---|---|---|
+| `esg-daily` | Cloud Scheduler `esg-daily-trigger`, 02:00 UTC daily | `--mode daily` |
+| `esg-backfill` | manual | `--mode backfill` / `rematch` / `enrich` |
 
-1. stop 4 workers
-2. rolling 7-day backup of `articles.db`
-3. `git reset --hard origin/main`
-4. `storage.init_db()` — picks up any new `ALTER TABLE` migrations
-5. legacy timestamp normalize (idempotent; no-op once clean)
-6. smoke-import the new modules before restarting workers
-7. start workers, fail the run if any aren't `active`
+## Deploy is automated. Push to main.
 
-So: **commit + push** is the whole deploy. Don't write one-off bash
-scripts to SSH and `git pull` — that's what the old `_deploy_fix.sh`
-pattern did and it left state drift.
+Push to `main` touching `esg-collector/**` triggers
+`.github/workflows/deploy-esg-collector-cloudrun.yml`: pytest → Cloud Build
+image `:<sha>` → deploy both jobs → ensure the scheduler exists. 5–8 min.
+(`deploy-esg-collector.yml` is the dead VM workflow — workflow_dispatch only,
+do not use.)
+
+CI identity: `github-actions-deploy@…iam.gserviceaccount.com` (roles:
+cloudbuild.builds.editor, artifactregistry.writer, run.admin,
+cloudscheduler.admin, iam.serviceAccountUser — granted 2026-06-12). If the
+build step 403s, check these roles first.
+
+## Manual operations
+
+Always pass `--account dangvule@gmail.com --project gen-lang-client-0020762472`
+on EVERY gcloud call (local config flips to other accounts mid-session).
+
+- **Rematch after alias/filter changes** (NOT automated on purpose):
+  `gcloud run jobs execute esg-backfill --region us-central1 --args="--mode,rematch"`
+  (~20 min; resets match/esg columns, PRESERVES enrich columns).
+- **Manual deploy fallback**:
+  `gcloud builds submit esg-collector --tag us-central1-docker.pkg.dev/gen-lang-client-0020762472/esg/esg-collector:<sha>`
+  then `gcloud run jobs update esg-daily|esg-backfill --region us-central1 --image …`.
+
+## Adding a company
+
+1. `python -m alias_builder.fetch_vietstock --ticker XYZ`
+2. Vet the aliases against the corpus BEFORE deploying (FP aliases like
+   NLG "Southgate" = 531 Gareth-Southgate articles are silent until they
+   hit the dashboard):
+   `python -m alias_builder.alias_vet --tickers XYZ --db <local articles.db>`
+   → read flagged samples → `--apply` removes FAILs.
+3. Commit, push main (auto-deploy), then run a rematch.
+
+## State layout on GCS (gs://esg-scan-data)
+
+- `state/articles.db` — THE database (gen-matched upload; lock first)
+- `state/pipeline.lock` — GCS mutex; daily skips itself if held
+- `per_ticker/*.json` — live per-company matches (**bucket root**;
+  `state/per_ticker/` is a STALE VM-era copy — never export from it)
+- `web/*.json` — public dashboard data (publicRead, cache 300s)
 
 ## Schema migrations
 
-Add `ALTER TABLE` statements to `core/storage.py::init_db()` guarded by
-an `IF NOT EXISTS` / `PRAGMA table_info` check. The deploy will apply
-them. For data backfills that aren't idempotent, gate them behind a
-metadata flag in `export_state` so reruns are safe.
-
-## Manual triggers
-
-- **Full rematch**: Actions UI → "Deploy esg-collector" → "Run
-  workflow" → tick `run_rematch_all`. Use after alias edits.
-- **No path-filter trigger**: same UI, leave checkbox off.
-
-## CI auth
-
-- Service account: `github-actions-deploy@gen-lang-client-0020762472.iam.gserviceaccount.com`
-- GitHub secret: `GCP_SA_KEY` (JSON key, in repo settings)
-- SA roles: `compute.instanceAdmin.v1`, `iap.tunnelResourceAccessor`,
-  `iam.serviceAccountUser`, `compute.osAdminLogin`
-
-If auth breaks, the failed step is `Authenticate to GCP` — usually
-secret expired or SA roles were stripped.
-
-## VM facts that aren't in code
-
-- App dir: `/opt/esg-collector/esg-collector` (git checkout)
-- Venv: `/opt/esg-collector/.venv/bin/python`
-- DB: `/opt/esg-collector/esg-collector/data/articles.db`
-- Service user: `esg`
-- **No `sqlite3` CLI** on the VM — use the venv's Python sqlite3 module
-  in deploy scripts.
+Add guarded `ALTER TABLE` to `core/storage.py::init_db()` — every job run
+calls it on start.
