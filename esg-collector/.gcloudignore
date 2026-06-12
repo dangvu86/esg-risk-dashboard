@@ -1,0 +1,7 @@
+# Keep the Cloud Build upload lean — runtime state and caches never belong
+# in the build context (ESG_DATA_DIR points at /tmp on Cloud Run anyway).
+data/
+logs/
+__pycache__/
+*.pyc
+.pytest_cache/
