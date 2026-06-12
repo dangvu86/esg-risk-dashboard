@@ -68,7 +68,9 @@ jobs:
               *) echo "build ended with $STATUS"; exit 1;;
             esac
           done
-          gcloud artifacts docker tags add "$IMAGE:${{ github.sha }}" "$IMAGE:latest"
+          # NOTE: no ":latest" tag — nothing consumes it (jobs pin :<sha>), and
+          # `gcloud artifacts docker tags add` needs registry-read perms beyond
+          # this SA's artifactregistry.writer.
 
       - name: Deploy daily job
         run: |
