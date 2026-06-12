@@ -13,6 +13,7 @@ import {
   sortEvents,
   paginate,
   mergeTickers,
+  computeStats,
   pickHeadline,
   severityLabel,
   controversyLabel,
@@ -46,6 +47,14 @@ const T = {
   clear: { en: "Clear", vi: "Xoá lọc" },
   subtitle: { en: "events · sorted by most recent", vi: "sự kiện · sắp xếp theo ngày mới nhất" },
   perPage: { en: "/ page", vi: "/ trang" },
+  statEvents: { en: "Events", vi: "Sự kiện" },
+  statHigh: { en: "High severity", vi: "Mức Cao" },
+  statMajor: { en: "Major controversy", vi: "Tranh cãi Major" },
+  statCompanies: { en: "Companies", vi: "Công ty" },
+  statEnv: { en: "Environment", vi: "Môi trường" },
+  statSoc: { en: "Social", vi: "Xã hội" },
+  statGov: { en: "Governance", vi: "Quản trị" },
+  statFiltered: { en: "stats follow active filters", vi: "thống kê theo bộ lọc đang chọn" },
   colDate: { en: "Date", vi: "Ngày" },
   colCompany: { en: "Company", vi: "Công ty" },
   colHeadline: { en: "Headline", vi: "Tiêu đề" },
@@ -129,6 +138,7 @@ export default function Home() {
     [events, filters, sortKey],
   );
   const pageData = useMemo(() => paginate(processed, page, PAGE_SIZE), [processed, page]);
+  const stats = useMemo(() => computeStats(processed), [processed]);
 
   const isFiltered = Object.values(filters).some(Boolean);
 
@@ -179,7 +189,7 @@ export default function Home() {
   return (
     <>
       {/* Nav pill */}
-      <div className="max-w-7xl mx-auto px-6 pt-6">
+      <div className="max-w-[1600px] mx-auto px-6 pt-6">
         <nav className="pill-nav flex items-center justify-between h-14 px-4">
           <div className="flex items-center gap-3 pl-2">
             <div className="w-7 h-7 rounded-full gradient-accent flex items-center justify-center">
@@ -194,7 +204,7 @@ export default function Home() {
         </nav>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-10">
+      <div className="max-w-[1600px] mx-auto px-6 py-10">
         {/* Header */}
         <div className="mb-7">
           <span className="pill-tag mb-4 inline-block">{T.tag[lang]}</span>
@@ -203,6 +213,27 @@ export default function Home() {
             {processed.length.toLocaleString()} {T.subtitle[lang]}
           </p>
         </div>
+
+        {/* Stats row — reflects the active filters (full dataset when unfiltered) */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-3 mb-6">
+          {[
+            { label: T.statEvents[lang], value: stats.total, accent: "stat-plain" },
+            { label: `E · ${T.statEnv[lang]}`, value: stats.byPillar.E, accent: "stat-E" },
+            { label: `S · ${T.statSoc[lang]}`, value: stats.byPillar.S, accent: "stat-S" },
+            { label: `G · ${T.statGov[lang]}`, value: stats.byPillar.G, accent: "stat-G" },
+            { label: T.statHigh[lang], value: stats.high, accent: "stat-high" },
+            { label: T.statMajor[lang], value: stats.major, accent: "stat-high" },
+            { label: T.statCompanies[lang], value: stats.companies, accent: "stat-plain" },
+          ].map((c) => (
+            <div key={c.label} className="stat-card">
+              <div className={`stat-value ${c.accent}`}>{c.value.toLocaleString()}</div>
+              <div className="stat-label">{c.label}</div>
+            </div>
+          ))}
+        </div>
+        {isFiltered ? (
+          <p className="subtle-text text-xs -mt-4 mb-5">↑ {T.statFiltered[lang]}</p>
+        ) : null}
 
         {/* Filter bar */}
         <div className="flex flex-wrap items-center gap-3 mb-5">
@@ -261,7 +292,7 @@ export default function Home() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="results-table w-full text-sm">
               <thead className="text-xs subtle-text uppercase tracking-wider">
                 <tr className="border-b border-violet-100">
                   <th className="text-left px-7 py-3 font-semibold">{T.colDate[lang]}</th>
@@ -283,10 +314,10 @@ export default function Home() {
                     const h = pickHeadline(e, lang);
                     return (
                       <tr key={`${e.ticker}-${e.date}-${i}`} className="row border-b border-violet-100/30 align-top">
-                        <td className="px-7 py-4 font-mono subtle-text whitespace-nowrap">{e.date}</td>
+                        <td className="px-7 py-4 tabular-nums subtle-text whitespace-nowrap">{e.date}</td>
                         <td className="py-4"><span className="ticker-chip">{e.ticker}</span></td>
                         <td className="py-4 subtle-text">{e.company}</td>
-                        <td className="py-4 font-medium max-w-md">
+                        <td className="py-4 font-medium max-w-xl">
                           {h.text}
                           {h.isFallback ? <span className="fallback-tag">(VI · awaiting translation)</span> : null}
                         </td>
@@ -301,7 +332,7 @@ export default function Home() {
                             ? <span className={CONTROVERSY_CLASS[e.controversy_level]}>{controversyLabel(e.controversy_level)}</span>
                             : <span className="subtle-text text-xs">—</span>}
                         </td>
-                        <td className="py-4 text-xs subtle-text max-w-[200px]">
+                        <td className="py-4 text-xs subtle-text max-w-[280px]">
                           {e.controversy_justification || "—"}
                         </td>
                         <td className="pr-7 py-4 subtle-text">

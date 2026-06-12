@@ -135,6 +135,29 @@ export function paginate<T>(rows: T[], page: number, size = PAGE_SIZE): Page<T> 
   return { rows: rows.slice(start, start + size), page: clamped, totalPages };
 }
 
+export interface Stats {
+  total: number;
+  byPillar: Record<Pillar, number>;
+  high: number;      // severity === "Cao"
+  major: number;     // controversy_level === "Major"
+  companies: number; // distinct tickers
+}
+
+/** Aggregate counts over a (usually already filtered) event list. */
+export function computeStats(events: EsgEvent[]): Stats {
+  const byPillar: Record<Pillar, number> = { E: 0, S: 0, G: 0 };
+  const tickers = new Set<string>();
+  let high = 0;
+  let major = 0;
+  for (const e of events) {
+    byPillar[e.type] += 1;
+    tickers.add(e.ticker);
+    if (e.severity === "Cao") high += 1;
+    if (e.controversy_level === "Major") major += 1;
+  }
+  return { total: events.length, byPillar, high, major, companies: tickers.size };
+}
+
 /** Union of API tickers and tickers seen in events, deduped, sorted A→Z. */
 export function mergeTickers(apiTickers: Company[], events: EsgEvent[]): string[] {
   const set = new Set<string>();

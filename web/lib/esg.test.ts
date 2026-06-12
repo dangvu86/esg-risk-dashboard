@@ -8,6 +8,7 @@ import {
   sortEvents,
   paginate,
   mergeTickers,
+  computeStats,
   PAGE_SIZE,
   type Filters,
   type EsgEvent,
@@ -148,6 +149,34 @@ describe("paginate", () => {
   it("clamps page below 1 and handles empty -> 1 page", () => {
     expect(paginate(rows, 0, PAGE_SIZE).page).toBe(1);
     expect(paginate([], 1, PAGE_SIZE).totalPages).toBe(1);
+  });
+});
+
+describe("computeStats", () => {
+  it("counts pillars, high severity, major controversy, distinct companies", () => {
+    const data = [
+      ev({ ticker: "DBC", type: "E", severity: "Trung bình", controversy_level: "Minor" }),
+      ev({ ticker: "DBC", type: "E", severity: "Cao", controversy_level: "Major" }),
+      ev({ ticker: "HPG", type: "S", severity: "Cao", controversy_level: "Major" }),
+      ev({ ticker: "NVL", type: "G", severity: "Trung bình", controversy_level: "" }),
+      ev({ ticker: "NVL", type: "G", severity: "Cao", controversy_level: undefined }),
+    ];
+    expect(computeStats(data)).toEqual({
+      total: 5,
+      byPillar: { E: 2, S: 1, G: 2 },
+      high: 3,
+      major: 2,
+      companies: 3,
+    });
+  });
+  it("handles empty input", () => {
+    expect(computeStats([])).toEqual({
+      total: 0,
+      byPillar: { E: 0, S: 0, G: 0 },
+      high: 0,
+      major: 0,
+      companies: 0,
+    });
   });
 });
 
