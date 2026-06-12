@@ -48,8 +48,26 @@ jobs:
 
       - name: Build & push image (Cloud Build)
         run: |
-          gcloud builds submit esg-collector \
-            --tag "$IMAGE:${{ github.sha }}"
+          # --gcs-source-staging-dir: without it, gcloud verifies staging-bucket
+          # ownership via a PROJECT-level buckets.list the deploy SA doesn't
+          # have (bucket-scoped storage.admin isn't enough) and dies with a
+          # misleading "forbidden from accessing the bucket" error.
+          # --async + poll: synchronous mode fails streaming the build log
+          # with this SA even though the build itself runs fine.
+          BUILD_ID=$(gcloud builds submit esg-collector \
+            --tag "$IMAGE:${{ github.sha }}" \
+            --gcs-source-staging-dir "gs://${PROJECT}_cloudbuild/source" \
+            --async --format='value(id)')
+          echo "build: $BUILD_ID"
+          while true; do
+            STATUS=$(gcloud builds describe "$BUILD_ID" --format='value(status)')
+            echo "  $STATUS"
+            case "$STATUS" in
+              SUCCESS) break;;
+              QUEUED|WORKING|PENDING) sleep 15;;
+              *) echo "build ended with $STATUS"; exit 1;;
+            esac
+          done
           gcloud artifacts docker tags add "$IMAGE:${{ github.sha }}" "$IMAGE:latest"
 
       - name: Deploy daily job
