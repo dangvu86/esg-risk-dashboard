@@ -20,6 +20,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from body_fetcher import body_clean
 from config import settings
 
 log = logging.getLogger("alias_matcher")
@@ -173,6 +174,12 @@ def match_article(
     final: dict[str, AliasHit] = {}
     for field in fields:
         text = article.get(field) or ""
+        if field == "body" and text:
+            # Drop publisher boilerplate (related-link lists, donation/scam
+            # footers) before matching the body: a bank account number in a
+            # charity footer ("…Ngân hàng Vietcombank…") is not editorial
+            # evidence the article is about that bank.
+            text = body_clean.editorial_body(text) or ""
         if not text:
             continue
         for hit in match_text(text, include_weak=include_weak,

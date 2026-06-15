@@ -39,6 +39,58 @@ def test_empty():
     print("  empty OK")
 
 
+_CHARITY_BODY = (
+    "Sau ca phẫu thuật ghép phổi, anh Tạ Văn Thắng vẫn trong tình trạng hôn mê. "
+    "Gia đình anh kiệt quệ vì 6 năm chữa bệnh.\n"
+    "Bạn đọc giúp anh Tạ Văn Thắng có thể quét mã QR hoặc gửi về số tài khoản "
+    "0011002643148, Ngân hàng Vietcombank, hoặc số tài khoản 114000161718, "
+    "Ngân hàng VietinBank.\n"
+    "Cảnh báo thủ đoạn lừa đảo\n"
+    "Thời gian qua một số đối tượng giả danh nhà hảo tâm để lừa đảo chiếm đoạt."
+)
+
+
+def test_editorial_body_cuts_donation_and_disclaimer_footer():
+    # The donation footer carries bank names (alias FP) and the scam-warning
+    # block carries "lừa đảo" (ESG-filter FP). editorial_body removes both;
+    # the real story is kept.
+    from body_fetcher.body_clean import editorial_body
+    out = editorial_body(_CHARITY_BODY)
+    assert "phẫu thuật ghép phổi" in out
+    assert "Vietcombank" not in out
+    assert "VietinBank" not in out
+    assert "lừa đảo" not in out
+    print("  editorial_body_cuts_footer OK")
+
+
+def test_editorial_body_leaves_real_article_untouched():
+    # No donation/disclaimer marker → body returned unchanged (modulo the
+    # existing related-link stripping, which this body doesn't trigger).
+    from body_fetcher.body_clean import editorial_body
+    body = ("Theo kết luận thanh tra, Tập đoàn Kido bị xử phạt 750 triệu đồng "
+            "do vi phạm về thuế và xả thải vượt quy chuẩn ra môi trường.")
+    assert editorial_body(body) == body
+    print("  editorial_body_leaves_real_article OK")
+
+
+def test_editorial_body_empty():
+    from body_fetcher.body_clean import editorial_body
+    assert editorial_body("") == ""
+    assert editorial_body(None) is None
+    print("  editorial_body_empty OK")
+
+
+def test_match_ignores_bank_in_donation_footer():
+    # End-to-end: a charity appeal whose ONLY bank mention is the donation
+    # footer must not match VCB/CTG once the body is the editorial view.
+    from core import alias_matcher
+    art = {"title": "Xúc động lá thư con gái động viên bố trước ngày ghép phổi",
+           "description": "", "sapo": "", "body": _CHARITY_BODY}
+    tickers = sorted(h.ticker for h in alias_matcher.match_article(art))
+    assert tickers == [], f"expected no match, got {tickers}"
+    print("  match_ignores_bank_in_donation_footer OK")
+
+
 def main():
     if sys.platform == "win32":
         try: sys.stdout.reconfigure(encoding="utf-8")
@@ -47,6 +99,10 @@ def main():
     test_strips_related_link_block()
     test_keeps_prose_company_mention()
     test_empty()
+    test_editorial_body_cuts_donation_and_disclaimer_footer()
+    test_editorial_body_leaves_real_article_untouched()
+    test_editorial_body_empty()
+    test_match_ignores_bank_in_donation_footer()
     print("ALL OK")
 
 

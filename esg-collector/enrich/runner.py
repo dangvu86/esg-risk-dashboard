@@ -12,7 +12,8 @@ import logging
 from datetime import datetime, timezone
 
 from core import storage, alias_matcher
-from core.events import cluster_events
+from core.events import cluster_events, same_event, token_df
+from body_fetcher.body_clean import editorial_body
 from config import settings
 from enrich import sentiment, translate, controversy
 from enrich.llm import resolve_provider
@@ -92,9 +93,12 @@ def _inherit_from_clusters(conn, events) -> tuple[int, list[dict]]:
                 verdicts[r["article_id"]] = {k: r[k] for k in r.keys()}
 
         pending = {e["article_id"]: e for e in evs}
+        id2title = {p["article_id"]: p.get("title") or "" for p in pool}
+        df, npool = token_df(id2title.values())
         for cluster in cluster_events(pool):
-            judged = [verdicts[m["article_id"]] for m in cluster
-                      if m["article_id"] in verdicts]
+            judged_ids = [m["article_id"] for m in cluster
+                          if m["article_id"] in verdicts]
+            judged = [verdicts[i] for i in judged_ids]
             if not judged:
                 for m in cluster:
                     if m["article_id"] in pending:
@@ -107,6 +111,18 @@ def _inherit_from_clusters(conn, events) -> tuple[int, list[dict]]:
             for m in cluster:
                 e = pending.get(m["article_id"])
                 if e is None:
+                    continue
+                # Inherit guard: cluster_events can over-merge via a single
+                # common word (e.g. "viên" bridging "nhân viên Vietcombank
+                # lừa đảo" with "động viên bố … ghép phổi"). Only a member that
+                # is *genuinely* the same event as a judged article may inherit;
+                # a transitively-attached outsider is sent to the LLM path so it
+                # is judged on its own merits instead of inheriting a wrong
+                # verdict.
+                if not any(same_event(id2title.get(m["article_id"], ""),
+                                      id2title.get(jid, ""), df, npool)
+                           for jid in judged_ids):
+                    remaining.append(e)
                     continue
                 if src["sentiment"] == "risk":
                     if e["row"]["severity"] == "Cao" and ctrl is None:
@@ -188,7 +204,8 @@ def run(limit: int = DEFAULT_LIMIT, db_path=None) -> int:
                          "type": e["type"], "date": (r["published_at"] or "")[:10],
                          "summary": e["summary"], "summary_en": en, "source": r["source"] or ""}
                 res = controversy.classify_event(event, provider, today,
-                                                 body=r["body"], revenues=revenues)
+                                                 body=editorial_body(r["body"]),
+                                                 revenues=revenues)
                 if res:
                     level, just, classified_at = res["level"], res["justification"], now_iso
                 else:

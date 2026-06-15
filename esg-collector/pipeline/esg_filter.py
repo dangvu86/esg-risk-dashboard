@@ -30,6 +30,7 @@ samples — recall 30/35 real events, junk resurrection ~14%):
 from __future__ import annotations
 import re
 from dataclasses import dataclass
+from body_fetcher.body_clean import editorial_body
 from config import keywords as kw
 
 @dataclass(frozen=True)
@@ -157,7 +158,9 @@ def classify(article: dict) -> Verdict:
     tclean = _strip_source_suffix(
         article.get("title") or "", article.get("source") or "").lower()
     sapo = (article.get("sapo") or "").lower()
-    body = (article.get("body") or "").lower()
+    # Editorial view only: a donation/scam-disclaimer footer must not inject
+    # ESG trigger words ("lừa đảo") that the article itself never discusses.
+    body = (editorial_body(article.get("body")) or "").lower()
     ts = f"{tclean} {sapo}"            # scope for strong/quality terms
     text = f"{ts} {body}"              # scope for legacy vocab + noise
 

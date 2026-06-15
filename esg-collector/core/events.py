@@ -135,3 +135,36 @@ def event_key(cluster: list[dict]) -> str:
     """Stable id for a cluster: ticker + representative article_id."""
     rep = cluster[0]
     return f"{(rep.get('ticker') or '').upper()}:{rep.get('article_id')}"
+
+
+def token_df(titles) -> tuple[Counter, int]:
+    """Document frequency of normalised title tokens over a corpus, plus the
+    corpus size — feeds the `df`/`n` args of same_event()."""
+    toks = [_tokens(t or "") for t in titles]
+    return Counter(t for ts in toks for t in ts), len(toks)
+
+
+def same_event(title_a: str, title_b: str, df: Counter | None = None,
+               n: int = 0, jaccard_min: float = 0.45) -> bool:
+    """Pairwise 'same real-world event' test for two titles — STRICTER than the
+    transitive clustering in cluster_events: a single common word must not
+    bridge two articles. True iff title Jaccard >= jaccard_min OR the titles
+    share a *distinctive* token (length >= 5 AND genuinely rare in the supplied
+    corpus, i.e. appearing in <= max(2, 10% of `n`) titles).
+
+    Used by the enrich inherit guard so a verdict only propagates to a member
+    that is itself the same event as a judged article, never to one merely
+    attached to the cluster through a chain of common-word hops (the failure
+    that let a lung-transplant charity appeal inherit a bank-fraud verdict)."""
+    ta, tb = _tokens(title_a), _tokens(title_b)
+    if not ta or not tb:
+        return False
+    inter = ta & tb
+    if not inter:
+        return False
+    if _jaccard(ta, tb) >= jaccard_min:
+        return True
+    if df is None or n <= 0:
+        return False
+    cap = max(2, 0.1 * n)
+    return any(len(t) >= 5 and 2 <= df.get(t, 0) <= cap for t in inter)

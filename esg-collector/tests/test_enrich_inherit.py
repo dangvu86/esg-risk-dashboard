@@ -116,3 +116,54 @@ def test_no_judged_neighbor_means_no_inherit(tmp_path, monkeypatch):
     inherited, remaining = runner._inherit_from_clusters(conn, _events(conn, ["a::1", "a::2", "a::3"]))
     assert inherited == 0
     assert len(remaining) == 3
+
+
+# Bug regression (real titles from the live DB): a bank-fraud governance
+# article and three charity appeals get chained into ONE cluster by common
+# words — "viên" ("nhân viên" ↔ "động viên"), "gái"/"ghép", "bệnh" — each a
+# single-token transitive hop. Before the inherit guard the charity appeals
+# inherited the fraud verdict (Cao/Minor, "bribery, corruption" justification),
+# producing the wrong cards the user spotted.
+BRIDGE_ARTS = [
+    ("b::1", "Khởi tố cựu nhân viên Vietcombank lừa đảo chiếm đoạt tiền xin việc",
+     "2026-06-11T00:00:00Z"),
+    ("b::2", "Bé gái gần 2 tuổi mắc bệnh hiểm nghèo nguy kịch, chờ phép màu ghép tế bào gốc",
+     "2026-06-10T00:00:00Z"),
+    ("b::3", "Xúc động lá thư con gái động viên bố trước ngày phẫu thuật ghép phổi",
+     "2026-06-08T00:00:00Z"),
+    ("b::4", "Bệnh tật ập đến bất ngờ, gia đình nhặt ve chai bất lực trước chi phí điều trị",
+     "2026-06-13T00:00:00Z"),
+]
+
+
+def test_common_word_bridge_is_clustered_but_not_inherited(tmp_path, monkeypatch):
+    from core.events import cluster_events, same_event
+    # 1. All four titles chain into ONE cluster (documents the over-merge).
+    pool = [{"article_id": a, "ticker": "ACV", "title": t, "published_at": p}
+            for a, t, p in BRIDGE_ARTS]
+    clusters = cluster_events(pool)
+    assert len(clusters) == 1, "expected the common-word bridge to over-merge"
+    # 2. …but no charity appeal is the same event as the fraud article pairwise,
+    #    so the guard rejects each.
+    for _, charity_title, _ in BRIDGE_ARTS[1:]:
+        assert not same_event(BRIDGE_ARTS[0][1], charity_title)
+    # 3. End-to-end: none of the charity appeals inherit the fraud verdict.
+    conn, runner = _setup(tmp_path, monkeypatch, BRIDGE_ARTS, {"b::1": "risk+ctrl"})
+    inherited, remaining = runner._inherit_from_clusters(
+        conn, _events(conn, ["b::2", "b::3", "b::4"]))
+    assert inherited == 0
+    assert sorted(e["article_id"] for e in remaining) == ["b::2", "b::3", "b::4"]
+    for aid in ("b::2", "b::3", "b::4"):
+        r = conn.execute("SELECT enrich_status, controversy_level FROM articles "
+                         "WHERE article_id=?", (aid,)).fetchone()
+        assert r["enrich_status"] == "pending" and r["controversy_level"] is None
+
+
+def test_genuine_same_event_still_inherits_after_guard(tmp_path, monkeypatch):
+    # Sanity: the guard must NOT block a real same-event member (high title
+    # overlap) — a::2 still inherits from a::1.
+    conn, runner = _setup(tmp_path, monkeypatch, ARTS, {"a::1": "risk+ctrl"})
+    inherited, remaining = runner._inherit_from_clusters(conn, _events(conn, ["a::2"]))
+    assert inherited == 1 and remaining == []
+    r = conn.execute("SELECT controversy_level FROM articles WHERE article_id='a::2'").fetchone()
+    assert r["controversy_level"] == "Major"
