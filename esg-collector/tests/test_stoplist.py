@@ -104,6 +104,24 @@ def test_blocked_context_swallows_hit():
     print("  blocked_context_swallows_hit OK")
 
 
+def test_danang_toponym_blocked_in_prod_config():
+    """Regression: 'Hòa Phát' is also a Đà Nẵng toponym (chợ/phường Hòa Phát).
+    A Báo Đà Nẵng sanitation article mentioning 'chợ Hòa Phát' must NOT match
+    HPG. Uses the REAL production aliases + blocked_contexts.json so this locks
+    the data fix, not just the mechanism."""
+    from core import alias_matcher
+    alias_matcher.reload()  # default prod config
+    fp_body = ("Phường An Khê huy động lực lượng tổng dọn vệ sinh, thu gom rác "
+               "tại các điểm nóng môi trường xung quanh chợ Hòa Phát.")
+    assert not any(h.ticker == "HPG" for h in alias_matcher.match_text(fp_body))
+    assert not any(h.ticker == "HPG" for h in
+                   alias_matcher.match_text("Người dân phường Hòa Phát phản ánh ô nhiễm"))
+    # real company mentions still match
+    assert any(h.ticker == "HPG" for h in
+               alias_matcher.match_text("Hòa Phát khởi công khu liên hợp tại Dung Quất"))
+    print("  danang_toponym_blocked_in_prod_config OK")
+
+
 def test_bare_ticker_blocked_in_body():
     """A bare ticker code must not attribute via BODY text (incidental
     mentions like bank-account lists), but stays valid in title/desc/sapo,
@@ -143,6 +161,7 @@ def main():
     test_nonstoplisted_ticker_kept()
     test_missing_stoplist_ok()
     test_blocked_context_swallows_hit()
+    test_danang_toponym_blocked_in_prod_config()
     test_bare_ticker_blocked_in_body()
     print("ALL OK")
 
