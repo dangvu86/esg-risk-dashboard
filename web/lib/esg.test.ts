@@ -71,7 +71,7 @@ const ev = (over: Partial<EsgEvent>): EsgEvent => ({
   severity: "Trung bình", source: "Lao Dong", url: "x", controversy_level: "Minor", ...over,
 });
 
-const NONE: Filters = { ticker: "", pillar: "", severity: "", controversy: "", query: "" };
+const NONE: Filters = { ticker: "", pillar: "", severity: "", controversy: "", fund: "", query: "" };
 
 describe("filterEvents", () => {
   const data = [
@@ -97,6 +97,25 @@ describe("filterEvents", () => {
     expect(filterEvents(data, { ...NONE, query: "thanh hoa" })).toHaveLength(3);
     expect(filterEvents(data, { ...NONE, query: "wastewater" })).toHaveLength(3);
     expect(filterEvents(data, { ...NONE, query: "zzz" })).toHaveLength(0);
+  });
+  it("fund=VEF keeps only tickers in the VEF holdings set", () => {
+    // HPG is in VEF; DBC and NVL are not.
+    expect(filterEvents(data, { ...NONE, fund: "VEF" })).toHaveLength(1);
+    expect(filterEvents(data, { ...NONE, fund: "VEF" })[0].ticker).toBe("HPG");
+  });
+  it("fund filter composes with other filters", () => {
+    expect(filterEvents(data, { ...NONE, fund: "VEF", severity: "Cao" })).toHaveLength(1);
+    expect(filterEvents(data, { ...NONE, fund: "VEF", severity: "Trung bình" })).toHaveLength(0);
+  });
+});
+
+describe("VEF_TICKERS", () => {
+  it("has the 40 DC fund holdings", async () => {
+    const { VEF_TICKERS } = await import("./esg");
+    expect(VEF_TICKERS.size).toBe(40);
+    expect(VEF_TICKERS.has("GEL")).toBe(true);
+    expect(VEF_TICKERS.has("VIC")).toBe(true);
+    expect(VEF_TICKERS.has("DBC")).toBe(false);
   });
 });
 

@@ -9,6 +9,7 @@ import {
   type SortKey,
   type Pillar,
   type Severity,
+  type Fund,
   filterEvents,
   sortEvents,
   paginate,
@@ -44,6 +45,7 @@ const T = {
   medium: { en: "Medium", vi: "Trung bình" },
   allControversy: { en: "All controversy", vi: "Tất cả tranh cãi" },
   notClassified: { en: "Not classified", vi: "Chưa phân loại" },
+  allFunds: { en: "All portfolios", vi: "Tất cả danh mục" },
   clear: { en: "Clear", vi: "Xoá lọc" },
   subtitle: { en: "events · sorted by most recent", vi: "sự kiện · sắp xếp theo ngày mới nhất" },
   perPage: { en: "/ page", vi: "/ trang" },
@@ -77,7 +79,7 @@ const SORT_LABELS: Record<SortKey, { en: string; vi: string }> = {
   ticker_asc: { en: "Sort: Ticker A→Z", vi: "Sắp xếp: Ticker A→Z" },
 };
 
-const EMPTY_FILTERS: Filters = { ticker: "", pillar: "", severity: "", controversy: "", query: "" };
+const EMPTY_FILTERS: Filters = { ticker: "", pillar: "", severity: "", controversy: "", fund: "", query: "" };
 
 export default function Home() {
   const [events, setEvents] = useState<EsgEvent[]>([]);
@@ -268,6 +270,11 @@ export default function Home() {
             <option value="Minor">Minor</option>
             <option value="No">No</option>
             <option value="none">{T.notClassified[lang]}</option>
+          </select>
+          <select className="filter-input" value={filters.fund}
+            onChange={(e) => updateFilters({ fund: e.target.value as "" | Fund })}>
+            <option value="">{T.allFunds[lang]}</option>
+            <option value="VEF">VEF</option>
           </select>
           <select className="filter-input" value={sortKey}
             onChange={(e) => updateSort(e.target.value as SortKey)}>

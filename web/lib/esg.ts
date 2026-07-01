@@ -61,11 +61,25 @@ export function controversyLabel(level: ControversyLevel | undefined): string {
   return level;
 }
 
+// Fund/portfolio membership sets. A "fund" filter keeps only events whose
+// ticker is in the chosen set. VEF = the DC fund's holdings, hardcoded from
+// DCFunds_06302026.xlsx (40 tickers). Update this list + redeploy when the fund
+// rebalances (holdings file is dated monthly).
+export const VEF_TICKERS: ReadonlySet<string> = new Set([
+  "ACB", "BID", "BSR", "BVH", "CTD", "CTG", "DCM", "DXG", "EIB", "FRT",
+  "GAS", "GEL", "GEX", "HDB", "HPG", "HVN", "KBC", "KDH", "LPB", "MBB",
+  "MBS", "MSN", "MWG", "PNJ", "PVS", "PVT", "SSI", "STB", "TAL", "TCB",
+  "TCX", "VCB", "VCI", "VHM", "VIC", "VIX", "VPB", "VPL", "VPX", "VTP",
+]);
+
+export type Fund = "VEF";
+
 export interface Filters {
   ticker: string;       // "" = all
   pillar: "" | Pillar;  // "" = all
   severity: "" | Severity;
   controversy: "" | ControversyLevel | "none"; // "none" = not classified
+  fund: "" | Fund;      // "" = all; "VEF" = only VEF_TICKERS
   query: string;
 }
 
@@ -74,6 +88,7 @@ export function filterEvents(events: EsgEvent[], f: Filters): EsgEvent[] {
   const q = normalizeText(f.query);
   return events.filter((e) => {
     if (f.ticker && e.ticker !== f.ticker) return false;
+    if (f.fund === "VEF" && !VEF_TICKERS.has(e.ticker)) return false;
     if (f.pillar && e.type !== f.pillar) return false;
     if (f.severity && e.severity !== f.severity) return false;
     if (f.controversy) {
