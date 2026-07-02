@@ -233,11 +233,15 @@ def test_runner_translate_mismatch_falls_back_to_vn() -> None:
         conn.close()
         _orig_filter = runner.sentiment.filter_negative
         _orig_translate = runner.translate.translate_titles
+        _orig_classify = runner.controversy.classify_event
         _orig_provider = runner.resolve_provider
         try:
             runner.sentiment.filter_negative = lambda evs, provider=None: list(evs)  # keep all
             # buggy translate: returns FEWER items than inputs (the contract violation)
             runner.translate.translate_titles = lambda titles, provider=None: ["EN:only_one"]
+            # controversy now runs for every severity (incl. Trung bình) — stub it
+            runner.controversy.classify_event = lambda e, p, today, *, body, revenues=None: {
+                "level": "Minor", "cg_indicator": None, "justification": "x. y.", "confidence": 50}
             runner.resolve_provider = lambda: {"name": "x", "model": "m", "sleep": 0}
             n = runner.run(limit=10, db_path=db)
             conn = storage.connect(db)
@@ -252,6 +256,7 @@ def test_runner_translate_mismatch_falls_back_to_vn() -> None:
         finally:
             runner.sentiment.filter_negative = _orig_filter
             runner.translate.translate_titles = _orig_translate
+            runner.controversy.classify_event = _orig_classify
             runner.resolve_provider = _orig_provider
     print("  runner_translate_mismatch_falls_back_to_vn OK")
 

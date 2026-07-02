@@ -125,11 +125,12 @@ def _inherit_from_clusters(conn, events) -> tuple[int, list[dict]]:
                     remaining.append(e)
                     continue
                 if src["sentiment"] == "risk":
-                    if e["row"]["severity"] == "Cao" and ctrl is None:
-                        # No cluster member has controversy: inheriting would
-                        # freeze this Cao row at empty forever (the web export
-                        # reads controversy off the rep's enrich row). Send it
-                        # through the normal LLM path below instead.
+                    if ctrl is None:
+                        # No cluster member carries a controversy verdict yet:
+                        # inheriting would freeze this row at empty forever
+                        # (controversy is now classified for ALL severities, and
+                        # the web export reads controversy off the rep's enrich
+                        # row). Send it through the normal LLM path below instead.
                         remaining.append(e)
                         continue
                     storage.mark_enriched(
@@ -199,23 +200,26 @@ def run(limit: int = DEFAULT_LIMIT, db_path=None) -> int:
         for e, en in zip(kept, titles_en):
             r = e["row"]
             level = just = classified_at = None
-            if r["severity"] == "Cao":
-                event = {"ticker": e["ticker"], "company": _company_for(e["ticker"]),
-                         "type": e["type"], "date": (r["published_at"] or "")[:10],
-                         "summary": e["summary"], "summary_en": en, "source": r["source"] or ""}
-                res = controversy.classify_event(event, provider, today,
-                                                 body=editorial_body(r["body"]),
-                                                 revenues=revenues)
-                if res:
-                    level, just, classified_at = res["level"], res["justification"], now_iso
-                else:
-                    # classify failed (LLM error / invalid output). Marking the
-                    # row done here would freeze controversy at empty forever —
-                    # leave it pending so the next run retries (costs one extra
-                    # sentiment+translate pass for this row, acceptable).
-                    log.warning("controversy classify failed for %s — left pending for retry",
-                                e["article_id"])
-                    continue
+            # Controversy is classified for EVERY severity (previously Cao-only).
+            # Trung bình events resolve to Minor/No far more often than Major, but
+            # the level still carries signal — and a "No" verdict flags incidental
+            # matches that should be filtered out.
+            event = {"ticker": e["ticker"], "company": _company_for(e["ticker"]),
+                     "type": e["type"], "date": (r["published_at"] or "")[:10],
+                     "summary": e["summary"], "summary_en": en, "source": r["source"] or ""}
+            res = controversy.classify_event(event, provider, today,
+                                             body=editorial_body(r["body"]),
+                                             revenues=revenues)
+            if res:
+                level, just, classified_at = res["level"], res["justification"], now_iso
+            else:
+                # classify failed (LLM error / invalid output). Marking the
+                # row done here would freeze controversy at empty forever —
+                # leave it pending so the next run retries (costs one extra
+                # sentiment+translate pass for this row, acceptable).
+                log.warning("controversy classify failed for %s — left pending for retry",
+                            e["article_id"])
+                continue
             storage.mark_enriched(conn, e["article_id"], sentiment="risk", summary_en=en,
                                   controversy_level=level, controversy_justification=just,
                                   controversy_classified_at=classified_at)

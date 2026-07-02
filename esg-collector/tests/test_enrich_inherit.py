@@ -65,17 +65,33 @@ def _events(conn, ids, severity="Cao"):
 
 
 def test_pending_inherits_risk_verdict(tmp_path, monkeypatch):
-    # Trung bình rows inherit even when the judged source has no controversy
-    # (controversy is only ever classified for Cao).
-    conn, runner = _setup(tmp_path, monkeypatch, ARTS, {"a::1": "risk"})
+    # A Trung bình row inherits risk + controversy from a same-event judged
+    # member. Controversy is now classified for ALL severities, so the source
+    # must carry a controversy verdict for the sibling to inherit it (otherwise
+    # it goes to the LLM path — see test below).
+    conn, runner = _setup(tmp_path, monkeypatch, ARTS, {"a::1": "risk+ctrl"})
     inherited, remaining = runner._inherit_from_clusters(
         conn, _events(conn, ["a::2", "a::3"], severity="Trung bình"))
     assert inherited == 1
     assert [e["article_id"] for e in remaining] == ["a::3"]
-    r = conn.execute("SELECT enrich_status, sentiment, summary_en FROM articles "
-                     "WHERE article_id='a::2'").fetchone()
+    r = conn.execute("SELECT enrich_status, sentiment, summary_en, controversy_level "
+                     "FROM articles WHERE article_id='a::2'").fetchone()
     assert r["enrich_status"] == "done" and r["sentiment"] == "risk"
     assert r["summary_en"] == "EN judged"
+    assert r["controversy_level"] == "Major"
+
+
+def test_trung_binh_without_controversy_source_goes_to_llm_path(tmp_path, monkeypatch):
+    # New behavior: controversy is classified for every severity, so a Trung bình
+    # row whose cluster carries no controversy verdict must NOT inherit an empty
+    # controversy — it goes to `remaining` for the LLM path (same as Cao).
+    conn, runner = _setup(tmp_path, monkeypatch, ARTS, {"a::1": "risk"})
+    inherited, remaining = runner._inherit_from_clusters(
+        conn, _events(conn, ["a::2"], severity="Trung bình"))
+    assert inherited == 0
+    assert [e["article_id"] for e in remaining] == ["a::2"]
+    r = conn.execute("SELECT enrich_status FROM articles WHERE article_id='a::2'").fetchone()
+    assert r["enrich_status"] == "pending"
 
 
 def test_cao_inherits_controversy_fields(tmp_path, monkeypatch):
