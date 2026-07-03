@@ -116,7 +116,7 @@ jobs:
             echo "scheduler job esg-daily-trigger already exists — skipping create"
           else
             gcloud scheduler jobs create http esg-daily-trigger \
-              --location "$REGION" --schedule "0 2 * * *" --time-zone UTC \
+              --location "$REGION" --schedule "0 1 * * *" --time-zone "Asia/Ho_Chi_Minh" \
               --uri "https://run.googleapis.com/v2/projects/${PROJECT}/locations/${REGION}/jobs/esg-daily:run" \
               --http-method POST \
               --oauth-service-account-email "$RUNTIME_SA" \

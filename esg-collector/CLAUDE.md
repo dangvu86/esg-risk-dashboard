@@ -5,7 +5,7 @@ Run Jobs in **us-central1**, project `gen-lang-client-0020762472`:
 
 | Job | Trigger | Mode |
 |---|---|---|
-| `esg-daily` | Cloud Scheduler `esg-daily-trigger`, 02:00 UTC daily | `--mode daily` |
+| `esg-daily` | Cloud Scheduler `esg-daily-trigger`, 01:00 Asia/Ho_Chi_Minh daily | `--mode daily` |
 | `esg-backfill` | manual | `--mode backfill` / `rematch` / `enrich` |
 
 ## Deploy is automated. Push to main.
