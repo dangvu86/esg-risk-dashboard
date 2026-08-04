@@ -1,0 +1,592 @@
+loading corpus from d:\Claude\ESG scan\_controversy_backfill\live\articles.db …
+406,309 articles loaded
+ACB: 6 aliases, all PASS
+ACV: 2 aliases, all PASS
+ANV: 3 aliases — 1 flagged
+  [REVIEW] 'Nam Việt' (names): 384 hits, co-occurrence 94/384 = 24%
+      · Chủ tịch Công ty Cổ phần Nam Việt vi phạm báo cáo giao dịch cổ phiếu - Tuổi trẻ và Pháp luật | Chủ tịch Công t
+      · Vì sao không công nhận Nam Việt là nhà nước chính thống của Việt Nam - Nghiên Cứu Lịch Sử | Vì sao không công 
+      · Găng tay Nam Việt: Lỗ luỹ kế 5 năm gần nhất hơn 48 tỷ đồng, ngân hàng siết khoản nợ hơn 1.000 tỷ đồng - Báo Dâ
+BAF: 30 aliases, all PASS
+BCM: 10 aliases — 2 flagged
+  [FAIL] 'CTCP Phát triển Đô thị' (subsidiaries): 34 hits, co-occurrence 0/34 = 0%
+      · KBC ký kết dự án trung tâm AI 2 tỷ USD | Tổng CTCP Phát triển Đô thị Kinh Bắc (HOSE: KBC) vừa ký MOU với Accel
+      · Lợi nhuận chạm đáy 20 năm, Lideco (NTL) bổ sung 150 tỷ đồng vào danh mục chứng khoán | CTCP Phát triển Đô thị 
+      · Lideco bổ sung 150 tỷ đồng hạn mức đầu tư chứng khoán | CTCP Phát triển Đô thị Từ Liêm (Lideco, HOSE: NTL) vừa
+  [REVIEW] 'Becamex' (subsidiaries): 870 hits, co-occurrence 269/870 = 31%
+      · BECAMEX Bình Dương: 13 năm mua nhà nhưng chưa được cấp sổ hồng - thuonghieucongluan.com.vn | BECAMEX Bình Dươn
+      · Bình Dương: Becamex IJC lọt vào “danh sách đen” của thanh tra - Reatimes.vn | Bình Dương: Becamex IJC lọt vào 
+      · "Nhân vật chính" được lãnh đạo Becamex ủy quyền - Báo Công an Thành Phố Hồ Chí Minh | "Nhân vật chính" được lã
+BID: 5 aliases — 2 flagged
+  [REVIEW] 'BIDV' (names): 1071 hits, co-occurrence 194/1071 = 18%
+      · Toàn cảnh dự án The Era Town đang bị ngân hàng BIDV rao bán loạt căn hộ giá rẻ - VietnamFinance | Toàn cảnh dự
+      · Nợ xấu có nguy cơ biến xấu | Thứ hai, số doanh nghiệp phá sản và giải thể đang tăng cao hơn, cho thấy khó khăn
+      · Bao bì Nhựa Sài Gòn phá sản, khối nợ trăm tỷ tại BIDV và NCB có đòi được không? - Tạp chí Pháp Lý | Bao bì Nhự
+  [REVIEW] 'Tổng Công ty cổ phần Bảo hiểm Ngân hàng Đầu tư và Phát triển Việt Nam' (subsidiaries): 1 hits, co-occurrence 0/1 = 0%
+      · VKSND huyện Kỳ Anh xét xử rút kinh nghiệm nội bộ vụ án kinh doanh thương mại | VKSND huyện Kỳ Anh, Hà Tĩnh đã 
+BMP: 3 aliases — 1 flagged
+  [REVIEW] 'Nhựa Bình Minh' (names): 195 hits, co-occurrence 85/195 = 44%
+      · Nhựa Bình Minh: Kỳ vọng phục hồi sau đại dịch nhờ nhu cầu tiêu thụ ống nhựa tăng mạnh - thuonghieucongluan.com
+      · Công ty Nhựa Bình Minh Việt nói gì? - Báo Công an Thành Phố Hồ Chí Minh | Công ty Nhựa Bình Minh Việt nói gì? 
+      · Thương hiệu gần 50 năm vẫn đi tìm sự bảo vệ: Lời cảnh tỉnh từ Nhựa Bình Minh - CafeF | Thương hiệu gần 50 năm 
+BSR: 6 aliases, all PASS
+BVH: 2 aliases — 1 flagged
+  [REVIEW] 'Bảo Việt' (names): 321 hits, co-occurrence 98/321 = 31%
+      · Hướng dẫn cách sử dụng bình chữa cháy - An Bảo Việt | Ngọn lửa đột ngột bùng lên và bạn phải tự giải cứu bản t
+      · Kỹ năng thoát khỏi đám cháy an toàn - An Bảo Việt | Vì vậy, trong các vụ cháy, nạn nhân chết phần nhiều là do 
+      · Bình chữa cháy bột dùng chữa đám cháy nào? - An Bảo Việt | Những nguyên nhân gây cháy nổ trong gia đình
+BWE: 14 aliases — 1 flagged
+  [REVIEW] 'Biwase' (names): 244 hits, co-occurrence 42/244 = 17%
+      · Sinh viên Kỹ thuật môi trường HUTECH tham quan Khu liên hợp xử lý chất thải rắn Nam Bình Dương (BIWASE) - hute
+      · Biwase là một trong những công ty cấp nước lớn nhất khu vực phía Nam - baodautu | Biwase là một trong những cô
+      · Doanh nhân Nguyễn Văn Thiền, Chủ tịch Hội đồng quản trị Biwase: Doanh nghiệp phải song hành với lợi ích xã hội
+CII: 11 aliases — 1 flagged
+  [REVIEW] 'CTCP Đầu tư Năm Bảy Bảy' (subsidiaries): 13 hits, co-occurrence 5/13 = 38%
+      · Doanh thu của Năm Bảy Bảy tăng 92% so với cùng kỳ | Theo báo cáo tài chính của CTCP Đầu tư Năm Bảy Bảy (HoSE: 
+      · Năm Bảy Bảy muốn bán toàn bộ cổ phiếu quỹ giữa lúc lợi nhuận lao dốc, dòng tiền tiếp tục âm | CTCP Đầu tư Năm 
+      · Đại Dũng không còn là cổ đông lớn, NBB duyệt vay 1.200 tỷ đồng, đặt mục tiêu lãi 2 tỷ năm 2025 | CTCP Đầu tư N
+CMG: 3 aliases — 1 flagged
+  [REVIEW] 'Công nghệ CMC' (names): 170 hits, co-occurrence 20/170 = 12%
+      · Tập đoàn CMC bị xử phạt vì chậm công bố thông tin | Thanh tra Chứng khoán Nhà nước vừa ban hành quyết định xử 
+      · Xử phạt Tập đoàn Công nghệ CMC hàng trăm triệu vì vi phạm chứng khoán | Công ty Cổ phần Tập đoàn Công nghệ CMC
+      · Tập đoàn Công nghệ CMC bị phạt 225 triệu đồng | Tập đoàn Công nghệ CMC vừa bị phạt với số tiền 222,5 triệu đồn
+CTD: 19 aliases — 2 flagged
+  [REVIEW] 'COTECCONS' (names): 573 hits, co-occurrence 197/573 = 34%
+      · Tranh chấp nội bộ trong doanh nghiệp: Cần sòng phẳng quyền cổ đông | Tranh chấp tại Coteccons căng thẳng trở l
+      · Tranh chấp nội bộ doanh nghiệp: Trăm dâu đổ đầu cổ đông | Doanh nghiệp | Điều này có thể thấy rõ ở trường hợp 
+      · CEO Ricons: Ngừng nhận thầu từ Coteccons không ảnh hưởng đến kinh doanh - CafeF | CEO Ricons: Ngừng nhận thầu 
+  [FAIL] 'Sân Chơi Mới' (subsidiaries): 11 hits, co-occurrence 0/11 = 0%
+      · Loạt ngân hàng rục rịch lập ngân hàng con tại Trung tâm Tài chính quốc tế Việt Nam | Làn sóng chuẩn bị hiện di
+      · Kon Tum - sân chơi mới của các ông lớn bất động sản - Báo Dân trí | Kon Tum - sân chơi mới của các ông lớn bất
+      · Vietcap rút lui khỏi cuộc đua lập sàn tài sàn số: Cuộc chơi chỉ dành cho 'tay to'? | Việc Chứng khoán Vietcap 
+CTG: 9 aliases — 1 flagged
+  [FAIL] 'VietinBank' (names): 1027 hits, co-occurrence 86/1027 = 8%
+      · Xử lý sai nợ xấu là gánh nặng, xử lý đúng là 'đòn bẩy' tăng trưởng - Báo Công Thương | Để tháo gỡ các khó khăn
+      · Nợ xấu có nguy cơ biến xấu | Thứ hai, số doanh nghiệp phá sản và giải thể đang tăng cao hơn, cho thấy khó khăn
+      · “Sốc” với chi phí trích lập dự phòng rủi ro quý I của Vietinbank - Báo Dân Việt | “Sốc” với chi phí trích lập 
+CTR: 3 aliases — 1 flagged
+  [REVIEW] 'VIETTEL CONSTRUCTION' (names): 160 hits, co-occurrence 66/160 = 41%
+      · Viettel Construction đưa dịch vụ chăm sóc thiết bị chuyên nghiệp đến 27 triệu hộ gia đình - Báo Dân trí | Viet
+      · Bản lĩnh Viettel Construction và hành trình 29 năm 'Dựng xây cuộc sống mới' | 29 năm xây dựng và trưởng thành,
+      · Viettel Construction sắp phát hành hơn 13,7 triệu cổ phiếu trả cổ tức | Viettel Construction dự kiến phát hành
+DBC: 44 aliases — 1 flagged
+  [REVIEW] 'Nasaco' (subsidiaries): 1 hits, co-occurrence 0/1 = 0%
+      · Công ty Nasaco Hà Nam bị xử phạt do sản xuất thức ăn chăn nuôi không đạt chuẩn - Tuổi trẻ và Pháp luật | Công 
+DCM: 6 aliases — 1 flagged
+  [REVIEW] 'PVCFC' (names): 509 hits, co-occurrence 179/509 = 35%
+      · Tiêu Dùng Thông Minh - Phân Bón Cà Mau Là Lựa Chọn Hàng Đầu - pvcfc.com.vn | Tiêu Dùng Thông Minh - Phân Bón C
+      · Hội thi ATVSV giỏi PVCFC lần thứ III, năm 2026 Ý thức trách nhiệm và lan tỏa văn hóa an toàn | Công ty Phân bó
+      · PVCFC lan tỏa văn hóa an toàn qua Hội thi ATVSV giỏi lần thứ III, năm 2026 | Trong chiến lược phát triển bền v
+DGC: 12 aliases — 2 flagged
+  [REVIEW] 'Hóa chất Đức Giang' (names): 738 hits, co-occurrence 317/738 = 43%
+      · Công ty Cổ phần Tập đoàn Hóa chất Đức Giang liên tiếp bị xử phạt - Báo Thanh tra | Công ty Cổ phần Tập đoàn Hó
+      · Hóa chất Đức Giang: Đường đến ngôi số 1 - Forbes Việt Nam | Hóa chất Đức Giang: Đường đến ngôi số 1 Forbes Việ
+      · Xử phạt Công ty TNHH MTV Hóa chất Đức Giang vì vi phạm pháp luật về bảo vệ môi trường - moitruong.net.vn | Xử 
+  [REVIEW] 'CTCP Phốt pho Apatit Việt Nam' (subsidiaries): 16 hits, co-occurrence 6/16 = 38%
+      · 'Vua cổ tức' báo lợi nhuận quý I sụt giảm gần một nửa, dòng tiền kinh doanh thâm hụt hơn 400 tỷ đồng | Kết quả
+      · Phốt pho Apatit Việt Nam (PAT) chốt quyền tạm ứng cổ tức 100% bằng tiền, gia đình Chủ tịch nhận hàng chục tỷ đ
+      · Apatit Việt Nam (PAT): Lợi nhuận tăng 39% nhưng dòng tiền kinh doanh âm gần 70 tỷ đồng | CTCP Phốt pho Apatit 
+DGW: 18 aliases — 2 flagged
+  [REVIEW] 'Thế Giới Số' (names): 238 hits, co-occurrence 68/238 = 29%
+      · Chung tay để trẻ em “không một mình” giữa thế giới số - Laodong.vn | Chung tay để trẻ em “không một mình” giữa
+      · MoMo bảo vệ người tốt khỏi việc mắc sai lầm bị lừa đảo số thao túng | Chuyển đổi số | Thế Giới Số - tgs.vn | M
+      · Tài sản Thế Giới Số sau khi vay 800 tỷ không thế chấp | Tại cuối năm 2023, nợ vay của Thế Giới Số ở mức 2.327 
+  [REVIEW] 'Nexta' (subsidiaries): 3 hits, co-occurrence 0/3 = 0%
+      · Lớp học thông minh & thư viện số chuẩn Bộ GD&ĐT: Từ chính sách đến thực tiễn | Hơn một trăm đại diện các trườn
+      · Nexta eTeacher - Chìa khóa giải tỏa nỗi lo dạy con tại nhà | Quản lý và hỗ trợ con học tập tại nhà là mối quan
+      · Nghẹt thở cảnh phóng viên quân sự Nga chạy dưới làn đạn | Ukraine đã tấn công vào Kursk từ ngày 6/8, dẫn đến n
+DIG: 10 aliases — 2 flagged
+  [REVIEW] 'Tập đoàn DIC' (names): 6 hits, co-occurrence 2/6 = 33%
+      · DIC Group đặt kế hoạch 2026 thận trọng, ưu tiên kiểm soát chi phí, dòng tiền | Dù vượt kế hoạch doanh thu và l
+      · Lý do khiến Tập đoàn DIC phải trì hoãn các kế hoạch phát hành nghìn tỷ? | Tập đoàn DIC vẫn chưa thể huy động v
+      · Hội nghị xúc tiến đầu tư Quảng Bình năm 2021: Tập đoàn DIC nhận biên bản ghi nhớ hợp tác đầu tư gần 2.000 tỷ đ
+  [REVIEW] 'CTCP Đầu tư Phát triển Xây dựng Số 1' (subsidiaries): 1 hits, co-occurrence 0/1 = 0%
+      · Kinh doanh thua lỗ, Xây dựng Số 1 (DC1) tiếp tục bán tài sản cho người liên quan của Giám đốc | Hội đồng quản 
+DPM: 8 aliases — 1 flagged
+  [REVIEW] 'PVFCCo' (names): 500 hits, co-occurrence 168/500 = 34%
+      · PVFCCo tiên phong giảm thiểu ô nhiễm khí thải từ phương tiện giao thông - BÁO SÀI GÒN GIẢI PHÓNG | PVFCCo tiên
+      · PVFCCo tổng kết và trao giải chạy bộ online 'Phú Mỹ - Sẻ chia thịnh vượng' năm 2025 | Chiều ngày 21/3, tại Trụ
+      · Nhiều doanh nghiệp dầu khí tìm giải pháp tăng trưởng hai con số | Nhiều doanh nghiệp trong ngành Dầu khí như P
+DXG: 9 aliases, all PASS
+EIB: 3 aliases — 1 flagged
+  [REVIEW] 'EXIMBANK' (names): 938 hits, co-occurrence 305/938 = 33%
+      · Tranh chấp nội bộ trong doanh nghiệp: Cần sòng phẳng quyền cổ đông | Tranh chấp tại Coteccons căng thẳng trở l
+      · Ai mới thực sự là cổ đông quyền lực trong các liên minh cổ đông tại Eximbank? - diendandoanhnghiep.vn | Ai mới
+      · Xét xử vụ án liên quan đến sai phạm của cán bộ Ngân hàng Eximbank Bà Rịa - Vũng Tàu - Báo Bảo vệ pháp luật | X
+FPT: 13 aliases, all PASS
+FRT: 8 aliases — 2 flagged
+  [REVIEW] 'FPT Shop' (names): 277 hits, co-occurrence 36/277 = 13%
+      · TÒA ÁN NHÂN DÂN CẤP CAO TẠI THÀNH PHỐ HỒ CHÍ MINH Bản án số: 192/2021/HS-PT | của Cửa hàng FPT shop đã nhận lạ
+      · Phụ kiện công nghệ tại FPT Shop giảm đến 40% - Báo Dân trí | Phụ kiện công nghệ tại FPT Shop giảm đến 40% Báo 
+      · Khám phá Mentimeter: Phần mềm trình chiếu để tạo các bài thuyết trình sống động siêu hấp dẫn - FPT Shop | Khám
+  [REVIEW] 'FPT Long Châu' (subsidiaries): 148 hits, co-occurrence 33/148 = 22%
+      · TPHCM: Sai phạm tại cơ sở bán thuốc, FPT Long Châu bị thanh tra xử phạt - Báo Dân trí | TPHCM: Sai phạm tại cơ
+      · Nhà thuốc FPT Long Châu bị xử phạt vi phạm kinh doanh thuốc - Tạp chí Tài chính Doanh nghiệp | Nhà thuốc FPT L
+      · FPT Long Châu: Từ tham vọng... đến liên tục bị xử phạt | Trong quá trình kiểm tra, các cơ quan chức năng liên 
+GAS: 3 aliases — 1 flagged
+  [REVIEW] 'Khí Việt Nam - CTCP' (names): 145 hits, co-occurrence 30/145 = 21%
+      · PV Power (POW): Hoàn thành 78% mục tiêu lãi cả năm chỉ sau quý 1 | Trong quý 1/2025, Tổng Công ty Điện lực Dầu
+      · Công đoàn PV Power đẩy mạnh đổi mới sáng tạo và chăm lo đời sống người lao động | Ngày 23/12, tại Hà Nội, Ban 
+      · PV Power (POW) báo lãi quý II/2025 tăng 66%, lợi nhuận 6 tháng vượt xa kế hoạch năm | Tổng Công ty Điện lực Dầ
+GEX: 3 aliases — 1 flagged
+  [REVIEW] 'GELEX' (names): 767 hits, co-occurrence 338/767 = 44%
+      · Giữa ‘ma trận tin đồn’, Gelex của đại gia Tuấn ‘mượt’ và Hoa Sen có động thái gây chú ý - Sputnik Việt Nam | G
+      · Một tuần đầy thử thách, tỷ phú Phạm Nhật Vượng, doanh nhân Mai Hữu Tín, Chủ tịch PVN, CEO Gelex nói gì - baoda
+      · Cổ phiếu GELEX khớp lệnh kỷ lục, khối ngoại gom “nhiệt” chưa từng thấy - CafeF | Cổ phiếu GELEX khớp lệnh kỷ l
+GMD: 3 aliases, all PASS
+HAH: 12 aliases — 1 flagged
+  [REVIEW] 'Cảng Hải An' (subsidiaries): 2 hits, co-occurrence 0/2 = 0%
+      · Quy hoạch giao thông phường Đông Hải, TP Hải Phòng: Tuyến đường 1 km nối cảng Hải An qua sông Cấm | Theo bản đ
+      · Công an đang xác minh lô hàng vật chứng là đồng trong vụ án buôn lậu | Công an TP Hải Phòng hiện đang điều tra
+HCM: 4 aliases — 1 flagged
+  [REVIEW] 'Chứng khoán Thành phố Hồ Chí Minh' (names): 51 hits, co-occurrence 8/51 = 16%
+      · SMC: Không báo cáo dự kiến giao dịch, một cá nhân bị xử phạt | Vietstock | Cụ thể, ngày 17/12/2019, bà Nguyễn 
+      · Thêm 6 mã chứng khoán trên HoSE bị cắt margin cập nhật đến ngày 2/9 | Sở Giao dịch chứng khoán Thành phố Hồ Ch
+      · PC1 tiếp tục nhận thông báo nhắc nhở từ HOSE | Sở Giao dịch Chứng khoán Thành phố Hồ Chí Minh thông báo nhắc n
+HDB: 2 aliases — 1 flagged
+  [REVIEW] 'HDBank' (names): 709 hits, co-occurrence 108/709 = 15%
+      · Năm 2020, tỷ lệ nợ xấu của HDBank ở mức 0,93% - thitruongtaichinhtiente.vn | Năm 2020, tỷ lệ nợ xấu của HDBank
+      · 20+ Cách kiếm tiền online đơn giản, không cần vốn, dễ làm nhất 2025 - HDBank | 20+ Cách kiếm tiền online đơn g
+      · Lộc Trời bị “tuýt còi” vì thổi phồng lợi nhuận, lộ nợ xấu với HDBank, UOB, HSBC - Tạp chí Kinh tế - Tài chính 
+HDC: 13 aliases, all PASS
+HDG: 6 aliases — 1 flagged
+  [REVIEW] 'Hà Đô' (names): 226 hits, co-occurrence 106/226 = 47%
+      · Cập nhật BCTC quý IV/2025 ngày 31/1: HAGL lãi kỷ lục; đột biến tại PC1, Sông Đà, Hà Đô, Hải Phát; BAF và HNG l
+      · Biến động 'ghế nóng' chủ tịch, tổng giám đốc ngân hàng, doanh nghiệp | Công ty CP Sản xuất Kinh doanh Xuất nhậ
+      · Giải mã sự sụt giảm lợi nhuận của Hà Đô (HĐG) trong Quý I/2026 | Tập đoàn Hà Đô vừa công bố bức tranh tài chín
+HHS: 12 aliases — 2 flagged
+  [REVIEW] 'CTCP Phát triển Nhà Đại Lộc' (subsidiaries): 1 hits, co-occurrence 0/1 = 0%
+      · TCH nhận thêm 87,7 tỷ đồng từ chuyển nhượng dự án cho công ty con | CTCP Phát triển Nhà Đại Lộc sẽ trả thêm 87
+  [REVIEW] 'Pruksa' (subsidiaries): 1 hits, co-occurrence 0/1 = 0%
+      · Pruksa Town - Làn gió mới cho nhà ở xã hội - CafeBiz | Pruksa Town - Làn gió mới cho nhà ở xã hội CafeBiz
+HHV: 9 aliases — 2 flagged
+  [REVIEW] 'DII' (names): 2 hits, co-occurrence 0/2 = 0%
+      · Hành động đáng quý của chị Hà | Khoảng 16 giờ 45 phút ngày 30-3, trong khi đang làm nhiệm vụ hướng dẫn bệnh nh
+      · Vay nợ hơn 20.000 tỷ, thu không đủ bù chi, DII của ông Hồ Minh Hoàng báo lỗ - Báo Dân Việt | Vay nợ hơn 20.000
+  [REVIEW] 'Tập đoàn Đèo Cả' (names): 92 hits, co-occurrence 10/92 = 11%
+      · Tập đoàn Đèo Cả đẩy mạnh áp dụng công nghệ số trong quản trị dự án giao thông - baodautu | Tập đoàn Đèo Cả đẩy
+      · Tập đoàn Đèo Cả - “mái ấm” thứ hai của hơn 7.000 lao động - baodautu | Tập đoàn Đèo Cả - “mái ấm” thứ hai của 
+      · Tập đoàn Đèo Cả: Thu hút người lao động nhờ phúc lợi tốt - Báo Người Lao Động | Tập đoàn Đèo Cả: Thu hút người
+HPA: 26 aliases — 1 flagged
+  [REVIEW] 'Công ty TNHH Thức ăn Chăn nuôi Hòa Phát Đồng Nai' (subsidiaries): 1 hits, co-occurrence 0/1 = 0%
+      · Thức ăn chăn nuôi Hòa Phát Đồng Nai tự chủ 40% nhu cầu điện sản xuất | Công ty TNHH Thức ăn Chăn nuôi Hòa Phát
+HPG: 9 aliases — 1 flagged
+  [REVIEW] 'Hòa Phát' (names): 1495 hits, co-occurrence 318/1495 = 21%
+      · Sáng kiến làm lợi hàng trăm tỷ ở Hòa Phát - HoaPhat | Sáng kiến làm lợi hàng trăm tỷ ở Hòa Phát HoaPhat
+      · Nhiều giải pháp tiết kiệm năng lượng, bảo vệ môi trường được áp dụng tại Tập đoàn Hòa Phát - HoaPhat | Nhiều g
+      · Chủ tịch Hòa Phát: Không ưu tiên con cháu, không biến Hòa Phát thành tập đoàn họ hàng - baodautu | Chủ tịch Hò
+HSG: 19 aliases — 1 flagged
+  [REVIEW] 'Hoa Sen' (names): 797 hits, co-occurrence 248/797 = 31%
+      · Phần 1: Hư Vô Chủ Nghĩa. - Tánh Không - THƯ VIỆN HOA SEN | Đức Phật từng ba lần chặn đường bất bạo động vua Tì
+      · Hoa Sen mời thầu triển khai ERP giai đoạn hai - VnExpress | Hoa Sen mời thầu triển khai ERP giai đoạn hai VnEx
+      · Giữa ‘ma trận tin đồn’, Gelex của đại gia Tuấn ‘mượt’ và Hoa Sen có động thái gây chú ý - Sputnik Việt Nam | G
+HVN: 9 aliases — 5 flagged
+  [FAIL] 'Vietnam Airlines' (names): 1331 hits, co-occurrence 118/1331 = 9%
+      · Vietnam Airlines ước lỗ 2.400 tỷ trong quý 1, cả năm có thể lỗ gần 20.000 tỷ nếu dịch kéo dài đến quý 4 - Cafe
+      · Trả tự do bốn tiếp viên Vietnam Airlines xách ma túy vì chưa đủ cơ sở khởi tố - Báo Tuổi Trẻ | Trả tự do bốn t
+      · Vietnam Airlines với hành trình 30 năm vươn tầm khu vực và thế giới - Báo Tuổi Trẻ | Vietnam Airlines với hành
+  [REVIEW] 'Hàng không Việt Nam - CTCP' (names): 24 hits, co-occurrence 6/24 = 25%
+      · Thay đổi nhân sự cấp cao, ACV có Quyền Tổng giám đốc | Tổng công ty Cảng hàng không Việt Nam - CTCP (ACV) vừa 
+      · ACV công bố thông tin về việc Chủ tịch và Phó tổng giám đốc bị bắt | Chủ tịch HĐQT và Phó tổng giám đốc Tổng c
+      · Bộ máy điều hành tại ACV liên tiếp biến động | Trong thời gian gần đây, Tổng công ty Cảng hàng không Việt Nam 
+  [REVIEW] 'CTCP Dịch vụ Hàng hóa Nội Bài' (subsidiaries): 1 hits, co-occurrence 0/1 = 0%
+      · Dịch vụ hàng hóa Nội Bài (NCT) sắp chi 209 tỷ đồng cổ tức tiền mặt, ACV dự kiến nhận 115 tỷ đồng | HĐQT CTCP D
+  [REVIEW] 'CTCP Suất ăn Hàng không Nội Bài' (subsidiaries): 1 hits, co-occurrence 0/1 = 0%
+      · Hưởng lợi từ hàng không, Suất ăn Nội Bài (NCS) báo lãi quý II tăng 31% | CTCP Suất ăn Hàng không Nội Bài (NCS)
+  [FAIL] 'Sabre' (subsidiaries): 36 hits, co-occurrence 1/36 = 3%
+      · Corsair Sabre v2 Pro Wireless MG, chuột esports khung magie 'lộ xương' | Corsair Sabre v2 Pro Wireless MG sở h
+      · CORSAIR ra mắt bộ sưu tập gaming gear hiệu suất cao tại CES 2026 | Tại triển lãm CES 2026, CORSAIR đã gây tiến
+      · CORSAIR trình làng loạt thiết bị gaming hiệu suất cao tại CES 2026: Đỉnh cao công nghệ vật liệu | Tại CES 2026
+IDC: 26 aliases — 1 flagged
+  [REVIEW] 'IDICO' (names): 275 hits, co-occurrence 136/275 = 49%
+      · Vi phạm môi trường, Công ty Cổ phần Đầu tư Phát triển Cường Thuận IDICO bị xử phạt hơn 1,5 tỷ đồng - Báo Thanh
+      · Các ông lớn khu công nghiệp có bao nhiêu tiền từ cho thuê đất trong nửa đầu năm? | IDICO là quán quân doanh th
+      · Lợi nhuận của IDICO đi lùi vì doanh thu cho thuê KCN sụt giảm | Quý I/2026, IDICO ghi nhận doanh thu giảm 17% 
+KBC: 31 aliases — 2 flagged
+  [REVIEW] 'Khu công nghiệp Quang Châu' (projects): 4 hits, co-occurrence 1/4 = 25%
+      · Đầu tư gần 1.000 tỷ đồng xây dựng hạ tầng khu công nghiệp Quang Châu mở rộng - baodautu | Đầu tư gần 1.000 tỷ 
+      · Bắc Ninh: Kết nạp 492 lao động nước ngoài vào tổ chức Công đoàn | Ngày 27/5, Công đoàn Công ty trách nhiệm hữu
+      · Mở rộng khu công nghiệp Quang Châu - VnExpress | Mở rộng khu công nghiệp Quang Châu VnExpress
+  [REVIEW] 'KCN Nam Sơn Hạp Lĩnh' (projects): 1 hits, co-occurrence 0/1 = 0%
+      · Đón tin vui từ loạt dự án, Kinh Bắc lên kế hoạch lãi gấp 7 lần năm trước | Kinh Bắc cho biết đang nhận được nh
+KDC: 8 aliases — 2 flagged
+  [REVIEW] 'KIDO' (names): 390 hits, co-occurrence 100/390 = 26%
+      · Tập đoàn bánh kẹo Kido tiếp tục "dính" án phạt - Báo Tuổi Trẻ Thủ Đô | Tập đoàn bánh kẹo Kido tiếp tục "dính" 
+      · Kido bị phạt 240 triệu đồng do có nhiều sai phạm liên quan tới trái phiếu - Chứng khoán DNSE | Kido bị phạt 24
+      · Cập nhật BCTC quý IV/2025: Kido, Biwase, SCG, C32 lãi đột biến; Phước Hòa, Viconship, Vinasun lao dốc; Nam Kim
+  [REVIEW] 'CTCP HÙNG VƯƠNG' (subsidiaries): 4 hits, co-occurrence 0/4 = 0%
+      · Phạt hành chính 3 doanh nghiệp niêm yết do không công bố thông tin theo quy định | Vừa qua, Ủy ban Chứng khoán
+      · 'Vua cá tra' Hùng Vương (HVG) bị xử phạt vì vi phạm công bố thông tin suốt 3 năm | Ủy ban Chứng khoán Nhà nước
+      · 'Vua cá tra' một thời muốn bán loạt công ty con để trả nợ | CTCP Hùng Vương sẽ thoái toàn bộ vốn góp tại 4 côn
+KDH: 44 aliases — 1 flagged
+  [REVIEW] 'Lovera Park' (projects): 1 hits, co-occurrence 0/1 = 0%
+      · Toàn cảnh khu dân cư Lovera Park nhìn từ trên cao - rever.vn | Toàn cảnh khu dân cư Lovera Park nhìn từ trên c
+LPB: 2 aliases — 1 flagged
+  [REVIEW] 'LPBank' (names): 1057 hits, co-occurrence 155/1057 = 15%
+      · LPBank tăng trưởng ấn tượng, nợ xấu thuộc top thấp nhất ngành - Báo Đại biểu Nhân dân | LPBank tăng trưởng ấn 
+      · Vụ tai nạn 4 người của LPBank Hoàng Anh Gia Lai thương vong: Tài xế khóc tại tòa - CafeF | Vụ tai nạn 4 người 
+      · LPBank PGD Bắc Quang hướng tới chi trả lương hưu, trợ cấp BHXH không dùng tiền mặt - Báo Tuyên Quang | LPBank 
+MBB: 11 aliases — 6 flagged
+  [REVIEW] 'Ngân hàng TMCP Quân đội' (names): 381 hits, co-occurrence 120/381 = 31%
+      · Phân tích hoạt động cho vay ngắn hạn tại Ngân hàng TMCP Quân Đội – Chi nhánh Quang Trung - Tạp chí Kinh tế và 
+      · Lãi suất ngân hàng hôm nay 9/2/2026: MB tăng lãi suất huy động lên mức 6,4%/năm | Ngân hàng TMCP Quân đội (MB)
+      · Top 10 ngân hàng thương mại Việt Nam uy tín năm 2024 | Công ty cổ phần Báo cáo Đánh giá Việt Nam (Vietnam Repo
+  [REVIEW] 'MB Bank' (names): 57 hits, co-occurrence 15/57 = 26%
+      · Nhân viên làm lộ thông tin khách hàng, MB Bank phải chịu trách nhiệm như thế nào? - Tạp chí Điện tử Luật sư Vi
+      · Tòa án thụ lý vụ Công ty Quan Minh khởi kiện MB Bank - tapchitoaan.vn | Tòa án thụ lý vụ Công ty Quan Minh khở
+      · 4 ngân hàng giảm 50% dự trữ bắt buộc được hưởng lợi như thế nào? | Cục Quản lý, giám sát tổ chức tín dụng thuộ
+  [REVIEW] 'MBBank' (names): 127 hits, co-occurrence 26/127 = 20%
+      · ĐHCĐ MBBank: Trả cổ tức tỷ lệ 15% trong năm nay và chia hơn 25 triệu cổ phiếu quỹ cho cổ đông - CafeF | ĐHCĐ M
+      · KBSV: Hơn 2.700 tỷ nợ xấu được xử lý trong quý 3/2022 tại ngân hàng MBBank - nguoiquansat.vn | KBSV: Hơn 2.700
+      · Ông Lưu Trung Thái được bầu làm Chủ tịch HĐQT MBBANK - nhipsongdoanhnghiep.laodongcongdoan.vn | Ông Lưu Trung 
+  [REVIEW] 'CTCP Quản lý Quỹ đầu tư MB' (subsidiaries): 1 hits, co-occurrence 0/1 = 0%
+      · MBCapital bán toàn bộ hơn 3 triệu cổ phiếu MIG, hoàn trả tài sản ủy thác trị giá 53 tỷ đồng cho khách hàng | C
+  [FAIL] 'Tổng Công ty cổ phần Bảo hiểm Quân Đội' (subsidiaries): 15 hits, co-occurrence 0/15 = 0%
+      · Bảo hiểm Quân đội ra mắt MIC 360, bảo vệ toàn diện từ 100.000 đồng/năm | Ngày 27/5/2026, Tổng công ty Cổ phần 
+      · Bảo hiểm Quân đội lần đầu tiên ra mắt sản phẩm MIC 360 - bảo vệ gói gọn trong một điểm chạm chi phí chỉ từ 100
+      · Bảo hiểm Quân đội (MIC) dự kiến chia cổ tức năm 2024 tổng tỷ lệ 10% bằng tiền mặt và cổ phiếu | Tổng Công ty C
+  [REVIEW] 'Chứng khoán MB' (subsidiaries): 174 hits, co-occurrence 23/174 = 13%
+      · VN-Index giảm sát ngưỡng hỗ trợ MA200, rủi ro phá vỡ xu hướng dài hạn tăng dần | VN-Index giảm sâu và đang tiệ
+      · Áp lực toàn cầu gia tăng, VN-Index đối diện 'vùng quyết định' 1.580 - 1.600 điểm | Công ty Cổ phần Chứng khoán
+      · Kịch bản VN-Index cán mốc 1.860 điểm: Cú hích từ 'kho báu' doanh nghiệp Nhà nước và làn sóng thoái vốn | Báo c
+MBS: 2 aliases, all PASS
+MCH: 4 aliases, all PASS
+MSB: 4 aliases, all PASS
+MSN: 7 aliases — 2 flagged
+  [REVIEW] 'Masan' (names): 1348 hits, co-occurrence 436/1348 = 32%
+      · Nhà máy Masan sản xuất gây ô nhiễm : Người dân kêu cứu nhiều năm không được xử lý - Kiểm sát điện tử | Nhà máy
+      · Khoản "Nợ tiềm tàng" trên báo cáo tài chính của Masan liên quan đến một kim loại quý - CafeF | Khoản "Nợ tiềm 
+      · Công ty then chốt trong vụ án Trịnh Văn Quyết lừa đảo 3.600 tỷ : Từ tăng vốn ảo thành DN vốn hóa 100.000 tỷ lớ
+  [REVIEW] 'Chin-su' (names): 23 hits, co-occurrence 8/23 = 35%
+      · Chin-su thăng hạng thương hiệu thực phẩm được người Việt lựa chọn nhiều nhất - Báo Công an Thành Phố Hồ Chí Mi
+      · Doanh nghiệp Việt đưa sản phẩm chủ lực vào kênh bán lẻ quốc tế | Tháng 10.2025 vừa qua, sản phẩm CHIN-SU và Na
+      · Chin-su tiếp tục ghi điểm tại Triển lãm quốc tế ngành thực phẩm - đồ uống | Là thương hiệu gia vị hàng đầu Việ
+MSR: 3 aliases — 2 flagged
+  [REVIEW] 'MASAN HIGH-TECH MATERIALS' (names): 111 hits, co-occurrence 44/111 = 40%
+      · Nguồn lực con người là động lực phát triển của Masan High-Tech Materials - thuonghieucongluan.com.vn | Nguồn l
+      · Tập đoàn Masan tái bổ nhiệm ông Danny Le làm tổng giám đốc | Gia nhập Masan từ năm 2010, ông Danny Le trở thàn
+      · Masan nói về việc Trung Quốc hạn chế xuất khẩu khoáng sản sang Mỹ | Theo Masan, việc Trung Quốc thông báo hạn 
+  [FAIL] 'Công ty TNHH Khai thác Chế biến Khoáng sản Núi Pháo' (subsidiaries): 27 hits, co-occurrence 1/27 = 4%
+      · Khoáng sản Núi Pháo - thành viên Masan tiếp tục kinh doanh thua lỗ | Kết quả kinh doanh của Công ty TNHH Khai 
+      · Núi Pháo hỗ trợ xây dựng nhà đại đoàn kết | Công ty TNHH Khai thác Chế biến khoáng sản Núi Pháo vừa phối hợp c
+      · Công ty Núi Pháo thăm hỏi, tặng quà người dân bị ảnh hưởng do bão số 3 | Công ty TNHH Khai thác Chế biến khoán
+MWG: 6 aliases — 4 flagged
+  [REVIEW] 'Thế giới Di động' (names): 556 hits, co-occurrence 241/556 = 43%
+      · Chủ tịch Nguyễn Đức Tài chia sẻ lý do dù bị giảm lương nhưng nhân viên Thế giới Di động không hề buồn bực hay 
+      · Luật sư nói gì về việc Thế Giới Di Động 'tự miễn giảm' tiền thuê mặt bằng? - Báo Công an Thành Phố Hồ Chí Minh
+      · Thấy gì từ khối nợ và độ rủi ro của Thế Giới Di Động? - VnBusiness | Thấy gì từ khối nợ và độ rủi ro của Thế G
+  [REVIEW] 'Điện Máy Xanh' (names): 135 hits, co-occurrence 49/135 = 36%
+      · Công an An Lão cảnh báo loại tội phạm “Lừa đảo chiếm đoạt tài sản” dưới hình thức bán hàng kém chất lượng và g
+      · Siêu thị Điện Máy Xanh bị khách hàng tố “bội tín”, bán sản phẩm kém chất lượng? - Tạp chí Điện tử Luật sư Việt
+      · Giả mạo Momo, Shopee, Điện Máy xanh... báo trúng thưởng để lừa đảo - CafeF | Giả mạo Momo, Shopee, Điện Máy xa
+  [REVIEW] 'Bách Hóa Xanh' (names): 139 hits, co-occurrence 62/139 = 45%
+      · Bách Hóa Xanh có rơi vào khủng hoảng? - Znews | Bách Hóa Xanh có rơi vào khủng hoảng? Znews
+      · 9 cửa hàng Bách Hóa Xanh bị xử phạt vì bán hàng hết hạn, không niêm yết giá - Tạp chí Tài chính Doanh nghiệp |
+      · Bách Hóa Xanh tiếp tục bị xử phạt vì bán hàng hết hạn, không niêm yết giá - Thương hiệu và pháp luật | Bách Hó
+  [REVIEW] 'Bách Hoá Xanh' (names): 29 hits, co-occurrence 7/29 = 24%
+      · Bách Hoá Xanh nói 'hoàn tiền cho khách mua giá đỗ nhiễm hoá chất' - VnExpress | Bách Hoá Xanh nói 'hoàn tiền c
+      · “Ông trùm” kín tiếng thi công, thiết kế cho hàng loạt chuỗi The Coffee House, Bách Hoá Xanh, FPT, Vingroup, FL
+      · Bách Hoá Xanh khẳng định không có chủ trương tăng giá bán để tăng lợi nhuận - Tin nhanh chứng khoán | Bách Hoá
+NKG: 9 aliases, all PASS
+NLG: 41 aliases — 7 flagged
+  [REVIEW] 'Công ty TNHH Phát triển Căn hộ Nam Long' (subsidiaries): 2 hits, co-occurrence 0/2 = 0%
+      · Nam Long đề xuất thực hiện 20.000 căn nhà ở xã hội tại Đồng Nai | Công ty TNHH Phát triển Căn hộ Nam Long vừa 
+      · Tập đoàn Nam Long đề xuất thực hiện 20 ngàn căn nhà ở xã hội tại Đồng Nai | Ngày 6-5, Chủ tịch UBND tỉnh Võ Tấ
+  [REVIEW] 'Paragon Đại Phước' (subsidiaries): 13 hits, co-occurrence 5/13 = 38%
+      · Nam Long tiếp tục phát hành trái phiếu, chuyển nhượng 25% vốn Paragon Đại Phước | Thương vụ chuyển nhượng 25% 
+      · Nam Long dự kiến thu về 200 tỷ từ việc chuyển nhượng vốn tại Paragon Đại Phước | Tập đoàn Nam Long đã chuyển n
+      · Nam Long hoàn thành 30% kế hoạch lợi nhuận năm sau 6 tháng | Kết quả kinh doanh trong quý II/2025 của Nam Long
+  [FAIL] 'Southgate' (subsidiaries): 531 hits, co-occurrence 10/531 = 2%
+      · Long An: Sai phạm trong quản lý kinh phí bảo trì chung cư, một chủ đầu tư bị phạt 450 triệu đồng | UBND tỉnh L
+      · Hàng tồn kho của Nam Long vượt ngưỡng 17.000 tỷ đồng | Phần lớn cơ cấu hàng tồn kho của Nam Long tới từ 2 dự á
+      · Tuchel được khuyên học theo Southgate để chinh phục World Cup | HLV Gareth Southgate đã mở lòng với các cầu th
+  [REVIEW] 'Mizuki Park' (projects): 16 hits, co-occurrence 3/16 = 19%
+      · Thanh toán từ 600 triệu đồng, sở hữu căn hộ 2 phòng ngủ tại nam TP.HCM | Với mức thanh toán từ 600 triệu đồng,
+      · Phân khu compound cuối cùng tại Mizuki Park thu hút sự quan tâm | Trellia Cove - phân khu compound cuối cùng s
+      · Sắp ra mắt phân khu compound cuối cùng tại khu đô thị Mizuki Park | Phân khu compound sắp ra mắt là bước nối t
+  [REVIEW] 'Akari City' (projects): 10 hits, co-occurrence 4/10 = 40%
+      · Akari City – Khám phá căn hộ vừa túi tiền với tiềm năng tăng giá | Hội tụ những yếu tố tiên quyết để trở thành
+      · Akari City, tổ ấm đa tiện ích đáp ứng nhu cầu ở thực của gia đình trẻ cấp tiến | Akari City - 'thành phố ánh s
+      · 5 yếu tố giúp căn hộ Akari City chinh phục khách hàng | Hội tụ 5 giá trị từ vị trí, tiện ích, giá thành đến ph
+  [REVIEW] 'Waterpoint' (projects): 33 hits, co-occurrence 8/33 = 24%
+      · Giỏ hàng đợt 1 của Solaria Rise 'sold out' sau sự kiện mở bán 15/11 | Nam Long ghi nhận toàn bộ căn hộ trong g
+      · 19 đại lý chiến lược hợp tác với Nam Long phân phối dự án Solaria Rise | Chiều 30/7, Nam Long đã ký kết hợp tá
+      · Nam Long lập 2 công ty con để nhận chuyển nhượng đất tại dự án Waterpoint | Hai công ty mới được thành lập có 
+  [REVIEW] 'Izumi City' (projects): 18 hits, co-occurrence 8/18 = 44%
+      · Tiến độ đại dự án Đồng Nai Waterfront của Nam Long | Đồng Nai Waterfront có tên thương mại là Izumi City, trướ
+      · Bệ phóng giá trị bất động sản từ Cảng hàng không Quốc tế Long Thành | Sân bay Long Thành là bệ phóng giá trị c
+      · Nam Long đồng hành cùng Hankyu Hanshin Properties Corp phát triển dự án Izumi City - cafeland.vn | Nam Long đồ
+NT2: 3 aliases, all PASS
+NVL: 130 aliases — 9 flagged
+  [REVIEW] 'Công ty TNHH Đầu tư BĐS Long Hưng Phát' (subsidiaries): 1 hits, co-occurrence 0/1 = 0%
+      · Công ty TNHH Đầu tư BĐS Long Hưng Phát bị phạt 235 triệu đồng | Thanh tra Ủy ban Chứng khoán Nhà nước (UBCKNN)
+  [REVIEW] 'Công ty TNHH Phát triển Quốc tế Thế kỷ 21' (subsidiaries): 3 hits, co-occurrence 1/3 = 33%
+      · Hàng loạt doanh nghiệp bất động sản nợ thuế hơn 53.000 tỷ đồng | Cục Thuế Tp.HCM cho biết, hiện đang có hàng l
+      · Chủ đầu tư Lakeview City nợ hơn 6,7 nghìn tỉ tiền thuế | Hơn 6,7 nghìn tỉ đồng, là số tiền Công ty TNHH Phát t
+  [REVIEW] 'CTCP Cao Ốc Phương Đông' (subsidiaries): 2 hits, co-occurrence 0/2 = 0%
+      · Vi phạm công bố thông tin, CTCP Cao ốc Phương Đông bị xử phạt ra sao? | Doanh nghiệp này bị xử phạt do không c
+      · Vi phạm công bố thông tin trái phiếu và tài chính, Cao ốc Phương Đông bị phạt 92,5 triệu đồng | Ủy ban Chứng k
+  [REVIEW] 'CTCP Phát triển Đất Việt' (subsidiaries): 1 hits, co-occurrence 0/1 = 0%
+      · WinCommerce, Phát triển Đất Việt, BĐS Thuận Phát và Unity bị phạt | Thanh tra Ủy ban Chứng khoán Nhà nước (UBC
+  [REVIEW] 'Novaland' (subsidiaries): 1325 hits, co-occurrence 561/1325 = 42%
+      · The Water Bay: Lược sử dự án tai tiếng của Novaland - VietnamFinance | The Water Bay: Lược sử dự án tai tiếng 
+      · Novaland hợp tác PRO Việt Nam xã hội hóa quản lý chất thải rắn - Báo Tuổi Trẻ | Novaland hợp tác PRO Việt Nam 
+      · Có 32.000 tỉ trong ngân hàng, vì sao Novaland vẫn không thể thanh toán nợ đến hạn? - Báo Tuổi Trẻ | Có 32.000 
+  [REVIEW] 'No Va Thảo Điền' (subsidiaries): 7 hits, co-occurrence 3/7 = 43%
+      · No Va Thảo Điền chậm thanh toán hơn 2.000 tỷ đồng gốc, lãi trái phiếu | No Va Thảo Điền vừa thông báo chậm tha
+      · No Va Thảo Điền nhận án phạt vì vi phạm công bố thông tin | Quyết định xử phạt nêu rõ nguyên nhân No Va Thảo Đ
+      · No Va Thảo Điền bất ngờ lãi lớn nửa đầu năm 2024 | Vốn chủ sở hữu của No Va Thảo Điền cũng được cải thiện từ 7
+  [REVIEW] 'Richstar' (subsidiaries): 1 hits, co-occurrence 0/1 = 0%
+      · Kiến nghị TPHCM truy thu hơn 800 tỷ đồng tiền sử dụng đất tại nhiều dự án BĐS | Thanh tra Chính phủ (TTCP) kiế
+  [REVIEW] 'Sunrise City' (projects): 4 hits, co-occurrence 0/4 = 0%
+      · Cư dân phản đối 'gay gắt' khi Bệnh viện Tâm Anh dự kiến mở Phòng khám tại Chung cư Sunrise City Central - Tạp 
+      · Tập đoàn Kido (KDC) bị xử phạt do báo cáo sai lệch thông tin trái phiếu | Thanh tra Chứng khoán Nhà nước ban h
+      · Thực tế khác báo cáo: KIDO bị phạt vì sai lệch thông tin góp vốn 1.000 tỷ vào liên doanh Vibev | Vừa qua, Than
+  [REVIEW] 'Palm City' (projects): 3 hits, co-occurrence 1/3 = 33%
+      · Chủ mới 'thế chân' Keppel tại The Palm City | Trước khi rót vốn vào The Palm City, Gateway Thủ Thiêm đã rút bớ
+      · Keppel đã thoái vốn hơn 6.500 tỷ đồng ở Việt Nam trong 9 tháng | Trong 9 tháng đầu năm, Keppel thoái vốn gần 2
+OCB: 4 aliases, all PASS
+PAN: 27 aliases — 4 flagged
+  [REVIEW] 'Tập Đoàn Giống Cây Trồng Việt Nam' (subsidiaries): 3 hits, co-occurrence 0/3 = 0%
+      · Tập đoàn Giống cây trồng Việt Nam (NSC): Đặt mục tiêu lãi trước thuế 2026 tăng 14%, chuyển đổi mô hình quản tr
+      · Vinaseed 'thay tướng' sau 21 năm, người mới là Tổng Giám đốc công ty mẹ | Mới đây, Hội đồng quản trị CTCP Tập 
+      · Hội thảo đầu bờ đánh giá mô hình giống lúa lai ba dòng KU57 và Thơm SUMO 86 | Ngày 8/5, Tập đoàn Giống cây trồ
+  [REVIEW] 'Bibica' (subsidiaries): 92 hits, co-occurrence 34/92 = 37%
+      · Hãng bánh kẹo lâu đời nhất Việt Nam bị bán, cổ phiếu sắp rời sàn chứng khoán | 5 năm yên ắng sau nội chiến, Bi
+      · Thương hiệu Việt trong kỷ nguyên mới (*): Bài toán giữ 'hồn Việt' | Bibica và nhiều doanh nghiệp Việt có lãi v
+      · Hãng bánh kẹo nổi tiếng Bibica không còn là công ty đại chúng | Bibica cùng với Công ty Nước sạch Sông Đà bị h
+  [REVIEW] 'Khử trùng Việt Nam' (subsidiaries): 20 hits, co-occurrence 9/20 = 45%
+      · Lãi ròng sụt giảm, Khử trùng Việt Nam (VFG) vẫn chi hơn 41 tỷ đồng trả cổ tức | Công ty Cổ phần Khử trùng Việt
+      · Khử trùng Việt Nam (VFG): lãi quý III sụt mạnh 66%, sạch nợ vay nhưng hàng tồn kho tăng mạnh | Lũy kế 9 tháng 
+      · Công ty Khử trùng Việt Nam bị phạt và truy thu hàng tỷ đồng tiền thuế | Tổng cục Thuế quyết định xử phạt vi ph
+  [REVIEW] 'Thực phẩm Sao Ta' (subsidiaries): 133 hits, co-occurrence 42/133 = 32%
+      · Thực phẩm Sao Ta (FMC): Xuất khẩu tôm bứt phá, doanh thu tháng 1/2024 tăng 26% | Thực phẩm Sao Ta (mã cổ phiếu
+      · Thực phẩm Sao Ta (FMC) trở thành nhà xuất khẩu tôm Việt lớn nhất vào Nhật Bản | Công ty Cổ phần Thực phẩm Sao 
+      · VPBankS, Chứng khoán Việt Tín... và loạt biến động nhân sự cấp cao tại các DN niêm yết | Thực phẩm Sao Ta, Chứ
+PC1: 43 aliases — 1 flagged
+  [REVIEW] 'Khoáng sản Tấn Phát' (subsidiaries): 7 hits, co-occurrence 1/7 = 14%
+      · Hiệu quả bước đầu khai thác và chế biến Niken - Đồng | Sau hơn 2 năm đưa vào vận hành nhà tuyển và chế biến Ni
+      · Ban Kinh tế Trung ương làm việc, khảo sát tại Công ty cổ phần Khoáng sản Tấn Phát | Ngày 14/8, đoàn công tác c
+      · Đoàn công tác Ban Kinh tế Trung ương khảo sát tại Công ty cổ phần Khoáng sản Tấn Phát | Sáng 14/8, đoàn công t
+PDR: 18 aliases — 2 flagged
+  [REVIEW] 'Astral City' (projects): 4 hits, co-occurrence 0/4 = 0%
+      · Nhiều tòa tháp tại dự án La Pura của Phát Đạt vẫn 'đứng yên' sau nhiều năm | Được khởi công vào năm 2020 với t
+      · Phát Đạt đổi tên dự án Astral City thành La Pura và mở bán lại | Astral City được đổi thành tên thành La Pura,
+      · Astral City chính thức “chào sân” với màn kick off ấn tượng - CafeF | Astral City chính thức “chào sân” với mà
+  [REVIEW] 'The EverRich' (projects): 2 hits, co-occurrence 0/2 = 0%
+      · Phát Đạt báo lãi quý IV/2025 nhờ bán đất vàng Đà Nẵng, tồn kho The EverRich 2 tăng mạnh | Quý IV/2025, Phát Đạ
+      · Toà án thụ lý đơn cư dân chung cư The EverRich Infinity khởi kiện Công ty Phát Đạt - Báo Phụ Nữ | Toà án thụ l
+PLX: 3 aliases — 1 flagged
+  [REVIEW] 'Petrolimex' (names): 1142 hits, co-occurrence 355/1142 = 31%
+      · Petrolimex "Trách nhiệm - Nỗ lực - Sẻ chia" cùng vượt qua Covid-19 - Petrolimex | Petrolimex "Trách nhiệm - Nỗ
+      · giảm phát thải góp phần ứng phó BĐKH - Petrolimex | giảm phát thải góp phần ứng phó BĐKH Petrolimex
+      · Diễn tập UPSCTD tại Kho Xăng dầu Bến Thủy - Petrolimex | Diễn tập UPSCTD tại Kho Xăng dầu Bến Thủy Petrolimex
+PNJ: 6 aliases, all PASS
+POW: 10 aliases — 4 flagged
+  [REVIEW] 'PV POWER' (names): 588 hits, co-occurrence 242/588 = 41%
+      · PV Power Services hoàn thành sửa chữa Nhà máy Nhiệt điện BOT Vân Phong 1 trong 26 ngày - Chuyên trang Petrovie
+      · PV Power: Kiến tạo năng lượng sạch và bền vững - thuonghieucongluan.com.vn | PV Power: Kiến tạo năng lượng sạc
+      · Khối ngoại mạnh tay gom cổ phiếu PV Power | Khối ngoại bán ròng hơn 1.100 tỷ đồng, nhưng dòng vốn này vẫn chọn
+  [FAIL] 'CTCP Điện lực Dầu khí Nhơn Trạch 2' (subsidiaries): 13 hits, co-occurrence 1/13 = 8%
+      · Điện lực Dầu khí Nhơn Trạch 2 ghi nhận quý lỗ kỷ lục kể từ khi niêm yết | CTCP Điện lực Dầu khí Nhơn Trạch 2 (
+      · NT2 chốt quyền tạm ứng cổ tức tiền mặt | CTCP Điện lực Dầu khí Nhơn Trạch 2 (mã chứng khoán NT2) là một trong 
+      · Lợi nhuận sau thuế năm 2023 của NT2 ước đạt 474 tỷ đồng | Năm 2023, mặc dù gặp nhiều khó khăn nhưng lợi nhuận 
+  [REVIEW] 'Thủy điện Đakđrinh' (subsidiaries): 29 hits, co-occurrence 12/29 = 41%
+      · Hồ thủy điện Đakđrinh đạt cao trình an toàn, sẵn sàng điều tiết nước trong thời tiết mưa bão | Thông tin từ Sở
+      · Thủy điện Đakđrinh chủ động điều tiết nước, đảm bảo an toàn trước bão số 12 | Trước những dự báo diễn biến phứ
+      · 'Đổi đời' nhờ Thủy điện Đakđrinh | Nhiều năm vượt khó đi học, Đinh Văn Anh trở về nhà cùng tấm bằng trung cấp 
+  [REVIEW] 'Thủy điện Hủa Na' (subsidiaries): 99 hits, co-occurrence 21/99 = 21%
+      · Nghệ An: Hàng tấn rác thải, gỗ mục phủ kín mặt hồ thủy điện Hủa Na - moitruong.net.vn | Nghệ An: Hàng tấn rác 
+      · Thủy điện Hủa Na báo lãi 9 tháng vượt gấp đôi kế hoạch năm | Kết thúc 9 tháng đầu năm, Thủy điện Hủa Na đã vượ
+      · Thủy điện Hủa Na kinh doanh thua lỗ, lãnh đạo thu nhập hơn 100 triệu đồng/tháng | Sáu tháng đầu năm 2024, Thủy
+PVD: 3 aliases, all PASS
+PVS: 13 aliases — 1 flagged
+  [REVIEW] 'PTSC' (names): 458 hits, co-occurrence 198/458 = 43%
+      · Liên danh PTSC - Sembcorp được cấp phép khảo sát biển cho dự án điện gió ngoài khơi - baochinhphu.vn | Liên da
+      · Vì sao Công ty Cổ phần dịch vụ kỹ thuật PTSC Thanh Hóa bị yêu cầu nộp ngay gần 1 tỷ đồng? - Báo Thanh tra | Vì
+      · Viconship thoái toàn bộ vốn tại PTSC Đình Vũ, dồn lực cho Cảng Nam Hải Đình Vũ | Từ bỏ đầu tư vào công ty đứng
+PVT: 14 aliases, all PASS
+QNS: 6 aliases — 1 flagged
+  [REVIEW] 'Vinasoy' (names): 40 hits, co-occurrence 17/40 = 42%
+      · Sữa đậu nành Fami của Vinasoy bị thu hồi tại Nhật Bản - Tạp chí Tài chính Doanh nghiệp | Sữa đậu nành Fami của
+      · Chủ thương hiệu sữa đậu nành Fami lần đầu thu hơn 10.000 tỷ đồng/năm | Trong năm 2023, công ty mẹ của thương h
+      · Nhật Bản thu hồi lô sữa đậu nành nghi nhiễm khuẩn Coliform của VinaSoy | Theo đài NHK Nhật Bản, vi khuẩn Colif
+REE: 39 aliases — 5 flagged
+  [REVIEW] 'CTCP Thủy điện Vĩnh Sơn - Sông Hinh' (subsidiaries): 3 hits, co-occurrence 0/3 = 0%
+      · ĐHĐCĐ 2025 Thủy điện Vĩnh Sơn - Sông Hinh (VSH): Quý 1 khởi sắc, sản lượng điện tăng 32% | Đại hội đồng cổ đôn
+      · Tổng tài sản của Vĩnh Sơn - Sông Hinh tiệm cận mức 10.000 tỷ đồng | Tính đến ngày 30/6/2023, tổng tài sản của 
+      · Vĩnh Sơn - Sông Hinh liên tục chi tiền mua lại trái phiếu trước hạn | Sở Giao dịch Chứng khoán Hà Nội ngày vừa
+  [FAIL] 'Duyên hải 3' (subsidiaries): 11 hits, co-occurrence 0/11 = 0%
+      · Dự án nhà máy nhiệt điện Duyên Hải 3 mở rộng đã hoàn thành hệ thống bảo vệ môi trường - TẠP CHÍ ĐIỆN TỬ CÔNG N
+      · Kiểm toán Nhà nước chỉ ra một loạt vấn đề tại Dự án Nhà máy nhiệt điện Duyên Hải 3 mở rộng - Báo Dân Việt | Ki
+      · Ký kết hợp đồng dài hạn cung cấp than nhập khẩu cho Nhà máy Nhiệt điện Duyên Hải 3 Mở rộng | Tổng công ty Phát
+  [REVIEW] 'Điện máy R.E.E' (subsidiaries): 1 hits, co-occurrence 0/1 = 0%
+      · TP. Hồ Chí Minh: Xử phạt Công ty Cổ phần Điện máy R.E.E do vi phạm nhiều quy định về pháp luật lao động - Báo 
+  [REVIEW] 'GE Tây Nguyên' (subsidiaries): 1 hits, co-occurrence 0/1 = 0%
+      · Thủy điện Vĩnh Sơn - Sông Hinh (VSH) chi 150 tỷ đồng thâu tóm GE Tây Nguyên, chốt tổng vốn dự án Thượng Kon Tu
+  [FAIL] 'Thủy điện Thác Bà' (subsidiaries): 268 hits, co-occurrence 5/268 = 2%
+      · Lào Cai: Chặt vó đèn, ngăn chặn tình trạng tận diệt cá lòng hồ Thủy điện Thác Bà - Báo Dân Việt | Lào Cai: Chặ
+      · Nhiều doanh nghiệp sắp 'lì xì' Tết cổ đông | Dịp Tết Nguyên đán sắp tới, cổ đông của nhiều doanh nghiệp lớn nh
+      · Thủy điện Thác Bà sắp chi 63,5 tỷ đồng trả cổ tức | Tại ĐHCĐ 2025, Thủy điện Thác Bà đã thông qua kế hoạch chi
+SAB: 34 aliases — 3 flagged
+  [REVIEW] 'SABECO' (names): 626 hits, co-occurrence 233/626 = 37%
+      · Nguyên chủ tịch Sabeco khai bị Bộ Công Thương gây sức ép - VnExpress | Nguyên chủ tịch Sabeco khai bị Bộ Công 
+      · Số phận 5 tỷ USD của tỷ phú Thái sau 4 năm "thâu tóm" Sabeco - Báo Dân trí | Số phận 5 tỷ USD của tỷ phú Thái 
+      · Chuyển động tại Sabibeco: Ghế CEO đổi chủ, người nội bộ thoái vốn, ngày về Sabeco không xa? - baodautu | Chuyể
+  [REVIEW] 'CTCP Nước Giải khát Chương Dương' (subsidiaries): 8 hits, co-occurrence 3/8 = 38%
+      · Động thái mới của đại gia Thái sau khi củng cố vị thế tại Vinamilk | Trước khi muốn mua lại nhà máy nước giải 
+      · Chương Dương (SCD): Lỗ 18 quý liên tiếp, vốn chủ sở hữu âm 124 tỷ, cổ phiếu vẫn tăng trần | CTCP Nước giải khá
+      · HoSE hủy niêm yết đối với cổ phiếu SCD | Sở Giao dịch Chứng khoán Thành phố Hồ Chí Minh (HoSE) đã quyết định h
+  [REVIEW] 'Bia Sài Gòn' (subsidiaries): 167 hits, co-occurrence 73/167 = 44%
+      · Bà Rịa- Vũng Tàu: Khởi tố vụ án xâm phạm nhãn hiệu bia Sài Gòn - Báo Pháp Luật TP. Hồ Chí Minh | Bà Rịa- Vũng 
+      · Nhái vỏ 'bia Sài Gòn', đề nghị truy tố giám đốc và cả công ty 'bia Sài Gòn Việt Nam' - Báo Tuổi Trẻ | Nhái vỏ 
+      · Bia Sài Gòn liên tục bị làm giả và câu chuyện bảo vệ thương hiệu - baochinhphu.vn | Bia Sài Gòn liên tục bị là
+SBT: 2 aliases, all PASS
+SHB: 2 aliases, all PASS
+SHS: 2 aliases, all PASS
+SIP: 16 aliases — 1 flagged
+  [REVIEW] 'Bao bì Sài Gòn' (subsidiaries): 2 hits, co-occurrence 0/2 = 0%
+      · Sabeco sắp có thêm 2 công ty con | Theo công bố ngày 8/2, Sabeco sẽ sở hữu 2 công ty con là Bia Sài Gòn Bình T
+      · Có hơn 23.000 tỷ đồng tiền mặt, Sabeco sắp thâu tóm thêm 2 công ty | HĐQT Tổng Công ty cổ phần Bia - Rượu - Nư
+SSI: 4 aliases, all PASS
+STB: 6 aliases — 1 flagged
+  [REVIEW] 'Sacombank' (names): 1166 hits, co-occurrence 281/1166 = 24%
+      · Kế hoạch xử lý 15.000 tỷ đồng nợ xấu của Sacombank trong năm 2020 - doanhnghiepthuonghieu.vn | Kế hoạch xử lý 
+      · Giới hạn nào cho SBS khi Sacombank thoái toàn bộ vốn? - Vietstock | Giới hạn nào cho SBS khi Sacombank thoái t
+      · Sacombank Pay hỗ trợ vay trả góp không cần thế chấp - VnExpress | Sacombank Pay hỗ trợ vay trả góp không cần t
+SZC: 6 aliases, all PASS
+TAL: 20 aliases, all PASS
+TCB: 2 aliases — 1 flagged
+  [REVIEW] 'TECHCOMBANK' (names): 1081 hits, co-occurrence 222/1081 = 21%
+      · Khách hàng có thể khiếu kiện nếu bị thiệt hại do giao dịch điện tử của ngân hàng Techcombank bị lỗi - Tạp chí 
+      · Hé lộ thông tin về gia đình quyền lực của 'tỷ phú' Hồ Hùng Anh ở Techcombank - Báo VietNamNet | Hé lộ thông ti
+      · Không chỉ lương và phúc lợi hấp dẫn, Techcombank còn phát hành cổ phiếu ESOP để giữ chân nhân tài - CafeF | Kh
+TCH: 5 aliases — 1 flagged
+  [REVIEW] 'Hoàng Huy Grand Tower' (projects): 1 hits, co-occurrence 0/1 = 0%
+      · Hải Phòng: Động thổ dự án Hoàng Huy Grand Tower 37 tầng - cafeland.vn | Hải Phòng: Động thổ dự án Hoàng Huy Gr
+TCX: 3 aliases, all PASS
+TPB: 5 aliases — 1 flagged
+  [REVIEW] 'TPBank' (names): 737 hits, co-occurrence 148/737 = 20%
+      · Ứng dụng AI, ngân hàng phá vỡ mọi quy tắc của ngân hàng truyền thống - TPbank | Ứng dụng AI, ngân hàng phá vỡ 
+      · Mối quan hệ thân thiết giữa Bamboo Capital và TPBank - CafeF | Mối quan hệ thân thiết giữa Bamboo Capital và T
+      · TPBank được công nhận “Doanh nghiệp đạt chuẩn văn hóa kinh doanh Việt Nam&rdquo - TPbank | TPBank được công nh
+VCB: 14 aliases — 2 flagged
+  [REVIEW] 'VIETCOMBANK' (names): 1277 hits, co-occurrence 251/1277 = 20%
+      · Mỗi năm, một nhân viên Vietcombank làm ra gần 980 triệu tiền lãi và thu nhập bình quân 410 triệu - Báo Dân Việ
+      · Vietcombank và lỗ hổng trong bảo mật thông tin khách hàng - Tạp chí Tài chính Doanh nghiệp | Vietcombank và lỗ
+      · 4 chiêu lừa đảo chiếm đoạt tiền tài khoản | Vietcombank vừa đưa ra cảnh báo 4 hình thức mà tội phạm thực hiện 
+  [REVIEW] 'Benthanh' (subsidiaries): 3 hits, co-occurrence 0/3 = 0%
+      · BenThanh Tourist thúc đẩy du lịch MICE Hàn Quốc tại thị trường miền Trung | Ngày 19/5, BenThanh Tourist phối h
+      · BenThanh Tourist 30 năm xây dựng thương hiệu - Vietnam Report | BenThanh Tourist 30 năm xây dựng thương hiệu V
+      · CEO BenThanh Tourist viết tâm thư động viên người lao động - Tuổi Trẻ | CEO BenThanh Tourist viết tâm thư động
+VCG: 4 aliases — 1 flagged
+  [REVIEW] 'Vinaconex' (names): 370 hits, co-occurrence 126/370 = 34%
+      · Vinaconex góp mặt trong nhóm 5 doanh nghiệp đầu ngành xây dựng Việt Nam - VietnamFinance | Vinaconex góp mặt t
+      · Bị phạt về thuế hàng tỷ đồng, Vinaconex 25 vừa trúng gói thầu lớn tại sân bay Đà Nẵng - Tạp chí Tài chính Doan
+      · Công ty 6 tháng tuổi liên quan Vinaconex 'nhảy' vào Giày Thượng Đình - Báo Tuổi Trẻ | Công ty 6 tháng tuổi liê
+VCI: 3 aliases, all PASS
+VCK: 3 aliases — 1 flagged
+  [REVIEW] 'VPS' (names): 334 hits, co-occurrence 165/334 = 49%
+      · Ông Đỗ Anh Việt: Từ cháy tài khoản, nợ 1 triệu USD ở tuổi 30 vì cơn say chứng khoán đến Giám đốc tư vấn đầu tư
+      · Hút ròng hàng chục nghìn tỷ đồng, loạt công ty chứng khoán đua tăng vốn để thâu tóm thị phần margin | Ngay từ 
+      · Đường đua tăng vốn ngành chứng khoán thêm gay cấn | VIX đang tranh vị trí thứ hai của TCBS, trong khi VPS cũng
+VEA: 16 aliases — 3 flagged
+  [FAIL] 'VEAM' (names): 373 hits, co-occurrence 35/373 = 9%
+      · Bắt Phó Giám đốc Nhà máy ô tô VEAM để điều tra tội tham ô - Laodong.vn | Bắt Phó Giám đốc Nhà máy ô tô VEAM để
+      · Cựu chủ tịch HĐQT VEAM lại bị khởi tố - Znews | Cựu chủ tịch HĐQT VEAM lại bị khởi tố Znews
+      · Khởi tố nguyên Tổng giám đốc và Phó tổng giám đốc VEAM - Báo Quân đội nhân dân | Khởi tố nguyên Tổng giám đốc 
+  [REVIEW] 'Công ty TNHH MTV Động cơ và Máy nông nghiệp Miền Nam' (subsidiaries): 1 hits, co-occurrence 0/1 = 0%
+      · Công ty SVEAM: Duy trì sản xuất ổn định, động cơ diesel tăng trưởng mạnh | Là một trong những đơn vị có truyền
+  [REVIEW] 'Cơ khí Phổ Yên' (subsidiaries): 19 hits, co-occurrence 5/19 = 26%
+      · Loạt doanh nghiệp công bố kế hoạch chia cổ tức khủng | Hàng loạt các doanh nghiệp đã thông báo kế hoạch trả cổ
+      · Doanh nghiệp trả cổ tức cao gấp 3 lần thị giá | Từ khi lên sàn đến nay, Công ty CP Cơ khí Phổ Yên luôn mạnh ta
+      · Fomeco trả cổ tức bằng tiền mặt, tỷ lệ 100% | Công ty Cổ phần Cơ khí Phổ Yên (Fomeco, mã FBC) thông báo sẽ trả
+VGC: 40 aliases — 2 flagged
+  [REVIEW] 'VIGLACERA' (names): 579 hits, co-occurrence 216/579 = 37%
+      · Loạt "ông lớn" Viglacera, VSIP Bắc Ninh có nhiều sai phạm tại các dự án ở Bắc Ninh - Tạp chí Tài chính Doanh n
+      · Thanh Hóa: Xử phạt 90 triệu và buộc tiêu huỷ 11.120 viên ngói giả mạo nhãn hiệu Viglacera, Prime - dms.gov.vn 
+      · Thiết bị vệ sinh Viglacera bị phạt 1,1 tỷ đồng vì không báo cáo giao dịch cổ phiếu TVA - VnEconomy | Thiết bị 
+  [REVIEW] 'VIHOCE' (subsidiaries): 2 hits, co-occurrence 0/2 = 0%
+      · Hà Nội giao 1,5ha đất cho Vihoce Tiên Dương để làm dự án nhà ở xã hội 9.300 tỷ đồng | Dự án khu nhà ở xã hội T
+      · Nhà ở xã hội Tiên Dương - điểm tựa an cư mới phía Bắc Thủ đô | Ngày 19/12, UBND thành phố Hà Nội phối hợp với 
+VGI: 3 aliases — 1 flagged
+  [REVIEW] 'VIETTEL GLOBAL' (names): 101 hits, co-occurrence 40/101 = 40%
+      · Điểm tên các 'đại gia' tiền mặt trên sàn chứng khoán | Nhiều cái tên như Bảo Việt, Vingroup, Vinhomes, Viettel
+      · Viettel Global báo lãi quý 1 tăng 2,7 lần, tiền gửi ngân hàng gần 9.900 tỷ đồng | Quý 1/2026, Viettel Global b
+      · Viettel Global tăng trưởng doanh thu 30% trong quý 1/2026 | Viettel Global ghi nhận doanh thu tăng 30% trong q
+VHC: 3 aliases, all PASS
+VHM: 62 aliases — 8 flagged
+  [REVIEW] 'Vinhomes' (names): 943 hits, co-occurrence 357/943 = 38%
+      · Giữa cơn bão sa thải nhân viên, Vinhomes tiếp tục tuyển dụng 3.000 nhân sự mới - Tạp chí Lao động Đoàn thể | G
+      · CEO Vinhomes nhận lương bao nhiêu? - Tạp chí Lao động Đoàn thể | CEO Vinhomes nhận lương bao nhiêu? Tạp chí La
+      · Vinhomes có động thái mới tại “siêu” dự án Vịnh Cam Ranh gần 1.300ha, tổng vốn đầu tư hơn 85.000 tỷ đồng tại K
+  [REVIEW] 'Công ty TNHH Đá Cẩm Thạch An Phú' (subsidiaries): 1 hits, co-occurrence 0/1 = 0%
+      · Yên Bái: Tai nạn lao động khiến một công nhân tử vong tại mỏ đá | Chánh thanh tra Sở Lao động-Thương binh và X
+  [REVIEW] 'CTCP Phát triển GS Củ Chi' (subsidiaries): 1 hits, co-occurrence 0/1 = 0%
+      · TPHCM bổ sung thêm sân golf tại xã Củ Chi | UBND TPHCM ban hành Quyết định cho CTCP Phát triển GS Củ Chi thuê 
+  [REVIEW] 'Đá Trắng Bảo Lai' (subsidiaries): 1 hits, co-occurrence 0/1 = 0%
+      · Các doanh nghiệp ủng hộ 70 triệu đồng giúp Nhân dân trong tỉnh khắc phục hậu quả bão số 10 | Sáng 9/10, tại tr
+  [FAIL] 'Berjaya' (subsidiaries): 13 hits, co-occurrence 1/13 = 8%
+      · Tập đoàn vừa cử CEO gia nhập HĐQT Vincom Retail mạnh cỡ nào? | Tập đoàn Berjaya đã được giấy phép đầu tư bất đ
+      · Sau gần 2 thập kỷ 'đắp chiếu', siêu đô thị gần 900ha ở TP HCM đã định được ngày khởi công | Dự án Khu đô thị Đ
+      · TPHCM: Khởi động lại dự án khu đô thị đại học 3,5 tỷ USD | Sở Tài chính TPHCM vừa có văn bản gửi các cơ quan b
+  [REVIEW] 'Đầu tư Bảo Lai' (subsidiaries): 1 hits, co-occurrence 0/1 = 0%
+      · Quảng Ninh: Bắt nguyên giám đốc khai thác đất trái phép | Từ 2018 đến cuối 2022, Đào Thế Vinh (nguyên Giám đốc
+  [FAIL] 'Vincons' (subsidiaries): 5 hits, co-occurrence 0/5 = 0%
+      · Nhiều lao động “đổi đời” nhờ làm việc tại VinCons - Báo Dân trí | Nhiều lao động “đổi đời” nhờ làm việc tại Vi
+      · 150 hội viên nông dân, người lao động xã Vĩnh Gia được tư vấn việc làm | Ngày 18/5, Hội Nông dân xã Vĩnh Gia p
+      · Vì sao người lao động chọn gắn bó với VinCons giữa thời điểm thị trường biến động? | Trong khi các dự án hạ tầ
+  [REVIEW] 'Ocean City' (projects): 51 hits, co-occurrence 9/51 = 18%
+      · Nhà đầu tư 'đổ bộ' Vịnh Xanh, đón đầu thời kỳ bứt phá của phía Đông Hà Nội | Hạ tầng đồng bộ và vẫn đang tiếp 
+      · Giá vé, sơ đồ concert G-Dragon ở Ocean City: Vé 8 triệu cạnh tranh gắt, có send-off | Trước đó, chặng Đài Bắc 
+      · Sức sống sôi động kiến tạo 'tọa độ vàng' thương mại tại Ocean City | Chỉ sau 3 năm phát triển, Ocean City đã v
+VIB: 2 aliases, all PASS
+VIC: 3 aliases — 1 flagged
+  [REVIEW] 'VINGROUP' (names): 2085 hits, co-occurrence 386/2085 = 19%
+      · Tỉ phú Phạm Nhật Vượng cùng Vingroup chi hơn 1.400 tỉ đồng mở công ty sản xuất pin, phát triển AI - Báo Tuổi T
+      · Thấy gì từ 5 nguyên tắc “xanh” của "đế chế" Vingroup? - kinhtemoitruong.vn | Thấy gì từ 5 nguyên tắc “xanh” củ
+      · Bôi nhọ thương hiệu Vingroup, một người ở Hà Nội bị phạt 7,5 triệu đồng - Báo Dân trí | Bôi nhọ thương hiệu Vi
+VIX: 2 aliases, all PASS
+VJC: 13 aliases, all PASS
+VND: 3 aliases — 1 flagged
+  [REVIEW] 'VNDIRECT' (names): 946 hits, co-occurrence 419/946 = 44%
+      · Kinh tế tuần qua: Hàng chục tỷ đồng trong ngân hàng bốc hơi, VNDirect bị tê liệt - Báo điện tử VTC News | Kinh
+      · Thông tin chính thức về việc VNDirect bị hacker tấn công - Báo và Phát thanh Truyền hình Hà Nội | Thông tin ch
+      · Mối liên hệ giữa Trung Nam và VNDIRECT - 24HMoney | Mối liên hệ giữa Trung Nam và VNDIRECT 24HMoney
+VNM: 3 aliases — 1 flagged
+  [REVIEW] 'VINAMILK' (names): 1268 hits, co-occurrence 277/1268 = 22%
+      · Phát triển nông nghiệp theo hướng bền vững: Nhìn từ hệ thống trang trại bò sữa Vinamilk - Kiểm sát điện tử | P
+      · Xông xênh tiền mặt, Vinamilk vẫn quyết bán hơn 310.000 cổ phiếu quỹ - baodautu | Xông xênh tiền mặt, Vinamilk 
+      · Vinamilk đưa kinh tế tuần hoàn vào các trang trại triệu đô - VnExpress | Vinamilk đưa kinh tế tuần hoàn vào cá
+VPB: 8 aliases — 1 flagged
+  [REVIEW] 'VPBank' (names): 1020 hits, co-occurrence 222/1020 = 22%
+      · Bị nợ xấu có vay được ngân hàng không và các thắc mắc liên quan - Vay Ngân Hàng 247 | Lãi Suất Thấp và Hỗ Trợ 
+      · Ngân hàng VPBank đang có tỷ lệ nợ xấu cao nhất hệ thống - Laodong.vn | Ngân hàng VPBank đang có tỷ lệ nợ xấu c
+      · VPBank chung tay cùng cộng đồng chống dịch COVID-19 - diendandoanhnghiep.vn | VPBank chung tay cùng cộng đồng 
+VPL: 11 aliases — 2 flagged
+  [REVIEW] 'Vinpearl' (names): 470 hits, co-occurrence 91/470 = 19%
+      · Vingroup bất ngờ dừng lập hãng hàng không Vinpearl Air - Tuổi Trẻ | Vingroup bất ngờ dừng lập hãng hàng không 
+      · Tỷ phú Phạm Nhật Vượng đóng cửa Vinpearl Air, đại diện Vingroup nói gì? - Laodong.vn | Tỷ phú Phạm Nhật Vượng 
+      · Vingroup đóng cửa hãng hàng không VinPearl Air - Báo Dân Việt | Vingroup đóng cửa hãng hàng không VinPearl Air
+  [REVIEW] 'Vinwonders' (subsidiaries): 88 hits, co-occurrence 36/88 = 41%
+      · Kinh tế đêm Hải Phòng bứt tốc, Vũ Yên thành điểm đến khai thác dòng tiền hàng đầu miền Bắc | Cầu Hoàng Gia khá
+      · MGV phân phối chính thức Grand World Phú Quốc và VinWonders Phú Quốc - CafeF | MGV phân phối chính thức Grand 
+      · Vingroup ra mắt dự án Shop VinWonders Phú Quốc - Laodong.vn | Vingroup ra mắt dự án Shop VinWonders Phú Quốc L
+VPX: 3 aliases — 1 flagged
+  [REVIEW] 'VPBANKS' (names): 273 hits, co-occurrence 90/273 = 33%
+      · VPBankS: Vốn ngoại sẽ tăng gấp 5 lần khi chứng khoán được nâng hạng | Các chuyên gia VPBankS ước tính, khoảng 
+      · Danh mục 26 cổ phiếu hưởng lợi sau khi FTSE Russell nâng hạng chứng khoán Việt Nam | VPBankS ước tính giá trị 
+      · VPBankS giảm mạnh ngày chào sàn, VN-Index mất mốc 1.700 | Phiên 11/12 chứng kiến trạng thái co cụm dòng tiền, 
+VRE: 8 aliases, all PASS
+VTP: 9 aliases — 2 flagged
+  [REVIEW] 'Viettel' (subsidiaries): 1551 hits, co-occurrence 286/1551 = 18%
+      · Viettel chọn ABB xây dựng tòa nhà đổi mới sáng tạo - baodautu | Viettel chọn ABB xây dựng tòa nhà đổi mới sáng
+      · Viettel Construction đưa dịch vụ chăm sóc thiết bị chuyên nghiệp đến 27 triệu hộ gia đình - Báo Dân trí | Viet
+      · Khách hàng của Viettel giảm 3 lần thời gian chờ nhờ trí tuệ nhân tạo - baodautu | Khách hàng của Viettel giảm 
+  [FAIL] 'ViettelPost' (subsidiaries): 6 hits, co-occurrence 0/6 = 0%
+      · Công nghệ 27/8: Sắp diễn ra Diễn đàn ứng dụng TMĐT và Công nghệ số 2025 | Amazon, Shopee, Tiktok Shop, Viettel
+      · Hà Nội cấp đổi giấy phép lái xe tại 32 đại lý dịch vụ công trực tuyến | Thành phố Hà Nội đã triển khai thí điể
+      · 100% sản phẩm OCOP 3 sao trở lên của Nghệ An được đưa lên sàn thương mại điện tử | Ủy ban nhân dân tỉnh Nghệ A
+
+summary: 1089 PASS / 120 REVIEW / 15 FAIL
+re-run with --apply to remove the FAILs (then rebuild image + rematch)

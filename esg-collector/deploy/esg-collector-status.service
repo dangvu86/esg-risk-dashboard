@@ -1,9 +1,0 @@
-[Unit]
-Description=ESG collector — dump queue stats + tail logs to GCS (oneshot)
-
-[Service]
-Type=oneshot
-WorkingDirectory=/opt/esg-collector/esg-collector
-ExecStart=/opt/esg-collector/esg-collector/deploy/_status.sh
-StandardOutput=append:/var/log/esg-collector-status.log
-StandardError=append:/var/log/esg-collector-status.log

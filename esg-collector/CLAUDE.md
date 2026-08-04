@@ -13,8 +13,8 @@ Run Jobs in **us-central1**, project `gen-lang-client-0020762472`:
 Push to `main` touching `esg-collector/**` triggers
 `.github/workflows/deploy-esg-collector-cloudrun.yml`: pytest → Cloud Build
 image `:<sha>` → deploy both jobs → ensure the scheduler exists. 5–8 min.
-(`deploy-esg-collector.yml` is the dead VM workflow — workflow_dispatch only,
-do not use.)
+This is the only deploy workflow; the VM-era one was deleted with the rest of
+the systemd tree (2026-08-04).
 
 CI identity: `github-actions-deploy@…iam.gserviceaccount.com` (granted
 2026-06-12: cloudbuild.builds.editor, artifactregistry.writer, run.admin,
