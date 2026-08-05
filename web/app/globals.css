@@ -67,9 +67,15 @@ table { border-collapse: separate; border-spacing: 0; }
 /* Breathing room between table columns (first col keeps its own px-7). */
 .results-table th, .results-table td { padding-right: 20px; }
 
-/* Stat tiles — DC keeps the number neutral and lets the label carry the
-   meaning; colour is reserved for the severity badges inside the table. */
+/* Stat tiles. LegalDragon's tiles do carry colour (in the leading icon), so the
+   E/S/G/severity split stays — but each tile now reuses the exact hue of the
+   matching badge in the table below, so one colour means one thing across the
+   whole page. Totals stay DC deep green because they aren't a category. */
 .stat-card { background: var(--dc-surface); border: 1px solid var(--dc-border); border-radius: var(--radius); padding: 14px 18px; }
 .stat-value { font-size: 26px; line-height: 1.2; font-weight: 700; letter-spacing: -0.5px; }
 .stat-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); margin-top: 2px; }
-.stat-plain, .stat-E, .stat-S, .stat-G, .stat-high { color: var(--dc-deep); }
+.stat-plain { color: var(--dc-deep); }
+.stat-E { color: #157a5b; }   /* = .group-E  */
+.stat-S { color: #b45309; }   /* = .group-S  */
+.stat-G { color: #b0292a; }   /* = .group-G  */
+.stat-high { color: #b0292a; }
