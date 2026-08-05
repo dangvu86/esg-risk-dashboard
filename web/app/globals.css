@@ -1,57 +1,75 @@
 @import "tailwindcss";
 
+/* Dragon Capital design tokens.
+   Lifted from live computed styles on ai.dragoncapital.com (2026-08-05):
+   portal body bg rgb(250,249,246), heading rgb(23,63,53); LegalDragon
+   --accent #00BF6F, --border #DFD8D0, --radius .5rem. Font was already
+   Manrope, which is what Legal + Research ship. */
 :root {
-  --ink: #1a1625;
-  --ink-soft: #4a4458;
-  --muted: #7c7592;
+  --dc-bg: #faf9f6;
+  --dc-surface: #ffffff;
+  --dc-deep: #173f35;
+  --dc-accent: #00bf6f;
+  --dc-border: #dfd8d0;
+
+  --ink: #181e25;
+  --ink-soft: #3d4855;
+  --muted: #5c6675;
+
+  --radius: 8px;
+  --radius-sm: 6px;
 }
 
 body {
   font-family: var(--font-manrope), -apple-system, sans-serif;
   color: var(--ink);
   min-height: 100vh;
-  background:
-    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(167, 139, 250, 0.12) 0%, transparent 65%),
-    radial-gradient(ellipse 60% 40% at 100% 50%, rgba(196, 181, 253, 0.08) 0%, transparent 65%),
-    linear-gradient(180deg, #fefdff 0%, #faf9ff 100%);
+  background: var(--dc-bg);
 }
 
-.pill-nav { background: rgba(255,255,255,0.7); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.8); box-shadow: 0 4px 24px rgba(124,58,237,0.08); border-radius: 9999px; }
-.pill-btn-light { background: white; color: var(--ink); border: 1px solid rgba(167,139,250,0.3); border-radius: 9999px; padding: 8px 18px; font-weight: 500; font-size: 13px; cursor: pointer; }
+/* Top bar — flat, full-bleed, hairline rule underneath. Matches the portal and
+   LegalDragon chrome: no floating pill, no blur, no shadow. */
+.topbar { background: var(--dc-surface); border-bottom: 1px solid var(--dc-border); }
+.topbar-inner { max-width: 1600px; margin: 0 auto; padding: 0 24px; }
+
+.pill-btn-light { background: var(--dc-surface); color: var(--ink); border: 1px solid var(--dc-border); border-radius: var(--radius); padding: 8px 18px; font-weight: 500; font-size: 13px; cursor: pointer; }
+.pill-btn-light:hover:not(:disabled) { border-color: var(--dc-deep); }
 .pill-btn-light:disabled { opacity: 0.4; cursor: not-allowed; }
-.pill-tag { display: inline-block; background: white; color: var(--ink-soft); border: 1px solid rgba(167,139,250,0.2); border-radius: 9999px; padding: 6px 16px; font-size: 13px; font-weight: 500; box-shadow: 0 2px 8px rgba(124,58,237,0.06); }
-.lang-toggle { display: inline-flex; background: rgba(255,255,255,0.5); border-radius: 9999px; padding: 2px; }
-.lang-btn { padding: 5px 12px; border-radius: 9999px; font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer; border: none; background: transparent; transition: all 0.15s; }
-.lang-btn.active { background: linear-gradient(135deg, #a78bfa 0%, #c4b5fd 100%); color: white; box-shadow: 0 2px 8px rgba(167,139,250,0.4); }
-.glass-card { background: rgba(255,255,255,0.7); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.9); border-radius: 24px; box-shadow: 0 8px 32px rgba(124,58,237,0.08), 0 2px 8px rgba(124,58,237,0.04); }
-.ticker-chip { display: inline-block; background: rgba(255,255,255,0.8); border: 1px solid rgba(167,139,250,0.2); color: var(--ink); padding: 4px 12px; border-radius: 9999px; font-family: inherit; font-weight: 700; font-size: 12px; letter-spacing: 0.5px; }
-.badge { display: inline-block; padding: 3px 10px; font-size: 11px; font-weight: 600; border-radius: 9999px; letter-spacing: 0.3px; }
-.group-E { background: rgba(16,185,129,0.12); color: #047857; }
-.group-S { background: rgba(245,158,11,0.12); color: #b45309; }
-.group-G { background: rgba(244,63,94,0.12); color: #be123c; }
-.ctrl-Major { background: rgba(244,63,94,0.12); color: #be123c; border: 1px solid rgba(244,63,94,0.25); }
-.ctrl-Minor { background: rgba(245,158,11,0.12); color: #b45309; border: 1px solid rgba(245,158,11,0.25); }
-.ctrl-No { background: rgba(16,185,129,0.12); color: #047857; border: 1px solid rgba(16,185,129,0.25); }
+.pill-tag { display: inline-block; background: var(--dc-surface); color: var(--muted); border: 1px solid var(--dc-border); border-radius: var(--radius-sm); padding: 5px 12px; font-size: 12px; font-weight: 600; }
+.lang-toggle { display: inline-flex; background: #f1efe9; border-radius: var(--radius-sm); padding: 2px; }
+.lang-btn { padding: 5px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer; border: none; background: transparent; transition: all 0.15s; }
+.lang-btn.active { background: var(--dc-deep); color: #fff; }
+.glass-card { background: var(--dc-surface); border: 1px solid var(--dc-border); border-radius: var(--radius); }
+.ticker-chip { display: inline-block; background: var(--dc-surface); border: 1px solid var(--dc-border); color: var(--ink); padding: 4px 10px; border-radius: var(--radius-sm); font-family: inherit; font-weight: 700; font-size: 12px; letter-spacing: 0.5px; }
+.badge { display: inline-block; padding: 3px 9px; font-size: 11px; font-weight: 600; border-radius: var(--radius-sm); letter-spacing: 0.3px; }
+.group-E { background: rgba(21,122,91,0.10); color: #157a5b; }
+.group-S { background: rgba(180,83,9,0.10); color: #b45309; }
+.group-G { background: rgba(217,54,54,0.10); color: #b0292a; }
+.ctrl-Major { background: rgba(217,54,54,0.10); color: #b0292a; border: 1px solid rgba(217,54,54,0.22); }
+.ctrl-Minor { background: rgba(180,83,9,0.10); color: #b45309; border: 1px solid rgba(180,83,9,0.22); }
+.ctrl-No { background: rgba(21,122,91,0.10); color: #157a5b; border: 1px solid rgba(21,122,91,0.22); }
 .row { transition: background 0.1s; }
-.row:hover { background: rgba(167,139,250,0.06); }
-.gradient-accent { background: linear-gradient(135deg, #a78bfa 0%, #c4b5fd 100%); }
-.display-h1 { font-size: 36px; line-height: 1.1; letter-spacing: -1.2px; font-weight: 700; color: var(--ink); }
+.row:hover { background: rgba(0,191,111,0.05); }
+.gradient-accent { background: var(--dc-deep); }
+.display-h1 { font-size: 34px; line-height: 1.15; letter-spacing: -0.8px; font-weight: 800; color: var(--dc-deep); }
 .subtle-text { color: var(--muted); }
-.sev-high { color: #be123c; font-weight: 600; }
+.sev-high { color: #b0292a; font-weight: 600; }
 .sev-med { color: #b45309; font-weight: 600; }
-.filter-input { background: rgba(255,255,255,0.7); border: 1px solid rgba(167,139,250,0.3); border-radius: 9999px; padding: 9px 16px; font-size: 13px; color: var(--ink); }
+.filter-input { background: var(--dc-surface); border: 1px solid var(--dc-border); border-radius: var(--radius); padding: 9px 14px; font-size: 13px; color: var(--ink); }
+.filter-input:focus { outline: none; border-color: var(--dc-deep); }
 .fallback-tag { font-size: 9px; color: var(--muted); font-style: italic; margin-left: 4px; }
+.dc-link { color: var(--dc-deep); font-weight: 500; }
+.dc-rule { border-color: var(--dc-border); }
+.dc-rule-soft { border-color: #ece7e0; }
 
 table { border-collapse: separate; border-spacing: 0; }
 
 /* Breathing room between table columns (first col keeps its own px-7). */
 .results-table th, .results-table td { padding-right: 20px; }
 
-.stat-card { background: rgba(255,255,255,0.7); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.9); border-radius: 18px; box-shadow: 0 4px 16px rgba(124,58,237,0.06); padding: 14px 18px; }
+/* Stat tiles — DC keeps the number neutral and lets the label carry the
+   meaning; colour is reserved for the severity badges inside the table. */
+.stat-card { background: var(--dc-surface); border: 1px solid var(--dc-border); border-radius: var(--radius); padding: 14px 18px; }
 .stat-value { font-size: 26px; line-height: 1.2; font-weight: 700; letter-spacing: -0.5px; }
 .stat-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); margin-top: 2px; }
-.stat-plain { color: var(--ink); }
-.stat-E { color: #047857; }
-.stat-S { color: #b45309; }
-.stat-G { color: #be123c; }
-.stat-high { color: #be123c; }
+.stat-plain, .stat-E, .stat-S, .stat-G, .stat-high { color: var(--dc-deep); }

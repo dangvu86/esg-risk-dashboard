@@ -190,12 +190,12 @@ export default function Home() {
 
   return (
     <>
-      {/* Nav pill */}
-      <div className="max-w-[1600px] mx-auto px-6 pt-6">
-        <nav className="pill-nav flex items-center justify-between h-14 px-4">
-          <div className="flex items-center gap-3 pl-2">
-            <div className="w-7 h-7 rounded-full gradient-accent flex items-center justify-center">
-              <div className="w-3 h-3 bg-white rounded-full" />
+      {/* Top bar — flat full-bleed, DC portal chrome */}
+      <div className="topbar">
+        <nav className="topbar-inner flex items-center justify-between h-14">
+          <div className="flex items-center gap-3">
+            <div className="w-7 h-7 rounded-md gradient-accent flex items-center justify-center">
+              <div className="w-2.5 h-2.5 bg-white rounded-sm" />
             </div>
             <span className="font-bold text-base">ESG Controversy</span>
           </div>
@@ -283,7 +283,7 @@ export default function Home() {
             ))}
           </select>
           {isFiltered ? (
-            <button className="text-xs text-violet-600 hover:underline ml-1" onClick={clearAll}>
+            <button className="text-xs dc-link hover:underline ml-1" onClick={clearAll}>
               {T.clear[lang]}
             </button>
           ) : null}
@@ -291,7 +291,7 @@ export default function Home() {
 
         {/* Results table */}
         <div className="glass-card overflow-hidden">
-          <div className="px-7 py-4 flex justify-between items-center text-sm border-b border-violet-100/50">
+          <div className="px-7 py-4 flex justify-between items-center text-sm border-b dc-rule">
             <div>
               <strong>{processed.length.toLocaleString()}</strong> {headerCount}
             </div>
@@ -301,7 +301,7 @@ export default function Home() {
           <div className="overflow-x-auto">
             <table className="results-table w-full text-sm">
               <thead className="text-xs subtle-text uppercase tracking-wider">
-                <tr className="border-b border-violet-100">
+                <tr className="border-b dc-rule">
                   <th className="text-left px-7 py-3 font-semibold">{T.colDate[lang]}</th>
                   <th className="text-left py-3 font-semibold">Ticker</th>
                   <th className="text-left py-3 font-semibold">{T.colCompany[lang]}</th>
@@ -320,7 +320,7 @@ export default function Home() {
                   pageData.rows.map((e, i) => {
                     const h = pickHeadline(e, lang);
                     return (
-                      <tr key={`${e.ticker}-${e.date}-${i}`} className="row border-b border-violet-100/30 align-top">
+                      <tr key={`${e.ticker}-${e.date}-${i}`} className="row border-b dc-rule-soft align-top">
                         <td className="px-7 py-4 tabular-nums subtle-text whitespace-nowrap">{e.date}</td>
                         <td className="py-4"><span className="ticker-chip">{e.ticker}</span></td>
                         <td className="py-4 subtle-text">{e.company}</td>
@@ -344,7 +344,7 @@ export default function Home() {
                         </td>
                         <td className="pr-7 py-4 subtle-text">
                           {e.url
-                            ? <a href={e.url} target="_blank" rel="noopener noreferrer" className="text-violet-600 hover:underline">{e.source} ↗</a>
+                            ? <a href={e.url} target="_blank" rel="noopener noreferrer" className="dc-link hover:underline">{e.source} ↗</a>
                             : e.source}
                         </td>
                       </tr>
@@ -356,7 +356,7 @@ export default function Home() {
           </div>
 
           {/* Pagination footer */}
-          <div className="px-7 py-4 flex justify-between items-center text-sm border-t border-violet-100/50">
+          <div className="px-7 py-4 flex justify-between items-center text-sm border-t dc-rule">
             <span className="subtle-text">{showingRange}</span>
             <div className="flex items-center gap-2">
               <button className="pill-btn-light" disabled={pageData.page <= 1}
