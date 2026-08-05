@@ -23,19 +23,19 @@ def test_has_remaining_counts_pending_and_backoff():
                              query="x", after="2026-01-01", before="2026-01-07")
         assert storage.has_remaining_tasks(conn, "google_rss") is True
         # a different backend is unaffected
-        assert storage.has_remaining_tasks(conn, "brave") is False
+        assert storage.has_remaining_tasks(conn, "baomoi") is False
         conn.close()
 
 
 def test_done_and_failed_do_not_count():
     with tempfile.TemporaryDirectory() as td:
         db = _db(td); conn = storage.connect(db)
-        storage.enqueue_task(conn, backend="brave", kind="keyword", ticker=None,
+        storage.enqueue_task(conn, backend="baomoi", kind="keyword", ticker=None,
                              group_key="kw", sub_query_ix=0, query="x",
                              after="2026-01-01", before="2026-01-07")
-        t = storage.next_task(conn, "brave")
+        t = storage.next_task(conn, "baomoi")
         storage.mark_task_done(conn, t["task_id"], 0)
-        assert storage.has_remaining_tasks(conn, "brave") is False
+        assert storage.has_remaining_tasks(conn, "baomoi") is False
         conn.close()
 
 
@@ -45,7 +45,7 @@ def test_runner_drain_processes_then_exits(monkeypatch):
     from workers import runner
 
     class _FakeBackend:
-        name = "brave"
+        name = "baomoi"
         @staticmethod
         def fetch(query, after, before):
             return []  # no items; we only assert the loop terminates
@@ -60,14 +60,14 @@ def test_runner_drain_processes_then_exits(monkeypatch):
         importlib.reload(storage)
         storage.init_db()
         conn = storage.connect();
-        storage.enqueue_task(conn, backend="brave", kind="keyword", ticker=None,
+        storage.enqueue_task(conn, backend="baomoi", kind="keyword", ticker=None,
                              group_key="kw", sub_query_ix=0, query="x",
                              after="2026-01-01", before="2026-01-07")
         conn.close()
         # must return on its own (no SIGINT) because the queue drains
-        runner.run("brave", drain=True, throttle_override=0)
+        runner.run("baomoi", drain=True, throttle_override=0)
         conn = storage.connect()
-        assert storage.has_remaining_tasks(conn, "brave") is False
+        assert storage.has_remaining_tasks(conn, "baomoi") is False
         conn.close()
     importlib.reload(s); importlib.reload(storage)
 
@@ -100,7 +100,7 @@ def test_runner_drain_waits_for_backed_off_then_exits(monkeypatch):
     monkeypatch.setattr(runner.time, "sleep", lambda _: None)
 
     class _FakeBackend:
-        name = "brave"
+        name = "baomoi"
         @staticmethod
         def fetch(query, after, before):
             return []
@@ -108,7 +108,7 @@ def test_runner_drain_waits_for_backed_off_then_exits(monkeypatch):
     monkeypatch.setattr(runner, "_load_backend", lambda name: _FakeBackend)
 
     # Must return (not hang) because has_remaining eventually goes False.
-    runner.run("brave", drain=True, throttle_override=0)
+    runner.run("baomoi", drain=True, throttle_override=0)
 
     # The loop must have consulted has_remaining_tasks at least twice:
     # once while the backed-off task was "present" (→ idle-poll) and once

@@ -180,12 +180,9 @@ def test_queue_builder_counts() -> None:
 def test_window_reaches_today() -> None:
     from datetime import date
     from config import settings
-    # BACKFILL_END and BAOMOI_WINDOW_END roll to today; BRAVE_WINDOW_END stays at 2021-12-31
+    # BACKFILL_END and BAOMOI_WINDOW_END roll to today
     for end in (settings.BACKFILL_END, settings.BAOMOI_WINDOW_END):
         assert end >= "2025-01-01", f"window end {end} predates 2025"
-    assert settings.BRAVE_WINDOW_END == "2021-12-31", (
-        f"Brave window end should stay 2021-12-31 (pre-BaoMoi tail), got {settings.BRAVE_WINDOW_END}"
-    )
     assert settings.BACKFILL_END >= date.today().isoformat()[:7], "backfill end not rolling to current month"
     assert settings.BAOMOI_WINDOW_END >= date.today().isoformat()[:7], "baomoi window end not rolling to current month"
     print("  window_reaches_today OK")
@@ -296,8 +293,9 @@ def test_l2_alias_tasks() -> None:
     with tempfile.TemporaryDirectory() as td:
         db = Path(td) / "l2.db"
         n = qb.build_alias_tasks(tickers=["DBC"], db_path=db)
-        # brave disabled 2026-06-11 (quota exhausted) — no tasks enqueued for it
-        assert n["baomoi"] > 0 and n["google_rss"] > 0 and n["brave"] == 0, n
+        # brave unwired 2026-08-05 — it must not even appear as a queue key
+        assert n["baomoi"] > 0 and n["google_rss"] > 0, n
+        assert "brave" not in n, n
         from core import storage
         conn = storage.connect(db)
         baomoi_q = {r["query"] for r in conn.execute(
@@ -319,7 +317,7 @@ def test_l2_alias_tasks() -> None:
 
 def test_alias_window_overrides_baomoi() -> None:
     # An explicit window (daily mode) must override BaoMoi too — not just
-    # Google/Brave. Backfill (no window) still uses settings (see l2 test).
+    # Google. Backfill (no window) still uses settings (see l2 test).
     from core import queue_builder as qb
     from core import storage
     import tempfile

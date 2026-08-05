@@ -33,25 +33,21 @@ CHUNK_MONTHS   = 1
 THROTTLE = {
     "google_rss": 25.0,
     "baomoi":     15.0,
-    "brave":       1.0,
 }
 
 # Backoff schedule (seconds) when a backend reports rate-limit/5xx.
 BACKOFF = {
     "google_rss": [300, 1800, 7200],     # 5m -> 30m -> 2h
     "baomoi":     [180, 900, 3600],      # 3m -> 15m -> 1h
-    "brave":      [60, 600, 3600],       # 1m -> 10m -> 1h
 }
 MAX_ATTEMPTS = 5
 
-# Brave API window: only fetch for the older portion of the backfill (Báo Mới
-# archive runs out around 4y). Brave queries the rest.
-BRAVE_WINDOW_START = "2020-01-01"
-BRAVE_WINDOW_END   = "2021-12-31"
+# Brave used to own the 2020-01-01→2021-12-31 tail (pre-BaoMoi archive); it was
+# unwired 2026-08-05 and google_rss covers that tail now. See backends/brave.py
+# for the revival checklist.
 BAOMOI_WINDOW_START = "2022-01-01"
 BAOMOI_WINDOW_END   = _TODAY
 
-BRAVE_API_KEY = os.environ.get("BRAVE_API_KEY", "")
 JINA_API_KEY  = os.environ.get("JINA_API_KEY", "")  # optional; raises RPM cap
 
 USER_AGENTS = [

@@ -19,7 +19,7 @@ def test_daily_stage_order_includes_enrich():
     # fetch (2 backends, drained) → body → match → enrich → export
     assert any("workers.runner --backend google_rss --drain" in c for c in cmds)
     assert any("workers.runner --backend baomoi --drain" in c for c in cmds)
-    # brave disabled 2026-06-11 (quota exhausted) — must NOT be spawned
+    # brave unwired 2026-08-05 (quota exhausted) — must NOT be spawned
     assert not any("--backend brave" in c for c in cmds)
     assert any("workers.body_fetcher --drain" in c for c in cmds)
     assert any("pipeline.match" in c for c in cmds)

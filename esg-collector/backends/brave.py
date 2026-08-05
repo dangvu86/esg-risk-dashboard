@@ -1,18 +1,36 @@
-"""Brave Web Search API backend.
+"""Brave Web Search API backend — DORMANT, not wired into any run.
 
 Uses date-range freshness for the 4-5y window where Báo Mới archive runs
 out. Paginates via `offset` (max 9 per Brave docs) until empty or 200 items.
+
+Unwired 2026-08-05: the $5 API credit ran out 2026-06-11 and every run burned
+fetch budget on HTTP 402 + 1800s retry loops. The module is kept working (Brave
+still has a free tier, and a second search net is on the table) but every
+reference to it elsewhere was removed so nothing can schedule it by accident.
+Historical rows in `articles` keep `backend='brave'` — that column is a label,
+nothing resolves it back to this module.
+
+TO REVIVE — put credit on the key, set BRAVE_API_KEY, then restore 4 hooks:
+  1. workers/runner.py   BACKEND_MODULES["brave"] = "backends.brave"
+  2. config/settings.py  THROTTLE["brave"] = 1.0
+                         BACKOFF["brave"]  = [60, 600, 3600]
+  3. runtime/job.py      add "brave" to BACKENDS
+  4. core/queue_builder.py  add "brave" to the default `backends` list, to the
+     `_defaults` window map (it used to own the 2020-01-01→2021-12-31 tail,
+     which google_rss now covers), and to the L2 alias loop
+Then re-add its cases to tests/test_smoke.py and tests/test_job_orchestrator.py,
+which currently assert brave is absent.
 """
 
 from __future__ import annotations
 
 import json
+import os
 import time
 import urllib.parse
 from datetime import datetime, timedelta
 
 from backends import base
-from config import settings
 
 
 name = "brave"
@@ -67,7 +85,7 @@ def _parse_age(age: str, page_age: str) -> str | None:
 
 
 def _call(session, query: str, freshness: str, offset: int) -> list[dict]:
-    api_key = settings.BRAVE_API_KEY
+    api_key = os.environ.get("BRAVE_API_KEY", "")
     if not api_key:
         raise base.BackendError("BRAVE_API_KEY not set")
     url = _build_url(query, freshness, offset)

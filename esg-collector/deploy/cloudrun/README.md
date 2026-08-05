@@ -285,9 +285,10 @@ deploy model:
   02:00 UTC.
 - Manual backfill: `gcloud run jobs execute esg-backfill --region us-central1`
   (optional `--args=--mode,backfill,--tickers,XXX`).
-- Secrets: managed in Secret Manager (`BRAVE_API_KEY`, `JINA_API_KEY`,
-  `GROQ_API_KEY`); injected at runtime via `--set-secrets` in the deploy
-  workflow.
+- Secrets: managed in Secret Manager (`JINA_API_KEY`, `GROQ_API_KEY`);
+  injected at runtime via `--set-secrets` in the deploy workflow.
+  (`BRAVE_API_KEY` is no longer read by any code path — brave was unwired
+  2026-08-05; the binding can stay or be dropped, it is inert either way.)
 - No SSH, no systemd, no VM.
 
 Commit the CLAUDE.md update along with any remaining workflow file changes:

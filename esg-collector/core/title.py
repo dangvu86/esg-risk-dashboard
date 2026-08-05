@@ -1,7 +1,7 @@
 """Title normalisation + hashing for cross-backend deduplication.
 
-Two articles about the same story may arrive via Google News (encoded URL),
-BaoMoi (own ID), and Brave (publisher URL directly). Their `article_id`
+Two articles about the same story may arrive via Google News (encoded URL) and
+BaoMoi (own ID). Their `article_id`
 differs, but the headline is usually identical or nearly so. We compute a
 stable hash of the normalised title so that an INSERT can fall back to a
 "same title + same publish date → same story" check after the article_id

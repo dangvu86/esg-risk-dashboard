@@ -3,7 +3,6 @@
 Each backend has its own date window from `settings.py`:
   - google_rss : full BACKFILL window
   - baomoi     : BAOMOI_WINDOW (modern coverage)
-  - brave      : BRAVE_WINDOW  (older coverage where BaoMoi runs out)
 
 Idempotent: rerun is safe (INSERT OR IGNORE on task_id).
 Run with:  python -m core.queue_builder
@@ -73,8 +72,7 @@ def build_keyword_tasks(
     """Enqueue L1 single-term keyword tasks: one per (backend × term × chunk).
 
     Args:
-        backends: List of backend names. Defaults to
-            ["google_rss", "baomoi", "brave"].
+        backends: List of backend names. Defaults to ["google_rss", "baomoi"].
         window: (start, end) date strings override default backend windows.
         db_path: Path to the SQLite database. Pass a temp path for hermetic tests.
 
@@ -85,11 +83,9 @@ def build_keyword_tasks(
     client-side (early-stopping at `after`), so weekly chunking is wasteful —
     each chunk would re-crawl the same pages. It gets ONE span over its whole
     window (settings.BAOMOI_WINDOW_* on backfill, the passed window on daily);
-    Google RSS / Brave keep the weekly chunks.
+    Google RSS keeps the weekly chunks.
     """
     from config.keywords import search_terms
-    # "brave" dropped from the default net 2026-06-11 (quota exhausted — see
-    # runtime/job.py BACKENDS). Callers can still pass it explicitly.
     backends = backends or ["google_rss", "baomoi"]
     terms = search_terms()
     storage.init_db(db_path)
@@ -149,8 +145,8 @@ def build_alias_tasks(
     - BaoMoi: NAMES ONLY, one deep pass each over its full settings window as a
       single task — BaoMoi ignores date params and paginates client-side
       (early-stopping at the window start), so chunking is wasteful.
-    - Google RSS / Brave: NAMES ONLY, monthly chunks. Tail is 2020-01-01 to
-      2021-12-31 for Google (the pre-BaoMoi gap) and settings.BRAVE_WINDOW_*.
+    - Google RSS: NAMES ONLY, monthly chunks over the 2020-01-01 to 2021-12-31
+      tail (the pre-BaoMoi gap).
 
     When `window` is provided (daily incremental) it overrides EVERY backend,
     including BaoMoi — the flow is identical, only the time window shrinks.
@@ -180,14 +176,13 @@ def build_alias_tasks(
 
     storage.init_db(db_path)
     conn = storage.connect(db_path)
-    inserted: dict[str, int] = {"baomoi": 0, "google_rss": 0, "brave": 0}
+    inserted: dict[str, int] = {"baomoi": 0, "google_rss": 0}
 
     # Per-backend historical default window (backfill). When `window` is passed
     # (daily incremental) it overrides EVERY backend — same flow, just a recent
     # window. Google's historical default is the 2020–2021 pre-BaoMoi gap.
     _defaults = {
         "google_rss": ("2020-01-01", "2021-12-31"),
-        "brave":      (settings.BRAVE_WINDOW_START, settings.BRAVE_WINDOW_END),
         "baomoi":     (settings.BAOMOI_WINDOW_START, settings.BAOMOI_WINDOW_END),
     }
     backend_windows = {b: (window if window is not None else d) for b, d in _defaults.items()}
@@ -219,8 +214,7 @@ def build_alias_tasks(
                 ):
                     inserted["baomoi"] += 1
 
-            # Google RSS: NAMES ONLY, monthly chunks over the tail. ("brave"
-            # dropped 2026-06-11 — quota exhausted; see runtime/job.py.)
+            # Google RSS: NAMES ONLY, monthly chunks over the tail.
             for backend in ("google_rss",):
                 start, end = backend_windows[backend]
                 for after, before in date_chunks(start, end, settings.CHUNK_MONTHS):
@@ -275,7 +269,7 @@ def main() -> None:
 
     ap = argparse.ArgumentParser()
     ap.add_argument("--backends", nargs="+", default=None,
-                    help="Subset of: google_rss baomoi brave")
+                    help="Subset of: google_rss baomoi")
     ap.add_argument("--mode", choices=("backfill", "daily", "keyword", "alias"),
                     default="backfill",
                     help="backfill: full historical flow — per-company alias + "
@@ -283,9 +277,9 @@ def main() -> None:
                          "(--backends ignored). "
                          "daily: the SAME flow over a recent window (default last 5 "
                          "days; --backends ignored). "
-                         "keyword: just the L1 single-term keyword half (google_rss/brave). "
+                         "keyword: just the L1 single-term keyword half (google_rss). "
                          "alias: just the L2 per-company alias half "
-                         "(baomoi/google_rss/brave; --backends ignored).")
+                         "(baomoi/google_rss; --backends ignored).")
     ap.add_argument("--tickers", nargs="+", default=None,
                     help="alias/daily modes: restrict to these tickers (e.g. a "
                          "newly-added company to backfill). Default: all in "

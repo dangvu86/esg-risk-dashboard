@@ -3,7 +3,6 @@
 Run one process per backend:
     python -m workers.runner --backend google_rss
     python -m workers.runner --backend baomoi
-    python -m workers.runner --backend brave
 
 Each iteration:
   1. pull next task whose `next_attempt` <= now
@@ -46,10 +45,11 @@ def _field(task, key):
         return None
 
 
+# backends/brave.py is deliberately absent — dormant since 2026-08-05; see its
+# module docstring for the revival checklist.
 BACKEND_MODULES = {
     "google_rss": "backends.google_rss",
     "baomoi":     "backends.baomoi",
-    "brave":      "backends.brave",
 }
 
 
@@ -80,7 +80,7 @@ def _process_task(conn, backend_mod, task) -> tuple[int, int]:
             continue
         # Google News links are opaque base64 redirects — resolve to the real
         # publisher URL before deriving article_id, otherwise the same story
-        # fetched by BaoMoi / Brave will look like a different article.
+        # fetched by BaoMoi will look like a different article.
         if is_google:
             url = url_cache.resolve(conn, url)
         canon = canonicalize(url)

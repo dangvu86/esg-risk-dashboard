@@ -34,9 +34,9 @@ from runtime import gcs, gcs_lock, gcs_state
 log = logging.getLogger("runtime.job")
 
 PY = sys.executable
-# "brave" removed 2026-06-11: API quota exhausted ($5 cap) — every run burned
-# fetch budget on HTTP 402 + 1800s retry loops. Re-add here AND in
-# core/queue_builder.py defaults once the key has credit again.
+# "brave" removed 2026-06-11 (API quota exhausted — every run burned fetch
+# budget on HTTP 402 + 1800s retry loops) and fully unwired 2026-08-05. The
+# module survives at backends/brave.py; its docstring has the revival checklist.
 BACKENDS = ("google_rss", "baomoi")
 # Per-run enrich chunk. Env-overridable so an enrich-only run (`--mode enrich`)
 # can drain a large matched backlog in bigger bites than the nightly daily.
@@ -196,8 +196,8 @@ def run(mode: str, tickers: list[str] | None, *, ttl_seconds: int, bucket=None) 
         storage.init_db()  # apply migrations on the downloaded (or fresh) blob
 
         enqueue, fetch_cmds, post_fetch = stage_commands(mode, tickers)
-        # Subprocesses inherit this env, so Secret Manager values (BRAVE/JINA/
-        # GROQ keys) reach each stage only if Cloud Run injects them as env vars
+        # Subprocesses inherit this env, so Secret Manager values (JINA/GROQ
+        # keys) reach each stage only if Cloud Run injects them as env vars
         # (--set-secrets), not as mounted files.
         env = dict(os.environ)
 
