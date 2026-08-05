@@ -4,3 +4,10 @@ node_modules/
 __pycache__/
 *.pyc
 .vercel/
+
+# This GitHub repo is PUBLIC. The migration handover carries Dragon Capital
+# internal infrastructure (server + tailnet IPs, staff names, deploy internals,
+# a known-broken rollback path) and must not be published here. It belongs in
+# the internal Azure DevOps repo instead — keep it local until then.
+AIDRAGON_MIGRATION.md
+.superpowers/
